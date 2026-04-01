@@ -28,9 +28,12 @@
     </select>
   </div>
   <div class="d-flex align-items-center gap-2">
-    <label>Days</label>
-    <input type="number" name="trend_days" value="{{ trend_days_count }}"
-           min="7" max="365" style="width:70px;" onchange="this.form.submit()">
+    <label>From</label>
+    <input type="date" name="trend_start" value="{{ trend_start_str }}" onchange="this.form.submit()">
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <label>To</label>
+    <input type="date" name="trend_end" value="{{ trend_end_str }}" onchange="this.form.submit()">
   </div>
   <a href="{{ url_for('schedule', date_str=filter_date) }}" class="btn btn-maroon btn-sm ms-auto">
     <i class="bi bi-calendar3-week me-1"></i>View Schedule
@@ -76,7 +79,7 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <span class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>{{ trend_days_count }}-Day Activity Trend</span>
+        <span class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>Activity Trend &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
         <div class="d-flex gap-1 flex-wrap" id="trendFilterBtns">
           <button class="trend-btn active" data-truck="all" onclick="setTrend('all',this)">All</button>
           {% for tt in trend_by_truck %}
@@ -125,7 +128,7 @@
   <div class="col-lg-7">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <span class="card-title"><i class="bi bi-trophy-fill me-2" style="color:#D97706;"></i>Top Drivers by Delivered — Last {{ trend_days_count }} Days</span>
+        <span class="card-title"><i class="bi bi-trophy-fill me-2" style="color:#D97706;"></i>Top Drivers by Delivered &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
       </div>
       {% if top_drivers_by_truck %}
       <div class="card-body pb-0">
@@ -155,7 +158,7 @@
   <div class="col-lg-5">
     <div class="card h-100">
       <div class="card-header">
-        <span class="card-title"><i class="bi bi-person-dash-fill me-2" style="color:#DC2626;"></i>Most Absent Drivers — Last {{ trend_days_count }} Days</span>
+        <span class="card-title"><i class="bi bi-person-dash-fill me-2" style="color:#DC2626;"></i>Most Absent Drivers &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
       </div>
       <div class="card-body">
         {% if absent_drivers %}
@@ -312,12 +315,13 @@ function hex2rgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// ── AREA CHART (14-day trend) ─────────────────────────────────────────────
+// ── AREA CHART (multi-select trend) ──────────────────────────────────────
 const trendCtx = document.getElementById('trendChart');
-let trendChart = null;
+let trendChart  = null;
+let selectedTrucks = new Set(); // empty = "All"
 
-function buildTrendDataset(truck) {
-  if (truck === 'all') {
+function buildTrendDatasets() {
+  if (selectedTrucks.size === 0) {
     return [{
       label: 'All Trucks',
       data: TREND_TOTAL,
@@ -327,27 +331,28 @@ function buildTrendDataset(truck) {
       pointBackgroundColor: '#8B1A2B', borderWidth: 2,
     }];
   }
-  const tt = TREND_BY_TRUCK.find(t => t.code === truck);
-  if (!tt) return [];
-  return [{
-    label: tt.name,
-    data: tt.counts,
-    borderColor: tt.color,
-    backgroundColor: hex2rgba(tt.color, 0.12),
-    fill: true, tension: 0.4, pointRadius: 3,
-    pointBackgroundColor: tt.color, borderWidth: 2,
-  }];
+  return TREND_BY_TRUCK
+    .filter(tt => selectedTrucks.has(tt.code))
+    .map(tt => ({
+      label: tt.name,
+      data: tt.counts,
+      borderColor: tt.color,
+      backgroundColor: hex2rgba(tt.color, 0.1),
+      fill: true, tension: 0.4, pointRadius: 3,
+      pointBackgroundColor: tt.color, borderWidth: 2,
+    }));
 }
 
-function initTrendChart(truck) {
+function renderTrendChart() {
   if (trendChart) trendChart.destroy();
   trendChart = new Chart(trendCtx, {
     type: 'line',
-    data: { labels: TREND_DAYS, datasets: buildTrendDataset(truck) },
+    data: { labels: TREND_DAYS, datasets: buildTrendDatasets() },
     options: {
       responsive: true,
       plugins: {
-        legend: { display: false },
+        legend: { display: selectedTrucks.size > 1, position: 'bottom',
+                  labels: { font: { size: 11 }, padding: 10 } },
         tooltip: { mode: 'index', intersect: false }
       },
       scales: {
@@ -359,12 +364,29 @@ function initTrendChart(truck) {
 }
 
 function setTrend(truck, btn) {
-  document.querySelectorAll('#trendFilterBtns .trend-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  initTrendChart(truck);
+  const allBtn = document.querySelector('#trendFilterBtns .trend-btn[data-truck="all"]');
+  if (truck === 'all') {
+    selectedTrucks.clear();
+    document.querySelectorAll('#trendFilterBtns .trend-btn').forEach(b => b.classList.remove('active'));
+    allBtn.classList.add('active');
+  } else {
+    allBtn.classList.remove('active');
+    if (selectedTrucks.has(truck)) {
+      selectedTrucks.delete(truck);
+      btn.classList.remove('active');
+    } else {
+      selectedTrucks.add(truck);
+      btn.classList.add('active');
+    }
+    if (selectedTrucks.size === 0) {
+      selectedTrucks.clear();
+      allBtn.classList.add('active');
+    }
+  }
+  renderTrendChart();
 }
 
-initTrendChart('all');
+renderTrendChart();
 
 // ── PIE CHART (status mix) ────────────────────────────────────────────────
 {% if total > 0 %}

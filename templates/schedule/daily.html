@@ -3,6 +3,28 @@
 {% block page_title %}Daily Schedule{% endblock %}
 
 {% block content %}
+<style>
+/* ── Autocomplete ── */
+.ac { position: relative; display: block; }
+.ac-txt { width: 100%; box-sizing: border-box; }
+.ac-drop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  min-width: 170px;
+  max-height: 210px;
+  overflow-y: auto;
+  font-size: .82rem;
+}
+.ac-item { padding: 6px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-item:hover, .ac-item.hi { background: var(--maroon); color: #fff; }
+</style>
 <!-- ── DATE NAVIGATION ──────────────────────────────────────────────────── -->
 <div class="page-header">
   <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -76,6 +98,7 @@
             <thead>
               <tr>
                 <th class="center" style="width:36px;">#</th>
+                <th style="min-width:120px;">Trip Type</th>
                 <th style="min-width:120px;">Driver</th>
                 <th style="min-width:120px;">Helper</th>
                 <th style="min-width:120px;">Plate No.</th>
@@ -96,6 +119,10 @@
               {% for trip in wave.trips %}
               <tr data-trip-id="{{ trip.id }}">
                 <td class="trip-num">{{ trip.trip_number }}</td>
+                <td><select class="ti ti-sel" data-field="trip_type" onchange="updateTrip({{ trip.id }}, 'trip_type', this.value)">
+                  <option value="">— Type —</option>
+                  {% for tt in trip_types %}<option value="{{ tt }}" {% if trip.trip_type == tt %}selected{% endif %}>{{ tt }}</option>{% endfor %}
+                </select></td>
                 <td><select class="ti ti-sel" data-field="driver_id" onchange="updateTrip({{ trip.id }}, 'driver_id', this.value)">
                   <option value="">— Driver —</option>
                   {% for d_ in all_drivers %}<option value="{{ d_.id }}" {% if trip.driver_id == d_.id %}selected{% endif %}>{{ d_.name }}</option>{% endfor %}
@@ -138,7 +165,7 @@
               </tr>
               {% else %}
               <tr class="empty-trip-row">
-                <td colspan="15" class="empty-state py-3">
+                <td colspan="16" class="empty-state py-3">
                   <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
                 </td>
               </tr>
@@ -169,6 +196,7 @@
 
 <!-- Hidden option source for JS-built rows -->
 <div id="optionSource" style="display:none;">
+  <select id="src_trip_type"><option value="">— Type —</option>{% for tt in trip_types %}<option value="{{ tt }}">{{ tt }}</option>{% endfor %}</select>
   <select id="src_driver"><option value="">— Driver —</option>{% for d_ in all_drivers %}<option value="{{ d_.id }}">{{ d_.name }}</option>{% endfor %}</select>
   <select id="src_helper"><option value="">— Helper —</option>{% for h in all_helpers %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}</select>
   <select id="src_plate"><option value="">— Plate —</option>{% for p in all_plates %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}</select>
@@ -249,7 +277,7 @@ function buildWavePanelHTML(wid, label) {
       <table class="trip-table" id="trip-table-${wid}">
         <thead><tr>
           <th class="center" style="width:36px;">#</th>
-          <th>Driver</th><th>Helper</th><th>Plate No.</th>
+          <th>Trip Type</th><th>Driver</th><th>Helper</th><th>Plate No.</th>
           <th>Product</th><th>Client</th><th>Dispatcher</th>
           <th>RS No.</th><th>PO No.</th><th>Reference</th>
           <th>DR No.</th><th>Volume</th><th>Status</th><th>Notes</th>
@@ -257,7 +285,7 @@ function buildWavePanelHTML(wid, label) {
         </tr></thead>
         <tbody id="wave-body-${wid}">
           <tr class="empty-trip-row">
-            <td colspan="15" class="empty-state py-3">
+            <td colspan="16" class="empty-state py-3">
               <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
             </td>
           </tr>
@@ -271,30 +299,152 @@ function buildWavePanelHTML(wid, label) {
     </div>`;
 }
 
-// ── ADD TRIP ROW ──────────────────────────────────────────────────────────
-let optSrc = {};
-document.addEventListener('DOMContentLoaded', () => {
-  ['driver','helper','plate','product','client','dispatcher'].forEach(k => {
-    optSrc[k] = document.getElementById(`src_${k}`)?.innerHTML || '';
+// ── AUTOCOMPLETE ENGINE ───────────────────────────────────────────────────
+const AC_MAP = {
+  trip_type:     {key:'trip_type',   ph:'— Type —'},
+  driver_id:     {key:'driver',      ph:'— Driver —'},
+  helper_id:     {key:'helper',      ph:'— Helper —'},
+  plate_id:      {key:'plate',       ph:'— Plate —'},
+  product_id:    {key:'product',     ph:'— Product —'},
+  client_id:     {key:'client',      ph:'— Client —'},
+  dispatcher_id: {key:'dispatcher',  ph:'— Dispatcher —'},
+};
+let acData = {};
+
+function initAcData() {
+  Object.values(AC_MAP).forEach(cfg => {
+    const sel = document.getElementById(`src_${cfg.key}`);
+    if (!sel) return;
+    acData[cfg.key] = [...sel.options].map(o => ({v: o.value, l: o.textContent.trim()}));
   });
+}
+
+function escAtt(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function makeAcHTML(fieldId, curVal) {
+  const cfg  = AC_MAP[fieldId];
+  if (!cfg) return '';
+  const opts = acData[cfg.key] || [];
+  const cur  = String(curVal || '');
+  const found = opts.find(o => String(o.v) === cur);
+  const disp  = found ? found.l : '';
+  const items = opts.filter(o => o.v).map(o =>
+    `<div class="ac-item" data-v="${escAtt(String(o.v))}" onmousedown="acPick(event,this)">${escHtml(o.l)}</div>`
+  ).join('');
+  return `<div class="ac" data-f="${fieldId}">` +
+    `<input class="ti ac-txt" type="text" value="${escAtt(disp)}" placeholder="${cfg.ph}" autocomplete="off"` +
+    ` oninput="acFilter(this)" onfocus="acOpen(this)" onblur="acClose(this)" onkeydown="acKey(event,this)">` +
+    `<input class="ac-v" type="hidden" data-field="${fieldId}" value="${escAtt(cur)}">` +
+    `<div class="ac-drop">${items}</div></div>`;
+}
+
+function transformSelects() {
+  document.querySelectorAll('select.ti-sel').forEach(sel => {
+    const fid = sel.dataset.field;
+    if (!AC_MAP[fid]) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = makeAcHTML(fid, sel.value || '');
+    sel.parentNode.replaceChild(tmp.firstElementChild, sel);
+  });
+}
+
+function acFilter(inp) {
+  const q    = inp.value.toLowerCase();
+  const drop = inp.closest('.ac').querySelector('.ac-drop');
+  drop.querySelectorAll('.ac-item').forEach(it =>
+    it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none');
+  drop.style.display = '';
+}
+
+function acOpen(inp) {
+  const drop = inp.closest('.ac').querySelector('.ac-drop');
+  drop.querySelectorAll('.ac-item').forEach(it => it.style.display = '');
+  drop.style.display = '';
+}
+
+function acClose(inp) {
+  setTimeout(() => {
+    const ac = inp?.closest?.('.ac');
+    if (!ac) return;
+    ac.querySelector('.ac-drop').style.display = 'none';
+    if (!inp.value.trim()) {
+      const hid = ac.querySelector('.ac-v');
+      if (hid.value) {
+        hid.value = '';
+        const fid = ac.dataset.f;
+        const tr  = ac.closest('tr');
+        const tid = tr?.dataset.tripId ? parseInt(tr.dataset.tripId) : null;
+        if (tid) updateTrip(tid, fid, '');
+      }
+    }
+  }, 200);
+}
+
+function acKey(e, inp) {
+  const drop = inp.closest('.ac').querySelector('.ac-drop');
+  const vis  = [...drop.querySelectorAll('.ac-item')].filter(i => i.style.display !== 'none');
+  let   hi   = drop.querySelector('.ac-item.hi');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const nxt = hi ? vis[vis.indexOf(hi)+1] : vis[0];
+    if (nxt) { hi?.classList.remove('hi'); nxt.classList.add('hi'); nxt.scrollIntoView({block:'nearest'}); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const prv = hi ? vis[vis.indexOf(hi)-1] : vis[vis.length-1];
+    if (prv) { hi?.classList.remove('hi'); prv.classList.add('hi'); prv.scrollIntoView({block:'nearest'}); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const target = hi || (vis.length === 1 ? vis[0] : null);
+    if (target) target.dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+  } else if (e.key === 'Escape') {
+    drop.style.display = 'none'; inp.blur();
+  }
+}
+
+function acPick(e, item) {
+  e.preventDefault();
+  const ac  = item.closest('.ac');
+  const val = item.dataset.v;
+  const lbl = item.textContent.trim();
+  ac.querySelector('.ac-txt').value = val ? lbl : '';
+  const hid = ac.querySelector('.ac-v');
+  hid.value = val || '';
+  ac.querySelector('.ac-drop').style.display = 'none';
+  ac.querySelectorAll('.ac-item').forEach(i => { i.classList.remove('hi'); i.style.display = ''; });
+  const fid = ac.dataset.f;
+  const tr  = ac.closest('tr');
+  const tid = tr?.dataset.tripId ? parseInt(tr.dataset.tripId) : null;
+  if (tid) {
+    updateTrip(tid, fid, val || '');
+  } else {
+    const wid = ac.closest('[id^="wave-panel-"]')?.dataset.waveId;
+    if (wid) saveNewTrip(parseInt(wid), hid);
+  }
+}
+
+// ── ADD TRIP ROW ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initAcData();
+  transformSelects();
 });
 
 function addTrip(waveId) {
   const tbody = document.getElementById(`wave-body-${waveId}`);
   tbody.querySelector('.empty-trip-row')?.remove();
-
   const rowNum = tbody.rows.length + 1;
   const tr = document.createElement('tr');
   tr.dataset.tripId = '';
-
   tr.innerHTML = `
     <td class="trip-num">${rowNum}</td>
-    <td><select class="ti ti-sel" data-field="driver_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.driver}</select></td>
-    <td><select class="ti ti-sel" data-field="helper_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.helper}</select></td>
-    <td><select class="ti ti-sel" data-field="plate_id"      onchange="saveNewTrip(${waveId},this)">${optSrc.plate}</select></td>
-    <td><select class="ti ti-sel" data-field="product_id"    onchange="saveNewTrip(${waveId},this)">${optSrc.product}</select></td>
-    <td><select class="ti ti-sel" data-field="client_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.client}</select></td>
-    <td><select class="ti ti-sel" data-field="dispatcher_id" onchange="saveNewTrip(${waveId},this)">${optSrc.dispatcher}</select></td>
+    <td>${makeAcHTML('trip_type','')}</td>
+    <td>${makeAcHTML('driver_id','')}</td>
+    <td>${makeAcHTML('helper_id','')}</td>
+    <td>${makeAcHTML('plate_id','')}</td>
+    <td>${makeAcHTML('product_id','')}</td>
+    <td>${makeAcHTML('client_id','')}</td>
+    <td>${makeAcHTML('dispatcher_id','')}</td>
     <td><input class="ti ti-sm"  type="text" data-field="rs_no"     placeholder="RS No."  onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-sm"  type="text" data-field="po_no"     placeholder="PO No."  onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-sm"  type="text" data-field="reference" placeholder="Ref"     onchange="saveNewTrip(${waveId},this)"></td>
@@ -308,7 +458,7 @@ function addTrip(waveId) {
       </button>
     </td>`;
   tbody.appendChild(tr);
-  tr.querySelector('select').focus();
+  tr.querySelector('.ac-txt')?.focus();
 }
 
 function saveNewTrip(waveId, changedEl) {
@@ -319,7 +469,7 @@ function saveNewTrip(waveId, changedEl) {
   }
   const payload = {wave_id: waveId};
   tr.querySelectorAll('[data-field]').forEach(el => {
-    payload[el.dataset.field] = el.value || el.textContent || '';
+    payload[el.dataset.field] = el.value || '';
   });
   const badge = tr.querySelector('.s-badge');
   if (badge) payload.status = badge.dataset.status || 'Pending';
@@ -332,6 +482,7 @@ function saveNewTrip(waveId, changedEl) {
   .then(data => {
     tr.dataset.tripId = data.id;
     tr.querySelectorAll('[data-field]').forEach(el => {
+      if (el.classList.contains('ac-v')) return;
       el.onchange = () => updateTrip(data.id, el.dataset.field, el.value);
     });
     const badge = tr.querySelector('.s-badge');
@@ -365,7 +516,7 @@ function deleteTrip(tripId, btn) {
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
-      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="15" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="16" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
     }
     updateWaveCount(waveId);
     showToast('Row deleted');

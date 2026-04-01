@@ -6,7 +6,7 @@ from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        Driver, Helper, Product, Client, Dispatcher, Plate,
                        ChangeLog, Attendance, BreakdownLog,
                        TRUCK_TYPES_SEED, STATUSES,
-                       ATTENDANCE_STATUSES, BREAKDOWN_STATUSES)
+                       ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -99,6 +99,7 @@ def schedule(date_str):
 
     return render_template('schedule/daily.html',
         d=d, schedule_map=schedule_map, counts=counts,
+        trip_types=TRIP_TYPES,
         **master_lists())
 
 
@@ -160,6 +161,7 @@ def api_trip_save():
         'product_id':('product_id',int),
         'client_id': ('client_id', int),
         'dispatcher_id':('dispatcher_id',int),
+        'trip_type': ('trip_type', str),
         'rs_no':     ('rs_no',     str),
         'po_no':     ('po_no',     str),
         'reference': ('reference', str),
@@ -210,7 +212,12 @@ def dashboard():
     filter_date  = request.args.get('date',  date.today().isoformat())
     filter_truck = request.args.get('truck', 'all')
     filter_status= request.args.get('status','all')
-    trend_days_count = max(7, min(365, request.args.get('trend_days', 14, type=int)))
+    trend_end_str   = request.args.get('trend_end',   date.today().isoformat())
+    trend_start_str = request.args.get('trend_start', (date.today() - timedelta(days=13)).isoformat())
+    trend_end_d     = parse_date(trend_end_str)
+    trend_start_d   = parse_date(trend_start_str)
+    if trend_start_d > trend_end_d:
+        trend_start_d, trend_end_d = trend_end_d, trend_start_d
     d = parse_date(filter_date)
 
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
@@ -237,28 +244,28 @@ def dashboard():
                   if t.wave and t.wave.truck_type_id == tt.id)
         by_truck[tt.code] = {'name': tt.name, 'color': tt.color, 'count': cnt}
 
-    cutoff = date.today() - timedelta(days=trend_days_count)
-
-    # Trend — total
+    # Trend — total (iterate day by day over selected range)
     trend_days, trend_counts = [], []
-    for i in range(trend_days_count - 1, -1, -1):
-        day = date.today() - timedelta(days=i)
+    cur = trend_start_d
+    while cur <= trend_end_d:
         cnt = (db.session.query(db.func.count(TripRecord.id))
-               .join(Wave).filter(Wave.date == day).scalar() or 0)
-        trend_days.append(day.strftime('%b %d'))
+               .join(Wave).filter(Wave.date == cur).scalar() or 0)
+        trend_days.append(cur.strftime('%b %d'))
         trend_counts.append(cnt)
+        cur += timedelta(days=1)
 
     # Trend per truck type
     trend_by_truck = []
     for tt in truck_types:
         day_counts = []
-        for i in range(trend_days_count - 1, -1, -1):
-            day = date.today() - timedelta(days=i)
+        cur = trend_start_d
+        while cur <= trend_end_d:
             cnt = (db.session.query(db.func.count(TripRecord.id))
                    .join(Wave)
-                   .filter(Wave.date == day, Wave.truck_type_id == tt.id)
+                   .filter(Wave.date == cur, Wave.truck_type_id == tt.id)
                    .scalar() or 0)
             day_counts.append(cnt)
+            cur += timedelta(days=1)
         trend_by_truck.append({
             'code': tt.code, 'name': tt.name,
             'color': tt.color, 'counts': day_counts
@@ -267,10 +274,11 @@ def dashboard():
     # Recent changes
     recent_changes = (ChangeLog.query.order_by(ChangeLog.timestamp.desc()).limit(8).all())
 
-    # Top drivers by delivered trips — last N days
+    # Top drivers by delivered trips — selected date range
     _drv = defaultdict(lambda: defaultdict(lambda: {'name': '', 'total': 0, 'delivered': 0}))
     all_tr = (db.session.query(TripRecord).join(Wave)
-              .filter(TripRecord.driver_id.isnot(None), Wave.date >= cutoff).all())
+              .filter(TripRecord.driver_id.isnot(None),
+                      Wave.date >= trend_start_d, Wave.date <= trend_end_d).all())
     for t in all_tr:
         if t.wave and t.driver:
             s = _drv[t.wave.truck_type_id][t.driver_id]
@@ -290,13 +298,15 @@ def dashboard():
                 'color': tt.color, 'drivers': drivers
             })
 
-    # Top absent drivers — last N days
+    # Top absent drivers — selected date range
     absent_stats = (db.session.query(
                         Driver.name,
                         db.func.count(Attendance.id).label('cnt')
                     )
                     .join(Attendance, Attendance.driver_id == Driver.id)
-                    .filter(Attendance.status == 'Absent', Attendance.date >= cutoff)
+                    .filter(Attendance.status == 'Absent',
+                            Attendance.date >= trend_start_d,
+                            Attendance.date <= trend_end_d)
                     .group_by(Driver.id, Driver.name)
                     .order_by(db.func.count(Attendance.id).desc())
                     .limit(10)
@@ -306,7 +316,7 @@ def dashboard():
     return render_template('dashboard_v2.html',
         d=d, filter_date=filter_date,
         filter_truck=filter_truck, filter_status=filter_status,
-        trend_days_count=trend_days_count,
+        trend_start_str=trend_start_str, trend_end_str=trend_end_str,
         truck_types=truck_types, trips=trips,
         total=total, by_status=by_status, by_truck=by_truck,
         trend_days=trend_days, trend_counts=trend_counts,
@@ -711,6 +721,51 @@ def api_breakdown_delete(lid):
 
 
 # ── COLLAB API ─────────────────────────────────────────────────────────────
+@app.route('/api/search')
+def api_search():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'results': []})
+    like = f'%{q}%'
+    results = []
+
+    for d in Driver.query.filter(Driver.name.ilike(like), Driver.active == True).limit(6).all():
+        results.append({'type': 'Driver', 'label': d.name, 'sub': '', 'url': None})
+
+    for p in Plate.query.filter(
+        db.or_(Plate.plate_no.ilike(like), Plate.body_no.ilike(like)),
+        Plate.active == True
+    ).limit(6).all():
+        results.append({'type': 'Plate', 'label': p.display, 'sub': p.truck_type.name if p.truck_type else '', 'url': None})
+
+    for c in Client.query.filter(Client.name.ilike(like), Client.active == True).limit(4).all():
+        results.append({'type': 'Client', 'label': c.name, 'sub': '', 'url': None})
+
+    for pr in Product.query.filter(Product.name.ilike(like), Product.active == True).limit(4).all():
+        results.append({'type': 'Product', 'label': pr.name, 'sub': '', 'url': None})
+
+    for tr in (TripRecord.query
+               .filter(db.or_(
+                   TripRecord.rs_no.ilike(like),
+                   TripRecord.po_no.ilike(like),
+                   TripRecord.dr_no.ilike(like),
+                   TripRecord.reference.ilike(like),
+               ))
+               .join(Wave)
+               .order_by(Wave.date.desc())
+               .limit(6).all()):
+        date_str = tr.wave.date.isoformat() if tr.wave else ''
+        parts = [x for x in [tr.rs_no, tr.po_no, tr.dr_no] if x]
+        results.append({
+            'type': 'Trip',
+            'label': ' / '.join(parts) or f'Trip #{tr.id}',
+            'sub': date_str,
+            'url': f'/schedule/{date_str}' if date_str else None,
+        })
+
+    return jsonify({'results': results, 'query': q})
+
+
 @app.route('/api/activity')
 def api_activity():
     since_ts = request.args.get('since', 0, type=float)
@@ -747,11 +802,25 @@ def api_set_user():
 def init_db():
     with app.app_context():
         db.create_all()
-        if TruckTypeDef.query.count() == 0:
-            for t in TRUCK_TYPES_SEED:
+        # Add any missing truck types (works for fresh AND existing databases)
+        existing_codes = {t.code for t in TruckTypeDef.query.all()}
+        added = []
+        for t in TRUCK_TYPES_SEED:
+            if t['code'] not in existing_codes:
                 db.session.add(TruckTypeDef(**t))
+                added.append(t['code'])
+        if added:
             db.session.commit()
-            print("  Truck types seeded.")
+            print(f"  Truck types added: {', '.join(added)}")
+        # Migrate: add trip_type column if it doesn't exist yet (for existing databases)
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        cols = [c['name'] for c in inspector.get_columns('trip_records')]
+        if 'trip_type' not in cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
+                conn.commit()
+            print("  Migrated: added trip_type column to trip_records")
 
 
 # Initialize DB at module level so gunicorn (cloud) can start the app correctly

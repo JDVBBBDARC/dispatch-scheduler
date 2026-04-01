@@ -14,6 +14,8 @@ TRUCK_TYPES_SEED = [
     {'code': 'OT',   'name': 'Others',                'color': '#7f8c8d', 'sort_order': 7},
 ]
 
+TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load']
+
 STATUSES = ['Pending', 'Loading', 'In Transit', 'Delivered']
 
 ATTENDANCE_STATUSES = ['Present', 'Absent', 'Leave', 'Holiday']
@@ -130,6 +132,7 @@ class TripRecord(db.Model):
     product_id    = db.Column(db.Integer, db.ForeignKey('products.id'),    nullable=True)
     client_id     = db.Column(db.Integer, db.ForeignKey('clients.id'),     nullable=True)
     dispatcher_id = db.Column(db.Integer, db.ForeignKey('dispatchers.id'), nullable=True)
+    trip_type     = db.Column(db.String(30))
     rs_no         = db.Column(db.String(50))
     po_no         = db.Column(db.String(50))
     reference     = db.Column(db.String(50))
@@ -159,6 +162,7 @@ class TripRecord(db.Model):
             'product_id':    self.product_id,
             'client_id':     self.client_id,
             'dispatcher_id': self.dispatcher_id,
+            'trip_type':     self.trip_type or '',
             'rs_no':         self.rs_no or '',
             'po_no':         self.po_no or '',
             'reference':     self.reference or '',

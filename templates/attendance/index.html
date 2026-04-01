@@ -128,6 +128,7 @@
 .s-count.H { background:#FFF2CC; color:#856404; }
 .att-day-hdr { font-size:.7rem; }
 .att-day-name { font-size:.62rem; opacity:.8; display:block; }
+.att-weekend-hdr { background: #6b1224 !important; }
 .att-total-col { min-width: 60px; background: #f5f0f0 !important; }
 </style>
 
@@ -183,7 +184,7 @@
           <th class="driver-col">Driver</th>
           {% for day in days %}
           {% set d_obj = mo_s.replace(day=day) %}
-          <th class="att-day-hdr {% if d_obj.weekday() >= 5 %}att-total-col{% endif %}"
+          <th class="att-day-hdr {% if d_obj.weekday() >= 5 %}att-weekend-hdr{% endif %}"
               title="{{ d_obj.strftime('%A, %B %d') }}">
             {{ day }}
             <span class="att-day-name">{{ d_obj.strftime('%a') }}</span>
