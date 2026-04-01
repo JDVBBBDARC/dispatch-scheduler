@@ -354,14 +354,14 @@ function acFilter(inp) {
   const q    = inp.value.toLowerCase();
   const drop = inp.closest('.ac').querySelector('.ac-drop');
   drop.querySelectorAll('.ac-item').forEach(it =>
-    it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? '' : 'none');
-  drop.style.display = '';
+    it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? 'block' : 'none');
+  drop.style.display = 'block';
 }
 
 function acOpen(inp) {
   const drop = inp.closest('.ac').querySelector('.ac-drop');
-  drop.querySelectorAll('.ac-item').forEach(it => it.style.display = '');
-  drop.style.display = '';
+  drop.querySelectorAll('.ac-item').forEach(it => it.style.display = 'block');
+  drop.style.display = 'block';
 }
 
 function acClose(inp) {
