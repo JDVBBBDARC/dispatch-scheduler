@@ -206,6 +206,7 @@ def api_trip_delete(tid):
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 def dashboard():
+    from collections import defaultdict
     filter_date  = request.args.get('date',  date.today().isoformat())
     filter_truck = request.args.get('truck', 'all')
     filter_status= request.args.get('status','all')
@@ -235,7 +236,7 @@ def dashboard():
                   if t.wave and t.wave.truck_type_id == tt.id)
         by_truck[tt.code] = {'name': tt.name, 'color': tt.color, 'count': cnt}
 
-    # Recent 14-day trend
+    # Recent 14-day trend — total
     trend_days, trend_counts = [], []
     for i in range(13, -1, -1):
         day = date.today() - timedelta(days=i)
@@ -244,16 +245,71 @@ def dashboard():
         trend_days.append(day.strftime('%b %d'))
         trend_counts.append(cnt)
 
+    # 14-day trend per truck type
+    trend_by_truck = []
+    for tt in truck_types:
+        day_counts = []
+        for i in range(13, -1, -1):
+            day = date.today() - timedelta(days=i)
+            cnt = (db.session.query(db.func.count(TripRecord.id))
+                   .join(Wave)
+                   .filter(Wave.date == day, Wave.truck_type_id == tt.id)
+                   .scalar() or 0)
+            day_counts.append(cnt)
+        trend_by_truck.append({
+            'code': tt.code, 'name': tt.name,
+            'color': tt.color, 'counts': day_counts
+        })
+
     # Recent changes
     recent_changes = (ChangeLog.query.order_by(ChangeLog.timestamp.desc()).limit(8).all())
 
-    return render_template('dashboard.html',
+    # Top drivers by delivered trips per truck type
+    _drv = defaultdict(lambda: defaultdict(lambda: {'name': '', 'total': 0, 'delivered': 0}))
+    all_tr = (db.session.query(TripRecord).join(Wave)
+              .filter(TripRecord.driver_id.isnot(None)).all())
+    for t in all_tr:
+        if t.wave and t.driver:
+            s = _drv[t.wave.truck_type_id][t.driver_id]
+            s['name'] = t.driver.name
+            s['total'] += 1
+            if t.status == 'Delivered':
+                s['delivered'] += 1
+
+    top_drivers_by_truck = []
+    for tt in truck_types:
+        drivers = sorted(_drv.get(tt.id, {}).values(),
+                         key=lambda x: x['delivered'], reverse=True)[:5]
+        drivers = [d for d in drivers if d['total'] > 0 and d['name']]
+        if drivers:
+            top_drivers_by_truck.append({
+                'truck': tt.name, 'code': tt.code,
+                'color': tt.color, 'drivers': drivers
+            })
+
+    # Top absent drivers
+    absent_stats = (db.session.query(
+                        Driver.name,
+                        db.func.count(Attendance.id).label('cnt')
+                    )
+                    .join(Attendance, Attendance.driver_id == Driver.id)
+                    .filter(Attendance.status == 'Absent')
+                    .group_by(Driver.id, Driver.name)
+                    .order_by(db.func.count(Attendance.id).desc())
+                    .limit(10)
+                    .all())
+    absent_drivers = [{'name': r[0], 'absences': r[1]} for r in absent_stats]
+
+    return render_template('dashboard_v2.html',
         d=d, filter_date=filter_date,
         filter_truck=filter_truck, filter_status=filter_status,
         truck_types=truck_types, trips=trips,
         total=total, by_status=by_status, by_truck=by_truck,
         trend_days=trend_days, trend_counts=trend_counts,
-        recent_changes=recent_changes)
+        trend_by_truck=trend_by_truck,
+        recent_changes=recent_changes,
+        top_drivers_by_truck=top_drivers_by_truck,
+        absent_drivers=absent_drivers)
 
 
 # ── MASTER DATA ────────────────────────────────────────────────────────────
