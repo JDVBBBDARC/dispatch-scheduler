@@ -326,7 +326,7 @@ function makeAcHTML(fieldId, curVal) {
   if (!cfg) return '';
   const opts = acData[cfg.key] || [];
   const cur  = String(curVal || '');
-  const found = opts.find(o => String(o.v) === cur);
+  const found = cur ? opts.find(o => String(o.v) === cur) : undefined;
   const disp  = found ? found.l : '';
   const items = opts.filter(o => o.v).map(o =>
     `<div class="ac-item" data-v="${escAtt(String(o.v))}" onmousedown="acPick(event,this)">${escHtml(o.l)}</div>`
