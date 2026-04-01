@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+{% block title %}Schedule — {{ d.strftime('%b %d, %Y') }}{% endblock %}
+{% block page_title %}Daily Schedule{% endblock %}
+
+{% block content %}
+<!-- ── DATE NAVIGATION ──────────────────────────────────────────────────── -->
+<div class="page-header">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <h1><i class="bi bi-calendar3-week me-2"></i>{{ d.strftime('%A, %B %d, %Y') }}</h1>
+  </div>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <a href="{{ url_for('schedule', date_str=(d - timedelta(1)).isoformat()) }}"
+       class="btn btn-ghost btn-sm"><i class="bi bi-chevron-left"></i> Prev</a>
+    <input type="date" id="datePicker" value="{{ d.isoformat() }}"
+           style="border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:.83rem;cursor:pointer;"
+           onchange="window.location='/schedule/'+this.value">
+    <a href="{{ url_for('schedule', date_str=today.isoformat()) }}"
+       class="btn btn-ghost btn-sm">Today</a>
+    <a href="{{ url_for('schedule', date_str=(d + timedelta(1)).isoformat()) }}"
+       class="btn btn-ghost btn-sm">Next <i class="bi bi-chevron-right"></i></a>
+  </div>
+</div>
+
+<!-- ── TRUCK TYPE TABS ──────────────────────────────────────────────────── -->
+<div class="truck-tabs-wrap">
+  <div class="truck-tabs" id="truckTabs">
+    {% for tt in truck_types %}
+    <button class="truck-tab {% if loop.first %}active{% endif %}"
+            data-code="{{ tt.code }}"
+            onclick="switchTruck('{{ tt.code }}')"
+            style="--tab-color:{{ tt.color }};">
+      <i class="bi bi-truck me-1" style="color:{{ tt.color }};"></i>
+      {{ tt.name }}
+      <span class="tab-count">{{ counts.get(tt.code, 0) }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── TRUCK PANELS ─────────────────────────────────────────────────────── -->
+{% for tt in truck_types %}
+<div class="truck-panel {% if loop.first %}d-block{% else %}d-none{% endif %}"
+     id="panel-{{ tt.code }}" data-truck="{{ tt.code }}">
+
+  <!-- Wave tabs row -->
+  <div class="wave-tabs-wrap">
+    <div class="wave-tabs" id="waveTabs-{{ tt.code }}">
+      {% set waves = schedule_map.get(tt.code, []) %}
+      {% if waves %}
+        {% for wave in waves %}
+        <button class="wave-tab {% if loop.first %}active{% endif %}"
+                data-wave-id="{{ wave.id }}"
+                onclick="switchWave('{{ tt.code }}', {{ wave.id }})">
+          {{ wave.label }}
+          <span style="font-size:.68rem;opacity:.7;">({{ wave.trips|length }})</span>
+        </button>
+        {% endfor %}
+      {% else %}
+        <span style="align-self:center;font-size:.78rem;color:var(--muted);padding:0 6px;">No waves yet</span>
+      {% endif %}
+      <button class="btn-add-wave" onclick="addWave('{{ tt.code }}', '{{ d.isoformat() }}')">
+        <i class="bi bi-plus-lg me-1"></i>Add Wave
+      </button>
+    </div>
+  </div>
+
+  <!-- Wave panels container -->
+  <div id="wavePanels-{{ tt.code }}">
+    {% set waves = schedule_map.get(tt.code, []) %}
+    {% if waves %}
+      {% for wave in waves %}
+      <div class="wave-panel {% if not loop.first %}d-none{% endif %}"
+           id="wave-panel-{{ wave.id }}" data-wave-id="{{ wave.id }}">
+        <div class="trip-table-wrap">
+          <table class="trip-table" id="trip-table-{{ wave.id }}">
+            <thead>
+              <tr>
+                <th class="center" style="width:36px;">#</th>
+                <th style="min-width:120px;">Driver</th>
+                <th style="min-width:120px;">Helper</th>
+                <th style="min-width:120px;">Plate No.</th>
+                <th style="min-width:130px;">Product</th>
+                <th style="min-width:130px;">Client</th>
+                <th style="min-width:100px;">Dispatcher</th>
+                <th style="min-width:80px;">RS No.</th>
+                <th style="min-width:80px;">PO No.</th>
+                <th style="min-width:80px;">Reference</th>
+                <th style="min-width:80px;">DR No.</th>
+                <th style="min-width:70px;">Volume</th>
+                <th style="min-width:110px;">Status</th>
+                <th style="min-width:120px;">Notes</th>
+                <th class="center" style="width:38px;"></th>
+              </tr>
+            </thead>
+            <tbody id="wave-body-{{ wave.id }}">
+              {% for trip in wave.trips %}
+              <tr data-trip-id="{{ trip.id }}">
+                <td class="trip-num">{{ trip.trip_number }}</td>
+                <td><select class="ti ti-sel" data-field="driver_id" onchange="updateTrip({{ trip.id }}, 'driver_id', this.value)">
+                  <option value="">— Driver —</option>
+                  {% for d_ in all_drivers %}<option value="{{ d_.id }}" {% if trip.driver_id == d_.id %}selected{% endif %}>{{ d_.name }}</option>{% endfor %}
+                </select></td>
+                <td><select class="ti ti-sel" data-field="helper_id" onchange="updateTrip({{ trip.id }}, 'helper_id', this.value)">
+                  <option value="">— Helper —</option>
+                  {% for h in all_helpers %}<option value="{{ h.id }}" {% if trip.helper_id == h.id %}selected{% endif %}>{{ h.name }}</option>{% endfor %}
+                </select></td>
+                <td><select class="ti ti-sel" data-field="plate_id" onchange="updateTrip({{ trip.id }}, 'plate_id', this.value)">
+                  <option value="">— Plate —</option>
+                  {% for p in all_plates %}<option value="{{ p.id }}" {% if trip.plate_id == p.id %}selected{% endif %}>{{ p.display }}</option>{% endfor %}
+                </select></td>
+                <td><select class="ti ti-sel" data-field="product_id" onchange="updateTrip({{ trip.id }}, 'product_id', this.value)">
+                  <option value="">— Product —</option>
+                  {% for pr in all_products %}<option value="{{ pr.id }}" {% if trip.product_id == pr.id %}selected{% endif %}>{{ pr.name }}</option>{% endfor %}
+                </select></td>
+                <td><select class="ti ti-sel" data-field="client_id" onchange="updateTrip({{ trip.id }}, 'client_id', this.value)">
+                  <option value="">— Client —</option>
+                  {% for c in all_clients %}<option value="{{ c.id }}" {% if trip.client_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select></td>
+                <td><select class="ti ti-sel" data-field="dispatcher_id" onchange="updateTrip({{ trip.id }}, 'dispatcher_id', this.value)">
+                  <option value="">— Dispatcher —</option>
+                  {% for dis in all_dispatchers %}<option value="{{ dis.id }}" {% if trip.dispatcher_id == dis.id %}selected{% endif %}>{{ dis.name }}</option>{% endfor %}
+                </select></td>
+                <td><input class="ti ti-sm" type="text" data-field="rs_no"    value="{{ trip.rs_no or '' }}"    onchange="updateTrip({{ trip.id }},'rs_no',this.value)"    placeholder="RS No."></td>
+                <td><input class="ti ti-sm" type="text" data-field="po_no"    value="{{ trip.po_no or '' }}"    onchange="updateTrip({{ trip.id }},'po_no',this.value)"    placeholder="PO No."></td>
+                <td><input class="ti ti-sm" type="text" data-field="reference" value="{{ trip.reference or '' }}" onchange="updateTrip({{ trip.id }},'reference',this.value)" placeholder="Ref"></td>
+                <td><input class="ti ti-sm" type="text" data-field="dr_no"    value="{{ trip.dr_no or '' }}"    onchange="updateTrip({{ trip.id }},'dr_no',this.value)"    placeholder="DR No."></td>
+                <td><input class="ti ti-num" type="text" data-field="volume"  value="{{ trip.volume or '' }}"   onchange="updateTrip({{ trip.id }},'volume',this.value)"   placeholder="Vol."></td>
+                <td><span class="s-badge s-{{ (trip.status or 'Pending')|replace(' ','-') }}"
+                          data-status="{{ trip.status or 'Pending' }}"
+                          data-trip-id="{{ trip.id }}"
+                          onclick="cycleStatus(this)">{{ trip.status or 'Pending' }}</span></td>
+                <td><input class="ti ti-md" type="text" data-field="notes" value="{{ trip.notes or '' }}" onchange="updateTrip({{ trip.id }},'notes',this.value)" placeholder="Notes…"></td>
+                <td class="center">
+                  <button class="btn btn-danger btn-xs" onclick="deleteTrip({{ trip.id }}, this)" title="Delete row">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% else %}
+              <tr class="empty-trip-row">
+                <td colspan="15" class="empty-state py-3">
+                  <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <!-- Wave footer — Delete Wave button removed -->
+        <div class="wave-panel-footer">
+          <button class="btn btn-maroon btn-sm" onclick="addTrip({{ wave.id }})">
+            <i class="bi bi-plus-lg me-1"></i>Add Row
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state py-5" id="noWaves-{{ tt.code }}">
+      <i class="bi bi-calendar-x"></i>
+      No waves scheduled for {{ tt.name }} on this date.<br>
+      <button class="btn btn-maroon btn-sm mt-3" onclick="addWave('{{ tt.code }}', '{{ d.isoformat() }}')">
+        <i class="bi bi-plus-lg me-1"></i>Add 1st Wave
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<!-- Hidden option source for JS-built rows -->
+<div id="optionSource" style="display:none;">
+  <select id="src_driver"><option value="">— Driver —</option>{% for d_ in all_drivers %}<option value="{{ d_.id }}">{{ d_.name }}</option>{% endfor %}</select>
+  <select id="src_helper"><option value="">— Helper —</option>{% for h in all_helpers %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}</select>
+  <select id="src_plate"><option value="">— Plate —</option>{% for p in all_plates %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}</select>
+  <select id="src_product"><option value="">— Product —</option>{% for pr in all_products %}<option value="{{ pr.id }}">{{ pr.name }}</option>{% endfor %}</select>
+  <select id="src_client"><option value="">— Client —</option>{% for c in all_clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+  <select id="src_dispatcher"><option value="">— Dispatcher —</option>{% for dis in all_dispatchers %}<option value="{{ dis.id }}">{{ dis.name }}</option>{% endfor %}</select>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STATUSES   = ['Pending','Loading','In Transit','Delivered'];
+const DATE_STR   = {{ d.isoformat()|tojson }};
+
+// ── TRUCK TABS ────────────────────────────────────────────────────────────
+function switchTruck(code) {
+  document.querySelectorAll('.truck-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.truck-panel').forEach(p => p.classList.replace('d-block','d-none'));
+  document.querySelector(`.truck-tab[data-code="${code}"]`).classList.add('active');
+  document.getElementById(`panel-${code}`).classList.replace('d-none','d-block');
+}
+
+// ── WAVE TABS ─────────────────────────────────────────────────────────────
+function switchWave(truckCode, waveId) {
+  const container = document.getElementById(`wavePanels-${truckCode}`);
+  const tabs      = document.getElementById(`waveTabs-${truckCode}`);
+  container.querySelectorAll('.wave-panel').forEach(p => p.classList.add('d-none'));
+  tabs.querySelectorAll('.wave-tab').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById(`wave-panel-${waveId}`);
+  if (panel) panel.classList.remove('d-none');
+  const tab = tabs.querySelector(`[data-wave-id="${waveId}"]`);
+  if (tab) tab.classList.add('active');
+}
+
+// ── ADD WAVE ──────────────────────────────────────────────────────────────
+function addWave(truckCode, dateStr) {
+  fetch('/api/wave/add', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({date: dateStr, truck_code: truckCode})
+  })
+  .then(r => r.json())
+  .then(data => {
+    const wid   = data.wave_id;
+    const label = data.label;
+    const tabs  = document.getElementById(`waveTabs-${truckCode}`);
+    const cont  = document.getElementById(`wavePanels-${truckCode}`);
+
+    // Remove empty-state placeholder if present
+    const empty = document.getElementById(`noWaves-${truckCode}`);
+    if (empty) empty.remove();
+
+    // Remove "No waves yet" text node if present
+    tabs.querySelectorAll('span').forEach(s => { if(s.textContent.includes('No waves yet')) s.remove(); });
+
+    // Deactivate current wave tabs
+    tabs.querySelectorAll('.wave-tab').forEach(t => t.classList.remove('active'));
+    cont.querySelectorAll('.wave-panel').forEach(p => p.classList.add('d-none'));
+
+    // Add wave tab
+    const newTab = document.createElement('button');
+    newTab.className = 'wave-tab active';
+    newTab.dataset.waveId = wid;
+    newTab.innerHTML = `${label} <span style="font-size:.68rem;opacity:.7;">(0)</span>`;
+    newTab.onclick = () => switchWave(truckCode, wid);
+    tabs.insertBefore(newTab, tabs.querySelector('.btn-add-wave'));
+
+    // Add wave panel
+    const panel = document.createElement('div');
+    panel.className = 'wave-panel';
+    panel.id = `wave-panel-${wid}`;
+    panel.dataset.waveId = wid;
+    panel.innerHTML = buildWavePanelHTML(wid, label);
+    cont.appendChild(panel);
+
+    showToast(`${label} added for ${truckCode}`);
+    updateTabCount(truckCode, 0);
+  })
+  .catch(() => showToast('Failed to add wave'));
+}
+
+function buildWavePanelHTML(wid, label) {
+  return `
+    <div class="trip-table-wrap">
+      <table class="trip-table" id="trip-table-${wid}">
+        <thead><tr>
+          <th class="center" style="width:36px;">#</th>
+          <th>Driver</th><th>Helper</th><th>Plate No.</th>
+          <th>Product</th><th>Client</th><th>Dispatcher</th>
+          <th>RS No.</th><th>PO No.</th><th>Reference</th>
+          <th>DR No.</th><th>Volume</th><th>Status</th><th>Notes</th>
+          <th class="center" style="width:38px;"></th>
+        </tr></thead>
+        <tbody id="wave-body-${wid}">
+          <tr class="empty-trip-row">
+            <td colspan="15" class="empty-state py-3">
+              <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="wave-panel-footer">
+      <button class="btn btn-maroon btn-sm" onclick="addTrip(${wid})">
+        <i class="bi bi-plus-lg me-1"></i>Add Row
+      </button>
+    </div>`;
+}
+
+// ── ADD TRIP ROW ──────────────────────────────────────────────────────────
+let optSrc = {};
+document.addEventListener('DOMContentLoaded', () => {
+  ['driver','helper','plate','product','client','dispatcher'].forEach(k => {
+    optSrc[k] = document.getElementById(`src_${k}`)?.innerHTML || '';
+  });
+});
+
+function addTrip(waveId) {
+  const tbody = document.getElementById(`wave-body-${waveId}`);
+  // Remove empty-state row
+  tbody.querySelector('.empty-trip-row')?.remove();
+
+  const rowNum = tbody.rows.length + 1;
+  const tr = document.createElement('tr');
+  tr.dataset.tripId = '';  // blank until saved
+
+  tr.innerHTML = `
+    <td class="trip-num">${rowNum}</td>
+    <td><select class="ti ti-sel" data-field="driver_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.driver}</select></td>
+    <td><select class="ti ti-sel" data-field="helper_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.helper}</select></td>
+    <td><select class="ti ti-sel" data-field="plate_id"      onchange="saveNewTrip(${waveId},this)">${optSrc.plate}</select></td>
+    <td><select class="ti ti-sel" data-field="product_id"    onchange="saveNewTrip(${waveId},this)">${optSrc.product}</select></td>
+    <td><select class="ti ti-sel" data-field="client_id"     onchange="saveNewTrip(${waveId},this)">${optSrc.client}</select></td>
+    <td><select class="ti ti-sel" data-field="dispatcher_id" onchange="saveNewTrip(${waveId},this)">${optSrc.dispatcher}</select></td>
+    <td><input class="ti ti-sm"  type="text" data-field="rs_no"    placeholder="RS No."  onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-sm"  type="text" data-field="po_no"    placeholder="PO No."  onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-sm"  type="text" data-field="reference" placeholder="Ref"   onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-sm"  type="text" data-field="dr_no"    placeholder="DR No."  onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-num" type="text" data-field="volume"   placeholder="Vol."    onchange="saveNewTrip(${waveId},this)"></td>
+    <td><span class="s-badge s-Pending" data-status="Pending" onclick="cycleStatusNew(this)">Pending</span></td>
+    <td><input class="ti ti-md"  type="text" data-field="notes"    placeholder="Notes…" onchange="saveNewTrip(${waveId},this)"></td>
+    <td class="center">
+      <button class="btn btn-danger btn-xs" onclick="this.closest('tr').remove()" title="Remove">
+        <i class="bi bi-trash"></i>
+      </button>
+    </td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('select').focus();
+}
+
+// Save a new (unsaved) trip row — creates it in DB on first field change
+function saveNewTrip(waveId, changedEl) {
+  const tr = changedEl.closest('tr');
+  if (tr.dataset.tripId) {
+    // Already has an ID — just update
+    updateTrip(parseInt(tr.dataset.tripId), changedEl.dataset.field, changedEl.value);
+    return;
+  }
+  // Collect all current row values
+  const payload = {wave_id: waveId};
+  tr.querySelectorAll('[data-field]').forEach(el => {
+    payload[el.dataset.field] = el.value || el.textContent || '';
+  });
+  // Include status from badge
+  const badge = tr.querySelector('.s-badge');
+  if (badge) payload.status = badge.dataset.status || 'Pending';
+
+  fetch('/api/trip/save', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    tr.dataset.tripId = data.id;
+    // Wire up all onchange to updateTrip now
+    tr.querySelectorAll('[data-field]').forEach(el => {
+      el.onchange = () => updateTrip(data.id, el.dataset.field, el.value);
+    });
+    // Wire up status badge
+    const badge = tr.querySelector('.s-badge');
+    if (badge) {
+      badge.dataset.tripId = data.id;
+      badge.onclick = () => cycleStatus(badge);
+    }
+    // Update delete button
+    const delBtn = tr.querySelector('.btn-danger');
+    if (delBtn) delBtn.onclick = () => deleteTrip(data.id, delBtn);
+    // Update wave tab count
+    updateWaveCount(waveId);
+    showToast('Row saved');
+  })
+  .catch(() => showToast('Save failed'));
+}
+
+// ── UPDATE TRIP ───────────────────────────────────────────────────────────
+function updateTrip(tripId, field, value) {
+  if (!tripId) return;
+  fetch('/api/trip/save', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({trip_id: tripId, [field]: value})
+  })
+  .then(r => r.json())
+  .catch(() => {});
+}
+
+// ── DELETE TRIP ───────────────────────────────────────────────────────────
+function deleteTrip(tripId, btn) {
+  if (!confirm('Delete this trip row?')) return;
+  const tr = btn.closest('tr');
+  fetch(`/api/trip/${tripId}/delete`, {method:'POST'})
+  .then(r => r.json())
+  .then(() => {
+    const tbody  = tr.parentElement;
+    const waveId = tbody.id.replace('wave-body-', '');
+    tr.remove();
+    renumberRows(tbody);
+    if (!tbody.rows.length) {
+      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="15" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
+    }
+    updateWaveCount(waveId);
+    showToast('Row deleted');
+  });
+}
+
+// ── STATUS CYCLE ──────────────────────────────────────────────────────────
+function cycleStatus(badge) {
+  const cur  = badge.dataset.status || 'Pending';
+  const next = STATUSES[(STATUSES.indexOf(cur) + 1) % STATUSES.length];
+  badge.dataset.status = next;
+  badge.textContent    = next;
+  badge.className      = `s-badge s-${next.replace(' ','-')}`;
+  const tripId = parseInt(badge.dataset.tripId);
+  if (tripId) updateTrip(tripId, 'status', next);
+}
+
+function cycleStatusNew(badge) {
+  const cur  = badge.dataset.status || 'Pending';
+  const next = STATUSES[(STATUSES.indexOf(cur) + 1) % STATUSES.length];
+  badge.dataset.status = next;
+  badge.textContent    = next;
+  badge.className      = `s-badge s-${next.replace(' ','-')}`;
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function renumberRows(tbody) {
+  tbody.querySelectorAll('tr:not(.empty-trip-row)').forEach((tr, i) => {
+    const numCell = tr.querySelector('.trip-num');
+    if (numCell) numCell.textContent = i + 1;
+  });
+}
+
+function updateWaveCount(waveId) {
+  const tbody = document.getElementById(`wave-body-${waveId}`);
+  if (!tbody) return;
+  const cnt = tbody.querySelectorAll('tr:not(.empty-trip-row)').length;
+  const tab = document.querySelector(`[data-wave-id="${waveId}"]`);
+  if (tab) {
+    const span = tab.querySelector('span');
+    if (span) span.textContent = `(${cnt})`;
+  }
+  // Update truck tab total
+  const panel = document.getElementById(`wave-panel-${waveId}`)?.closest('.truck-panel');
+  if (panel) updateTabCount(panel.dataset.truck);
+}
+
+function updateTabCount(truckCode, forceCount) {
+  let total = forceCount;
+  if (total === undefined) {
+    total = 0;
+    const cont = document.getElementById(`wavePanels-${truckCode}`);
+    if (cont) {
+      cont.querySelectorAll('[id^="wave-body-"]').forEach(tb => {
+        total += tb.querySelectorAll('tr:not(.empty-trip-row)').length;
+      });
+    }
+  }
+  const tab = document.querySelector(`.truck-tab[data-code="${truckCode}"] .tab-count`);
+  if (tab) tab.textContent = total;
+}
+</script>
+{% endblock %}

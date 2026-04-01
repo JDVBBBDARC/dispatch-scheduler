@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{% block title %}Dispatch Scheduler{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+<link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- ── SIDEBAR ──────────────────────────────────────────────────────────── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="bi bi-truck-front-fill"></i></div>
+    <div>
+      <div class="brand-name">DISPATCH</div>
+      <div class="brand-sub">Scheduling System</div>
+    </div>
+  </div>
+
+  <ul class="sidebar-nav">
+    <li class="nav-section">MAIN</li>
+    <li>
+      <a href="{{ url_for('dashboard') }}"
+         class="sidebar-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('schedule', date_str=today.isoformat()) }}"
+         class="sidebar-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+        <i class="bi bi-calendar3-week"></i><span>Schedule</span>
+      </a>
+    </li>
+
+    <li class="nav-section">MONITORING</li>
+    <li>
+      <a href="{{ url_for('attendance') }}"
+         class="sidebar-link {% if request.endpoint == 'attendance' %}active{% endif %}">
+        <i class="bi bi-person-check"></i><span>Attendance</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('breakdown') }}"
+         class="sidebar-link {% if request.endpoint == 'breakdown' %}active{% endif %}">
+        <i class="bi bi-tools"></i><span>Breakdown</span>
+      </a>
+    </li>
+
+    <li class="nav-section">DATA</li>
+    <li>
+      <a href="{{ url_for('master') }}"
+         class="sidebar-link {% if request.endpoint == 'master' %}active{% endif %}">
+        <i class="bi bi-database"></i><span>Master Data</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('reports') }}"
+         class="sidebar-link {% if request.endpoint == 'reports' %}active{% endif %}">
+        <i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="sidebar-footer">
+    <span class="online-dot"></span>
+    <small>v2.0 &nbsp;·&nbsp; {{ now.year }}</small>
+  </div>
+</nav>
+
+<!-- ── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+<div class="main-content" id="mainContent">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+
+    <!-- Activity button -->
+    <button class="activity-btn" onclick="toggleActivity()" title="Recent activity">
+      <i class="bi bi-bell"></i>
+      <span class="activity-badge" id="activityBadge"></span>
+    </button>
+
+    <!-- User chip -->
+    <div class="user-chip" onclick="openUserModal()" title="Change your name">
+      <span class="user-chip-dot"></span>
+      <span id="userChipName">{{ current_user }}</span>
+    </div>
+
+    <!-- Date -->
+    <span class="date-chip d-none d-md-inline">
+      <i class="bi bi-calendar3 me-1"></i>{{ now.strftime('%b %d, %Y') }}
+    </span>
+  </header>
+
+  <!-- Activity Drawer -->
+  <div class="activity-drawer" id="activityDrawer">
+    <div class="activity-drawer-header">
+      <span><i class="bi bi-activity me-1"></i>Recent Activity</span>
+      <button onclick="toggleActivity()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;">✕</button>
+    </div>
+    <div class="activity-list" id="activityList">
+      <div class="activity-empty">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  <div class="px-4 pt-3" id="flashWrap">
+    {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="alert alert-{{ 'success' if cat=='success' else 'warning' if cat=='warning' else 'info' }} alert-dismissible fade show" role="alert">
+      <i class="bi bi-{{ 'check-circle' if cat=='success' else 'exclamation-triangle' }} me-2"></i>{{ msg }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Page content -->
+  <main class="page-body">{% block content %}{% endblock %}</main>
+</div>
+
+<!-- ── USER NAME MODAL ───────────────────────────────────────────────────── -->
+<div class="user-modal-overlay" id="userModal">
+  <div class="user-modal-box">
+    <div class="user-modal-icon">🚛</div>
+    <div class="user-modal-title">WHO ARE YOU?</div>
+    <div class="user-modal-sub">Enter your name so others can see who made changes.</div>
+    <input class="user-modal-input" id="userNameInput" type="text"
+           placeholder="e.g. Juan Dela Cruz"
+           value="{{ current_user if current_user != 'Dispatcher' else '' }}"
+           maxlength="40" onkeydown="if(event.key==='Enter')saveUserName()"/>
+    <button class="user-modal-btn" onclick="saveUserName()">
+      <i class="bi bi-person-check me-1"></i>Set My Name
+    </button>
+    {% if current_user != 'Dispatcher' %}
+    <div style="margin-top:10px;">
+      <a href="#" onclick="closeUserModal()" style="font-size:.8rem;color:var(--muted);">Cancel</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── LIVE TOAST ────────────────────────────────────────────────────────── -->
+<div class="live-toast" id="liveToast">
+  <div class="live-toast-dot"></div>
+  <span id="liveToastMsg">Data updated</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+// ── USER ────────────────────────────────────────────────────────────────
+const CURRENT_USER = {{ current_user|tojson }};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (CURRENT_USER === 'Dispatcher') openUserModal();
+  startActivityPoll();
+});
+
+function openUserModal()  { document.getElementById('userModal').classList.add('open'); setTimeout(()=>document.getElementById('userNameInput').focus(),100); }
+function closeUserModal() { document.getElementById('userModal').classList.remove('open'); }
+
+function saveUserName() {
+  const name = document.getElementById('userNameInput').value.trim();
+  if (!name) return;
+  fetch('/api/set-user', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name})
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok) {
+      document.getElementById('userChipName').textContent = name;
+      closeUserModal();
+      showToast(`Welcome, ${name}!`);
+    }
+  });
+}
+
+// ── SIDEBAR ─────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  document.getElementById('mainContent').classList.toggle('expanded');
+}
+
+// ── ACTIVITY DRAWER ──────────────────────────────────────────────────────
+let activityOpen = false;
+let lastTs = 0;
+
+function toggleActivity() {
+  activityOpen = !activityOpen;
+  document.getElementById('activityDrawer').classList.toggle('open', activityOpen);
+  if (activityOpen) { loadActivity(); clearBadge(); }
+}
+
+function clearBadge() {
+  const b = document.getElementById('activityBadge');
+  b.classList.remove('show'); b.textContent = '';
+}
+
+function loadActivity() {
+  fetch('/api/activity')
+    .then(r=>r.json())
+    .then(d=>{
+      lastTs = d.latest_ts || 0;
+      renderActivity(d.logs);
+    });
+}
+
+function renderActivity(logs) {
+  const el = document.getElementById('activityList');
+  if (!logs || !logs.length) {
+    el.innerHTML = '<div class="activity-empty">No activity yet.</div>';
+    return;
+  }
+  el.innerHTML = logs.map(l=>`
+    <div class="activity-item">
+      <span class="activity-who">${escHtml(l.user)}</span>
+      <span class="activity-what">${escHtml(l.action)}</span>
+      <span class="activity-when">${l.time}</span>
+    </div>`).join('');
+}
+
+function startActivityPoll() {
+  setInterval(()=>{
+    fetch(`/api/activity?since=${lastTs}`)
+      .then(r=>r.json())
+      .then(d=>{
+        if (d.new_count > 0 && !activityOpen) {
+          const b = document.getElementById('activityBadge');
+          b.textContent = d.new_count > 9 ? '9+' : d.new_count;
+          b.classList.add('show');
+          const last = d.logs && d.logs[0];
+          if (last) showToast(`${last.user}: ${last.action}`);
+        }
+        if (d.latest_ts > lastTs) {
+          lastTs = d.latest_ts;
+          if (activityOpen) renderActivity(d.logs);
+        }
+      }).catch(()=>{});
+  }, 10000);
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('liveToast');
+  document.getElementById('liveToastMsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Reports — Dispatch Scheduler{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-file-earmark-bar-graph me-2"></i>Reports</h1>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="filter-bar mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <label>Year</label>
+    <select name="year" onchange="this.form.submit()">
+      {% for y in years %}<option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <label>Month</label>
+    <select name="month" onchange="this.form.submit()">
+      {% for m in range(1,13) %}
+      <option value="{{ m }}" {% if m==month %}selected{% endif %}>
+        {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <label>Truck</label>
+    <select name="truck" onchange="this.form.submit()">
+      <option value="all" {% if filter_truck=='all' %}selected{% endif %}>All Types</option>
+      {% for tt in truck_types %}
+      <option value="{{ tt.code }}" {% if filter_truck==tt.code %}selected{% endif %}>{{ tt.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <a href="{{ url_for('export', year=year, month=month, truck=filter_truck) }}"
+     class="btn btn-success btn-sm ms-auto">
+    <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+  </a>
+</form>
+
+<!-- Summary KPIs -->
+<div class="kpi-row mb-4">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Trips</div>
+    <div class="kpi-value">{{ trips|length }}</div>
+    <div class="kpi-sub">{{ mo_s.strftime('%B %Y') }}</div>
+  </div>
+  {% for s in statuses %}
+  <div class="kpi-card {{ 'green' if s=='Delivered' else 'blue' if s=='Loading' else 'orange' if s=='In Transit' else 'yellow' }}">
+    <div class="kpi-label">{{ s }}</div>
+    <div class="kpi-value" style="font-size:1.8rem;">{{ by_status.get(s,0) }}</div>
+    <div class="kpi-sub">{{ ((by_status.get(s,0)/(trips|length)*100)|round(1) if trips else 0) }}%</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Trips Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-table me-2"></i>All Trips — {{ mo_s.strftime('%B %Y') }}</span>
+    <span style="font-size:.78rem;opacity:.8;">{{ trips|length }} records</span>
+  </div>
+  <div class="scrollable-x">
+    {% if trips %}
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Date</th><th>Truck Type</th><th>Wave</th><th>#</th>
+          <th>Driver</th><th>Helper</th><th>Plate</th>
+          <th>Product</th><th>Client</th><th>Dispatcher</th>
+          <th>RS No</th><th>PO No</th><th>Reference</th>
+          <th>DR No</th><th>Volume</th><th>Status</th>
+          <th>Updated By</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in trips %}
+      <tr>
+        <td style="white-space:nowrap;">{{ t.wave.date.strftime('%b %d, %Y') if t.wave else '—' }}</td>
+        <td>
+          {% if t.wave %}
+          <span class="truck-type-dot" style="background:{{ t.wave.truck_type.color }};"></span>
+          {{ t.wave.truck_type.name }}
+          {% endif %}
+        </td>
+        <td>{{ t.wave.label if t.wave else '—' }}</td>
+        <td class="text-center fw-bold">{{ t.trip_number }}</td>
+        <td>{{ t.driver.name if t.driver else '—' }}</td>
+        <td>{{ t.helper.name if t.helper else '—' }}</td>
+        <td>{{ t.plate.display if t.plate else '—' }}</td>
+        <td>{{ t.product.name if t.product else '—' }}</td>
+        <td>{{ t.client.name if t.client else '—' }}</td>
+        <td>{{ t.dispatcher.name if t.dispatcher else '—' }}</td>
+        <td>{{ t.rs_no or '—' }}</td>
+        <td>{{ t.po_no or '—' }}</td>
+        <td>{{ t.reference or '—' }}</td>
+        <td>{{ t.dr_no or '—' }}</td>
+        <td>{{ t.volume or '—' }}</td>
+        <td><span class="s-badge s-{{ (t.status or 'Pending')|replace(' ','-') }}">{{ t.status or 'Pending' }}</span></td>
+        <td style="font-size:.75rem;color:var(--muted);">{{ t.updated_by or '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-5">
+      <i class="bi bi-file-earmark-x"></i>
+      No trips found for {{ mo_s.strftime('%B %Y') }}.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

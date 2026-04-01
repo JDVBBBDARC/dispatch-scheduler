@@ -1,0 +1,474 @@
+{% extends 'base.html' %}
+{% block title %}Breakdown — {{ mo_s.strftime('%B %Y') }}{% endblock %}
+{% block page_title %}Breakdown Monitoring{% endblock %}
+
+{% block content %}
+<style>
+/* ── Breakdown-specific styles ─────────────────────────────── */
+.bd-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 18px;
+}
+.bd-filter-bar label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.bd-filter-bar select, .bd-filter-bar input[type="text"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: .83rem;
+  background: var(--bg);
+  color: var(--text);
+}
+/* Status badges for breakdown */
+.bd-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.bd-Under-Repair { background: #FFE5B4; color: #7a4000; }
+.bd-Fixed        { background: #C6EFCE; color: #276221; }
+.bd-Standby      { background: #DDEEFF; color: #1a4a8a; }
+/* Add form */
+.bd-add-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.bd-add-form .form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.bd-add-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bd-add-form label {
+  font-size: .73rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.bd-add-form select, .bd-add-form input, .bd-add-form textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: .83rem;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 130px;
+}
+.bd-add-form textarea { resize: vertical; min-height: 38px; min-width: 240px; }
+/* Table */
+.bd-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.bd-table th {
+  background: var(--maroon);
+  color: #fff;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+.bd-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.bd-table tr:hover td { background: var(--bg); }
+.bd-table tr.resolved td { opacity: .65; }
+/* Inline edit inputs */
+.bd-inline {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  padding: 2px 6px;
+  font-size: .82rem;
+  color: var(--text);
+  width: 100%;
+}
+.bd-inline:focus {
+  outline: none;
+  border-color: var(--maroon);
+  background: var(--surface);
+}
+.bd-inline-sel {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  padding: 2px 4px;
+  font-size: .82rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.bd-inline-sel:focus {
+  outline: none;
+  border-color: var(--maroon);
+  background: var(--surface);
+}
+</style>
+
+<div class="page-header">
+  <h1><i class="bi bi-tools me-2"></i>Breakdown Monitoring</h1>
+</div>
+
+<!-- KPI Row -->
+<div class="kpi-row mb-4">
+  <div class="kpi-card">
+    <div class="kpi-label">Total</div>
+    <div class="kpi-value">{{ summary.Total }}</div>
+    <div class="kpi-sub">{{ mo_s.strftime('%B %Y') }}</div>
+  </div>
+  <div class="kpi-card orange">
+    <div class="kpi-label">Under Repair</div>
+    <div class="kpi-value" style="font-size:1.8rem;">{{ summary['Under Repair'] }}</div>
+    <div class="kpi-sub">active</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">Fixed</div>
+    <div class="kpi-value" style="font-size:1.8rem;">{{ summary['Fixed'] }}</div>
+    <div class="kpi-sub">resolved</div>
+  </div>
+  <div class="kpi-card blue">
+    <div class="kpi-label">Standby</div>
+    <div class="kpi-value" style="font-size:1.8rem;">{{ summary['Standby'] }}</div>
+    <div class="kpi-sub">monitoring</div>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="bd-filter-bar">
+  <label>Year</label>
+  <select name="year" onchange="this.form.submit()">
+    {% for y in years %}<option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+  </select>
+  <label>Month</label>
+  <select name="month" onchange="this.form.submit()">
+    {% for m in range(1,13) %}
+    <option value="{{ m }}" {% if m==month %}selected{% endif %}>
+      {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+    </option>
+    {% endfor %}
+  </select>
+  <label>Status</label>
+  <select name="status" onchange="this.form.submit()">
+    <option value="all" {% if filter_status=='all' %}selected{% endif %}>All Status</option>
+    {% for s in bd_statuses %}
+    <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<!-- Add Breakdown Form -->
+<div class="bd-add-form">
+  <div style="font-size:.82rem;font-weight:700;color:var(--maroon);margin-bottom:12px;">
+    <i class="bi bi-plus-circle me-1"></i>Log New Breakdown
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="bdDate" value="{{ today.isoformat() }}">
+    </div>
+    <div class="form-group">
+      <label>Plate / Truck</label>
+      <select id="bdPlate">
+        <option value="">— Select Plate —</option>
+        {% for tt in truck_types %}
+        {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
+        {% if tt_plates %}
+        <optgroup label="{{ tt.name }}">
+          {% for p in tt_plates %}
+          <option value="{{ p.id }}">{{ p.display }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endif %}
+        {% endfor %}
+        {% set uncat = plates|selectattr('truck_type_id', 'none')|list %}
+        {% if uncat %}
+        <optgroup label="Uncategorized">
+          {% for p in uncat %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}
+        </optgroup>
+        {% endif %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="bdStatus">
+        {% for s in bd_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:200px;">
+      <label>Description / Issue</label>
+      <textarea id="bdDesc" placeholder="Describe the breakdown or issue…" rows="1"></textarea>
+    </div>
+    <div class="form-group" style="flex:1;min-width:160px;">
+      <label>Remarks</label>
+      <input type="text" id="bdRemarks" placeholder="Optional remarks">
+    </div>
+    <div class="form-group" style="justify-content:flex-end;">
+      <button class="btn btn-maroon btn-sm" style="height:34px;" onclick="addBreakdown()">
+        <i class="bi bi-plus-lg me-1"></i>Add Log
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Breakdown Table -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-clipboard2-pulse me-2"></i>Breakdown Log — {{ mo_s.strftime('%B %Y') }}</span>
+    <span style="font-size:.78rem;opacity:.8;" id="logCount">{{ logs|length }} record(s)</span>
+  </div>
+  <div class="scrollable-x">
+    {% if logs %}
+    <table class="bd-table" id="bdTable">
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th style="min-width:100px;">Date</th>
+          <th style="min-width:140px;">Plate / Truck</th>
+          <th style="min-width:200px;">Description</th>
+          <th style="min-width:110px;">Status</th>
+          <th style="min-width:110px;">Resolved Date</th>
+          <th style="min-width:160px;">Remarks</th>
+          <th style="min-width:100px;">Updated By</th>
+          <th style="width:50px;" class="center"></th>
+        </tr>
+      </thead>
+      <tbody id="bdTbody">
+        {% for log in logs %}
+        <tr data-id="{{ log.id }}" class="{% if log.status == 'Fixed' %}resolved{% endif %}">
+          <td style="color:var(--muted);font-size:.75rem;">{{ loop.index }}</td>
+          <td>
+            <input class="bd-inline" type="date"
+                   value="{{ log.date.isoformat() }}"
+                   onchange="updateBd({{ log.id }}, 'date', this.value)">
+          </td>
+          <td>
+            <select class="bd-inline-sel" onchange="updateBd({{ log.id }}, 'plate_id', this.value)">
+              <option value="">— Plate —</option>
+              {% for tt in truck_types %}
+              {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
+              {% if tt_plates %}
+              <optgroup label="{{ tt.name }}">
+                {% for p in tt_plates %}
+                <option value="{{ p.id }}" {% if log.plate_id == p.id %}selected{% endif %}>{{ p.display }}</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <textarea class="bd-inline" rows="1"
+                      onchange="updateBd({{ log.id }}, 'description', this.value)"
+                      placeholder="Description…">{{ log.description or '' }}</textarea>
+          </td>
+          <td>
+            <select class="bd-inline-sel" onchange="updateBd({{ log.id }}, 'status', this.value); updateRowStyle(this)">
+              {% for s in bd_statuses %}
+              <option value="{{ s }}" {% if log.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <input class="bd-inline" type="date"
+                   value="{{ log.resolved_date.isoformat() if log.resolved_date else '' }}"
+                   onchange="updateBd({{ log.id }}, 'resolved_date', this.value)">
+          </td>
+          <td>
+            <input class="bd-inline" type="text"
+                   value="{{ log.remarks or '' }}"
+                   placeholder="Remarks…"
+                   onchange="updateBd({{ log.id }}, 'remarks', this.value)">
+          </td>
+          <td style="font-size:.75rem;color:var(--muted);">{{ log.updated_by or '—' }}</td>
+          <td class="center">
+            <button class="btn btn-danger btn-xs" onclick="deleteBd({{ log.id }}, this)" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-5" id="bdEmpty">
+      <i class="bi bi-tools"></i>
+      No breakdown logs for {{ mo_s.strftime('%B %Y') }}.<br>
+      <span style="font-size:.82rem;color:var(--muted);">Use the form above to log a breakdown.</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Plate options for JS (hidden) -->
+<select id="srcPlateOpts" style="display:none;">
+  <option value="">— Plate —</option>
+  {% for tt in truck_types %}
+  {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
+  {% if tt_plates %}
+  <optgroup label="{{ tt.name }}">
+    {% for p in tt_plates %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}
+  </optgroup>
+  {% endif %}
+  {% endfor %}
+</select>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BD_STATUSES = {{ bd_statuses|tojson }};
+const YEAR_MONTH  = {{ '%04d-%02d'|format(year, month)|tojson }};
+
+// ── ADD BREAKDOWN ─────────────────────────────────────────────────────────
+function addBreakdown() {
+  const dateVal = document.getElementById('bdDate').value;
+  const plateId = document.getElementById('bdPlate').value;
+  const status  = document.getElementById('bdStatus').value;
+  const desc    = document.getElementById('bdDesc').value.trim();
+  const remarks = document.getElementById('bdRemarks').value.trim();
+
+  if (!dateVal) { showToast('Please select a date'); return; }
+
+  fetch('/api/breakdown/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      date: dateVal,
+      plate_id: plateId || null,
+      status: status,
+      description: desc,
+      remarks: remarks
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    // Clear form
+    document.getElementById('bdDesc').value    = '';
+    document.getElementById('bdRemarks').value = '';
+
+    // Add row to table
+    insertBdRow(data);
+    updateCount(1);
+    showToast('Breakdown logged');
+  })
+  .catch(() => showToast('Failed to save'));
+}
+
+function insertBdRow(data) {
+  // Remove empty state if present
+  const empty = document.getElementById('bdEmpty');
+  if (empty) empty.remove();
+
+  // Ensure table exists
+  let tbody = document.getElementById('bdTbody');
+  if (!tbody) {
+    const wrap = document.querySelector('.scrollable-x');
+    wrap.innerHTML = `
+      <table class="bd-table" id="bdTable">
+        <thead><tr>
+          <th style="width:40px;">#</th>
+          <th>Date</th><th>Plate / Truck</th><th>Description</th>
+          <th>Status</th><th>Resolved Date</th><th>Remarks</th>
+          <th>Updated By</th><th class="center" style="width:50px;"></th>
+        </tr></thead>
+        <tbody id="bdTbody"></tbody>
+      </table>`;
+    tbody = document.getElementById('bdTbody');
+  }
+
+  const plateOpts = document.getElementById('srcPlateOpts').innerHTML;
+  const statusOpts = BD_STATUSES.map(s =>
+    `<option value="${s}" ${s === data.status ? 'selected' : ''}>${s}</option>`
+  ).join('');
+
+  const rowNum = tbody.rows.length + 1;
+  const tr = document.createElement('tr');
+  tr.dataset.id = data.id;
+  tr.className  = data.status === 'Fixed' ? 'resolved' : '';
+  tr.innerHTML  = `
+    <td style="color:var(--muted);font-size:.75rem;">${rowNum}</td>
+    <td><input class="bd-inline" type="date" value="${data.date}" onchange="updateBd(${data.id},'date',this.value)"></td>
+    <td><select class="bd-inline-sel" onchange="updateBd(${data.id},'plate_id',this.value)">${plateOpts}</select></td>
+    <td><textarea class="bd-inline" rows="1" onchange="updateBd(${data.id},'description',this.value)" placeholder="Description…">${escHtml(data.description)}</textarea></td>
+    <td><select class="bd-inline-sel" onchange="updateBd(${data.id},'status',this.value);updateRowStyle(this)">${statusOpts}</select></td>
+    <td><input class="bd-inline" type="date" value="${data.resolved_date}" onchange="updateBd(${data.id},'resolved_date',this.value)"></td>
+    <td><input class="bd-inline" type="text" value="${escHtml(data.remarks)}" placeholder="Remarks…" onchange="updateBd(${data.id},'remarks',this.value)"></td>
+    <td style="font-size:.75rem;color:var(--muted);">—</td>
+    <td class="center"><button class="btn btn-danger btn-xs" onclick="deleteBd(${data.id},this)" title="Delete"><i class="bi bi-trash"></i></button></td>`;
+
+  // Set selected plate
+  if (data.plate_id) {
+    const sel = tr.querySelector('select.bd-inline-sel');
+    if (sel) sel.value = data.plate_id;
+  }
+  tbody.prepend(tr);
+}
+
+// ── UPDATE BREAKDOWN ──────────────────────────────────────────────────────
+function updateBd(id, field, value) {
+  fetch(`/api/breakdown/${id}/update`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({[field]: value})
+  })
+  .then(r => r.json())
+  .catch(() => {});
+}
+
+function updateRowStyle(selectEl) {
+  const tr = selectEl.closest('tr');
+  if (!tr) return;
+  tr.classList.toggle('resolved', selectEl.value === 'Fixed');
+}
+
+// ── DELETE BREAKDOWN ──────────────────────────────────────────────────────
+function deleteBd(id, btn) {
+  if (!confirm('Delete this breakdown log?')) return;
+  const tr = btn.closest('tr');
+  fetch(`/api/breakdown/${id}/delete`, {method: 'POST'})
+  .then(r => r.json())
+  .then(() => {
+    tr.remove();
+    updateCount(-1);
+    renumberBd();
+    showToast('Log deleted');
+  });
+}
+
+function renumberBd() {
+  const tbody = document.getElementById('bdTbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('tr').forEach((tr, i) => {
+    const first = tr.cells[0];
+    if (first) first.textContent = i + 1;
+  });
+}
+
+function updateCount(delta) {
+  const el = document.getElementById('logCount');
+  if (!el) return;
+  const cur = parseInt(el.textContent) || 0;
+  el.textContent = `${cur + delta} record(s)`;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

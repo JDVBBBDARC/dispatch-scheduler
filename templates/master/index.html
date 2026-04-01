@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+{% block title %}Master Data — Dispatch Scheduler{% endblock %}
+{% block page_title %}Master Data{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-database me-2"></i>Master Data</h1>
+  <small class="text-muted">Manage drivers, helpers, products, clients, dispatchers and plate numbers.</small>
+</div>
+
+<div class="master-grid">
+
+  <!-- ── DRIVERS ─────────────────────────────────────────────────────────── -->
+  <div class="master-card">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-person-fill me-1"></i>DRIVERS</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-drivers">{{ drivers|length }} records</span>
+    </div>
+    <div class="master-list" id="list-drivers">
+      {% for d in drivers %}
+      <div class="master-item {% if not d.active %}inactive-item{% endif %}" data-id="{{ d.id }}" data-cat="drivers">
+        <div>
+          <div class="master-item-name">{{ d.name }}</div>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="editItem('drivers',{{ d.id }},'{{ d.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-xs {% if d.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('drivers',{{ d.id }},this)" title="{{ 'Deactivate' if d.active else 'Activate' }}">
+            <i class="bi bi-{{ 'toggle-on' if d.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No drivers yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row">
+      <input type="text" id="new-drivers" placeholder="Full name…" onkeydown="if(event.key==='Enter')addItem('drivers')">
+      <button class="btn btn-maroon btn-sm" onclick="addItem('drivers')"><i class="bi bi-plus-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- ── HELPERS ─────────────────────────────────────────────────────────── -->
+  <div class="master-card">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-person-fill me-1"></i>HELPERS</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-helpers">{{ helpers|length }} records</span>
+    </div>
+    <div class="master-list" id="list-helpers">
+      {% for h in helpers %}
+      <div class="master-item {% if not h.active %}inactive-item{% endif %}" data-id="{{ h.id }}" data-cat="helpers">
+        <div class="master-item-name">{{ h.name }}</div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="editItem('helpers',{{ h.id }},'{{ h.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-xs {% if h.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('helpers',{{ h.id }},this)">
+            <i class="bi bi-{{ 'toggle-on' if h.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No helpers yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row">
+      <input type="text" id="new-helpers" placeholder="Full name…" onkeydown="if(event.key==='Enter')addItem('helpers')">
+      <button class="btn btn-maroon btn-sm" onclick="addItem('helpers')"><i class="bi bi-plus-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTS ────────────────────────────────────────────────────────── -->
+  <div class="master-card">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-box-seam me-1"></i>PRODUCTS / LOAD TYPES</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-products">{{ products|length }} records</span>
+    </div>
+    <div class="master-list" id="list-products">
+      {% for p in products %}
+      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="products">
+        <div class="master-item-name">{{ p.name }}</div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="editItem('products',{{ p.id }},'{{ p.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-xs {% if p.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('products',{{ p.id }},this)">
+            <i class="bi bi-{{ 'toggle-on' if p.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No products yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row">
+      <input type="text" id="new-products" placeholder="Product / load type…" onkeydown="if(event.key==='Enter')addItem('products')">
+      <button class="btn btn-maroon btn-sm" onclick="addItem('products')"><i class="bi bi-plus-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- ── CLIENTS ─────────────────────────────────────────────────────────── -->
+  <div class="master-card">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-building me-1"></i>CLIENTS</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-clients">{{ clients|length }} records</span>
+    </div>
+    <div class="master-list" id="list-clients">
+      {% for c in clients %}
+      <div class="master-item {% if not c.active %}inactive-item{% endif %}" data-id="{{ c.id }}" data-cat="clients">
+        <div class="master-item-name">{{ c.name }}</div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="editItem('clients',{{ c.id }},'{{ c.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-xs {% if c.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('clients',{{ c.id }},this)">
+            <i class="bi bi-{{ 'toggle-on' if c.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No clients yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row">
+      <input type="text" id="new-clients" placeholder="Client name…" onkeydown="if(event.key==='Enter')addItem('clients')">
+      <button class="btn btn-maroon btn-sm" onclick="addItem('clients')"><i class="bi bi-plus-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- ── DISPATCHERS ─────────────────────────────────────────────────────── -->
+  <div class="master-card">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-headset me-1"></i>DISPATCHERS</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-dispatchers">{{ dispatchers|length }} records</span>
+    </div>
+    <div class="master-list" id="list-dispatchers">
+      {% for d in dispatchers %}
+      <div class="master-item {% if not d.active %}inactive-item{% endif %}" data-id="{{ d.id }}" data-cat="dispatchers">
+        <div class="master-item-name">{{ d.name }}</div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" onclick="editItem('dispatchers',{{ d.id }},'{{ d.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-xs {% if d.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('dispatchers',{{ d.id }},this)">
+            <i class="bi bi-{{ 'toggle-on' if d.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No dispatchers yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row">
+      <input type="text" id="new-dispatchers" placeholder="Dispatcher name…" onkeydown="if(event.key==='Enter')addItem('dispatchers')">
+      <button class="btn btn-maroon btn-sm" onclick="addItem('dispatchers')"><i class="bi bi-plus-lg"></i></button>
+    </div>
+  </div>
+
+  <!-- ── PLATE NUMBERS (full width) ──────────────────────────────────────── -->
+  <div class="master-card" style="grid-column:1/-1;">
+    <div class="master-card-header">
+      <span class="master-card-title"><i class="bi bi-truck me-1"></i>PLATE NUMBERS BY TRUCK TYPE</span>
+      <span style="font-size:.72rem;color:var(--muted);" id="cnt-plates">{{ plates|length }} records</span>
+    </div>
+    <div class="master-list" id="list-plates" style="max-height:320px;">
+      {% for p in plates %}
+      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="plates">
+        <div>
+          <div class="master-item-name">
+            {% if p.truck_type %}
+            <span class="truck-type-dot" style="background:{{ p.truck_type.color }};"></span>
+            {% endif %}
+            {{ p.display }}
+          </div>
+          <div class="master-item-sub">{{ p.truck_type.name if p.truck_type else 'Unassigned' }}</div>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs"
+                  onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-xs {% if p.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('plates',{{ p.id }},this)">
+            <i class="bi bi-{{ 'toggle-on' if p.active else 'toggle-off' }}"></i>
+          </button>
+        </div>
+      </div>
+      {% else %}<div class="master-empty">No plates yet.</div>{% endfor %}
+    </div>
+    <div class="master-add-row" style="flex-wrap:wrap;">
+      <select id="new-plate-truck" style="min-width:160px;">
+        <option value="">— Truck Type —</option>
+        {% for tt in truck_types %}
+        <option value="{{ tt.id }}">{{ tt.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="new-plate-body" placeholder="Body No. e.g. DT01" style="max-width:130px;">
+      <input type="text" id="new-plate-no"   placeholder="Plate No. e.g. ABC 1234" onkeydown="if(event.key==='Enter')addPlate()">
+      <button class="btn btn-maroon btn-sm" onclick="addPlate()"><i class="bi bi-plus-lg me-1"></i>Add</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── EDIT MODAL ──────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog" style="max-width:400px;">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--maroon);color:#fff;">
+        <h5 class="modal-title" id="editModalTitle">Edit Item</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="editModalBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-maroon" onclick="saveEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TRUCK_TYPES = {{ truck_types|map(attribute='id')|list|tojson }};
+let editModal, editCat, editId;
+
+document.addEventListener('DOMContentLoaded', () => {
+  editModal = new bootstrap.Modal(document.getElementById('editModal'));
+});
+
+// ── ADD ITEM ──────────────────────────────────────────────────────────────
+function addItem(cat) {
+  const input = document.getElementById(`new-${cat}`);
+  const name  = input.value.trim();
+  if (!name) { input.focus(); return; }
+
+  fetch(`/api/master/${cat}/add`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const list = document.getElementById(`list-${cat}`);
+    // Remove empty placeholder
+    list.querySelector('.master-empty')?.remove();
+    // Add new item row
+    const div = document.createElement('div');
+    div.className = 'master-item';
+    div.dataset.id  = data.id;
+    div.dataset.cat = cat;
+    div.innerHTML = `
+      <div class="master-item-name">${escHtml(data.name)}</div>
+      <div class="d-flex gap-1">
+        <button class="btn btn-ghost btn-xs" onclick="editItem('${cat}',${data.id},'${data.name.replace(/'/g,"\\'")}')"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleItem('${cat}',${data.id},this)"><i class="bi bi-toggle-on"></i></button>
+      </div>`;
+    list.appendChild(div);
+    input.value = '';
+    updateCount(cat, list);
+    showToast(`${data.name} added`);
+  });
+}
+
+// ── ADD PLATE ─────────────────────────────────────────────────────────────
+function addPlate() {
+  const plateNo = document.getElementById('new-plate-no').value.trim();
+  const bodyNo  = document.getElementById('new-plate-body').value.trim();
+  const ttId    = document.getElementById('new-plate-truck').value;
+  if (!plateNo) { document.getElementById('new-plate-no').focus(); return; }
+
+  fetch('/api/master/plates/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name: plateNo, body_no: bodyNo, truck_type_id: ttId || null})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const list = document.getElementById('list-plates');
+    list.querySelector('.master-empty')?.remove();
+    const div = document.createElement('div');
+    div.className = 'master-item';
+    div.dataset.id = data.id; div.dataset.cat = 'plates';
+    div.innerHTML = `
+      <div>
+        <div class="master-item-name">${escHtml(data.display)}</div>
+        <div class="master-item-sub">${escHtml(data.truck_type || 'Unassigned')}</div>
+      </div>
+      <div class="d-flex gap-1">
+        <button class="btn btn-ghost btn-xs" onclick="editPlate(${data.id},'','','')"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleItem('plates',${data.id},this)"><i class="bi bi-toggle-on"></i></button>
+      </div>`;
+    list.appendChild(div);
+    document.getElementById('new-plate-no').value   = '';
+    document.getElementById('new-plate-body').value = '';
+    updateCount('plates', list);
+    showToast(`${data.display} added`);
+  });
+}
+
+// ── EDIT ITEM ─────────────────────────────────────────────────────────────
+function editItem(cat, id, currentName) {
+  editCat = cat; editId = id;
+  document.getElementById('editModalTitle').textContent = `Edit ${cat.slice(0,-1)}`;
+  document.getElementById('editModalBody').innerHTML = `
+    <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Name</label>
+    <input type="text" id="editValue" class="form-control mt-1" value="${escHtml(currentName)}">`;
+  editModal.show();
+  setTimeout(() => document.getElementById('editValue').focus(), 200);
+}
+
+function editPlate(id, plateNo, bodyNo, ttId) {
+  editCat = 'plates'; editId = id;
+  document.getElementById('editModalTitle').textContent = 'Edit Plate';
+  const ttOpts = document.getElementById('new-plate-truck').innerHTML;
+  document.getElementById('editModalBody').innerHTML = `
+    <div class="mb-2">
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Body No.</label>
+      <input type="text" id="editBodyNo" class="form-control mt-1" value="${escHtml(bodyNo)}">
+    </div>
+    <div class="mb-2">
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Plate No.</label>
+      <input type="text" id="editPlateNo" class="form-control mt-1" value="${escHtml(plateNo)}">
+    </div>
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Truck Type</label>
+      <select id="editTruckType" class="form-select mt-1">${ttOpts}</select>
+    </div>`;
+  if (ttId) document.getElementById('editTruckType').value = ttId;
+  editModal.show();
+}
+
+function saveEdit() {
+  let payload = {};
+  if (editCat === 'plates') {
+    payload = {
+      plate_no: document.getElementById('editPlateNo')?.value.trim(),
+      body_no:  document.getElementById('editBodyNo')?.value.trim(),
+      truck_type_id: document.getElementById('editTruckType')?.value || null,
+    };
+  } else {
+    const val = document.getElementById('editValue')?.value.trim();
+    if (!val) return;
+    payload = {name: val};
+  }
+  fetch(`/api/master/${editCat}/${editId}/update`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(() => { editModal.hide(); location.reload(); });
+}
+
+// ── TOGGLE ACTIVE ─────────────────────────────────────────────────────────
+function toggleItem(cat, id, btn) {
+  fetch(`/api/master/${cat}/${id}/toggle`, {method:'POST'})
+  .then(r => r.json())
+  .then(data => {
+    const row = btn.closest('.master-item');
+    row.classList.toggle('inactive-item', !data.active);
+    btn.innerHTML = `<i class="bi bi-toggle-${data.active ? 'on' : 'off'}"></i>`;
+    btn.className = `btn btn-xs ${data.active ? 'btn-ghost' : 'btn-success'}`;
+    showToast(data.active ? 'Activated' : 'Deactivated');
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+function updateCount(cat, listEl) {
+  const cnt = listEl.querySelectorAll('.master-item').length;
+  const cntEl = document.getElementById(`cnt-${cat}`);
+  if (cntEl) cntEl.textContent = `${cnt} records`;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}
