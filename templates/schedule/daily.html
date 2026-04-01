@@ -5,24 +5,22 @@
 {% block content %}
 <style>
 /* ── Autocomplete ── */
-.ac { position: relative; display: block; }
+.ac { display: block; }
 .ac-txt { width: 100%; box-sizing: border-box; }
 .ac-drop {
   display: none;
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  z-index: 200;
+  position: fixed;
+  z-index: 9999;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
   min-width: 170px;
-  max-height: 210px;
+  max-height: 220px;
   overflow-y: auto;
   font-size: .82rem;
 }
-.ac-item { padding: 6px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-item { padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-item:hover, .ac-item.hi { background: var(--maroon); color: #fff; }
 </style>
 <!-- ── DATE NAVIGATION ──────────────────────────────────────────────────── -->
@@ -350,17 +348,26 @@ function transformSelects() {
   });
 }
 
+function acPosition(inp, drop) {
+  const r = inp.getBoundingClientRect();
+  drop.style.top      = (r.bottom + 2) + 'px';
+  drop.style.left     = r.left + 'px';
+  drop.style.minWidth = Math.max(r.width, 170) + 'px';
+}
+
 function acFilter(inp) {
   const q    = inp.value.toLowerCase();
   const drop = inp.closest('.ac').querySelector('.ac-drop');
   drop.querySelectorAll('.ac-item').forEach(it =>
     it.style.display = (!q || it.textContent.toLowerCase().includes(q)) ? 'block' : 'none');
+  acPosition(inp, drop);
   drop.style.display = 'block';
 }
 
 function acOpen(inp) {
   const drop = inp.closest('.ac').querySelector('.ac-drop');
   drop.querySelectorAll('.ac-item').forEach(it => it.style.display = 'block');
+  acPosition(inp, drop);
   drop.style.display = 'block';
 }
 
