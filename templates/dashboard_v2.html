@@ -27,6 +27,11 @@
       {% endfor %}
     </select>
   </div>
+  <div class="d-flex align-items-center gap-2">
+    <label>Days</label>
+    <input type="number" name="trend_days" value="{{ trend_days_count }}"
+           min="7" max="365" style="width:70px;" onchange="this.form.submit()">
+  </div>
   <a href="{{ url_for('schedule', date_str=filter_date) }}" class="btn btn-maroon btn-sm ms-auto">
     <i class="bi bi-calendar3-week me-1"></i>View Schedule
   </a>
@@ -71,7 +76,7 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <span class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>14-Day Activity Trend</span>
+        <span class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>{{ trend_days_count }}-Day Activity Trend</span>
         <div class="d-flex gap-1 flex-wrap" id="trendFilterBtns">
           <button class="trend-btn active" data-truck="all" onclick="setTrend('all',this)">All</button>
           {% for tt in trend_by_truck %}
@@ -120,7 +125,7 @@
   <div class="col-lg-7">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <span class="card-title"><i class="bi bi-trophy-fill me-2" style="color:#D97706;"></i>Top Drivers by Delivered Trips</span>
+        <span class="card-title"><i class="bi bi-trophy-fill me-2" style="color:#D97706;"></i>Top Drivers by Delivered — Last {{ trend_days_count }} Days</span>
       </div>
       {% if top_drivers_by_truck %}
       <div class="card-body pb-0">
@@ -150,7 +155,7 @@
   <div class="col-lg-5">
     <div class="card h-100">
       <div class="card-header">
-        <span class="card-title"><i class="bi bi-person-dash-fill me-2" style="color:#DC2626;"></i>Most Absent Drivers</span>
+        <span class="card-title"><i class="bi bi-person-dash-fill me-2" style="color:#DC2626;"></i>Most Absent Drivers — Last {{ trend_days_count }} Days</span>
       </div>
       <div class="card-body">
         {% if absent_drivers %}

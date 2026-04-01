@@ -210,6 +210,7 @@ def dashboard():
     filter_date  = request.args.get('date',  date.today().isoformat())
     filter_truck = request.args.get('truck', 'all')
     filter_status= request.args.get('status','all')
+    trend_days_count = max(7, min(365, request.args.get('trend_days', 14, type=int)))
     d = parse_date(filter_date)
 
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
@@ -236,20 +237,22 @@ def dashboard():
                   if t.wave and t.wave.truck_type_id == tt.id)
         by_truck[tt.code] = {'name': tt.name, 'color': tt.color, 'count': cnt}
 
-    # Recent 14-day trend — total
+    cutoff = date.today() - timedelta(days=trend_days_count)
+
+    # Trend — total
     trend_days, trend_counts = [], []
-    for i in range(13, -1, -1):
+    for i in range(trend_days_count - 1, -1, -1):
         day = date.today() - timedelta(days=i)
         cnt = (db.session.query(db.func.count(TripRecord.id))
                .join(Wave).filter(Wave.date == day).scalar() or 0)
         trend_days.append(day.strftime('%b %d'))
         trend_counts.append(cnt)
 
-    # 14-day trend per truck type
+    # Trend per truck type
     trend_by_truck = []
     for tt in truck_types:
         day_counts = []
-        for i in range(13, -1, -1):
+        for i in range(trend_days_count - 1, -1, -1):
             day = date.today() - timedelta(days=i)
             cnt = (db.session.query(db.func.count(TripRecord.id))
                    .join(Wave)
@@ -264,10 +267,10 @@ def dashboard():
     # Recent changes
     recent_changes = (ChangeLog.query.order_by(ChangeLog.timestamp.desc()).limit(8).all())
 
-    # Top drivers by delivered trips per truck type
+    # Top drivers by delivered trips — last N days
     _drv = defaultdict(lambda: defaultdict(lambda: {'name': '', 'total': 0, 'delivered': 0}))
     all_tr = (db.session.query(TripRecord).join(Wave)
-              .filter(TripRecord.driver_id.isnot(None)).all())
+              .filter(TripRecord.driver_id.isnot(None), Wave.date >= cutoff).all())
     for t in all_tr:
         if t.wave and t.driver:
             s = _drv[t.wave.truck_type_id][t.driver_id]
@@ -287,13 +290,13 @@ def dashboard():
                 'color': tt.color, 'drivers': drivers
             })
 
-    # Top absent drivers
+    # Top absent drivers — last N days
     absent_stats = (db.session.query(
                         Driver.name,
                         db.func.count(Attendance.id).label('cnt')
                     )
                     .join(Attendance, Attendance.driver_id == Driver.id)
-                    .filter(Attendance.status == 'Absent')
+                    .filter(Attendance.status == 'Absent', Attendance.date >= cutoff)
                     .group_by(Driver.id, Driver.name)
                     .order_by(db.func.count(Attendance.id).desc())
                     .limit(10)
@@ -303,6 +306,7 @@ def dashboard():
     return render_template('dashboard_v2.html',
         d=d, filter_date=filter_date,
         filter_truck=filter_truck, filter_status=filter_status,
+        trend_days_count=trend_days_count,
         truck_types=truck_types, trips=trips,
         total=total, by_status=by_status, by_truck=by_truck,
         trend_days=trend_days, trend_counts=trend_counts,
