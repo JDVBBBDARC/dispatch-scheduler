@@ -50,8 +50,22 @@
   margin: 0 10px;
   flex-shrink: 0;
 }
+.topbar-doc-edit {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 3px 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .78rem;
+  transition: all .15s;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+.topbar-doc-edit:hover { background: var(--maroon); color: #fff; border-color: var(--maroon); }
 @media (max-width: 576px) {
   .topbar-doc { display: none; }
+  .topbar-doc-edit { display: none; }
   .topbar-divider { display: none; }
 }
 
@@ -210,9 +224,12 @@
       <img src="/static/images/logo.png" alt="Big Ben" class="topbar-logo"
            onerror="this.style.display='none'">
       <div class="topbar-doc">
-        <div class="topbar-doc-title">{{ doc.doc_title }}</div>
-        <div class="topbar-doc-sub">{{ doc.doc_form_code }}&nbsp;&nbsp;·&nbsp;&nbsp;{{ doc.doc_revision }}</div>
+        <div class="topbar-doc-title" id="tbDocTitle">{{ doc.doc_title }}</div>
+        <div class="topbar-doc-sub" id="tbDocSub">{{ doc.doc_form_code }}&nbsp;&nbsp;·&nbsp;&nbsp;{{ doc.doc_revision }}</div>
       </div>
+      <button class="topbar-doc-edit" onclick="openDocEdit()" title="Edit document header">
+        <i class="bi bi-pencil"></i>
+      </button>
     </div>
     <div class="topbar-divider"></div>
     <div class="topbar-title">{% block page_title %}{% endblock %}</div>
@@ -277,6 +294,38 @@
       <a href="#" onclick="closeUserModal()" style="font-size:.8rem;color:var(--muted);">Cancel</a>
     </div>
     {% endif %}
+  </div>
+</div>
+
+<!-- ── DOC HEADER EDIT MODAL ─────────────────────────────────────────────── -->
+<div class="modal fade" id="docEditModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Document Header</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold" style="font-size:.8rem;">Title</label>
+          <input type="text" class="form-control form-control-sm" id="editDocTitle" value="{{ doc.doc_title }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold" style="font-size:.8rem;">Form Code</label>
+          <input type="text" class="form-control form-control-sm" id="editDocFormCode" value="{{ doc.doc_form_code }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold" style="font-size:.8rem;">Revision</label>
+          <input type="text" class="form-control form-control-sm" id="editDocRevision" value="{{ doc.doc_revision }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-maroon btn-sm" onclick="saveDocHeader()">
+          <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -447,6 +496,29 @@ function renderSearchResults(results, q) {
 function gSearchKey(e) {
   if (e.key === 'Enter') runSearch();
   if (e.key === 'Escape') closeSearch();
+}
+
+// ── DOC HEADER EDIT ──────────────────────────────────────────────────────
+function openDocEdit() {
+  new bootstrap.Modal(document.getElementById('docEditModal')).show();
+}
+function saveDocHeader() {
+  const title    = document.getElementById('editDocTitle').value.trim();
+  const formCode = document.getElementById('editDocFormCode').value.trim();
+  const revision = document.getElementById('editDocRevision').value.trim();
+  fetch('/api/settings/save', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({doc_title: title, doc_form_code: formCode, doc_revision: revision})
+  })
+  .then(r => r.json())
+  .then(() => {
+    document.getElementById('tbDocTitle').textContent = title;
+    document.getElementById('tbDocSub').innerHTML =
+      escHtml(formCode) + '&nbsp;&nbsp;·&nbsp;&nbsp;' + escHtml(revision);
+    bootstrap.Modal.getInstance(document.getElementById('docEditModal')).hide();
+    showToast('Document header updated!');
+  })
+  .catch(() => showToast('Save failed'));
 }
 
 // ── SERVICE WORKER (PWA) ─────────────────────────────────────────────────

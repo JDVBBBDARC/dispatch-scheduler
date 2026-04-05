@@ -4,48 +4,6 @@
 
 {% block content %}
 <style>
-/* ── Document Header ── */
-.doc-header-bar {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 20px;
-  margin-bottom: 18px;
-}
-.doc-header-logo img {
-  height: 64px;
-  width: auto;
-  object-fit: contain;
-}
-.doc-header-info { flex: 1; }
-.doc-title {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--maroon);
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
-.doc-sub {
-  font-size: .78rem;
-  color: var(--muted);
-  margin-top: 1px;
-}
-.doc-edit-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 6px 10px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .9rem;
-  transition: all .15s;
-  flex-shrink: 0;
-}
-.doc-edit-btn:hover { background: var(--maroon); color: #fff; border-color: var(--maroon); }
-
 /* ── Autocomplete ── */
 .ac { display: block; }
 .ac-txt { width: 100%; box-sizing: border-box; }
@@ -65,53 +23,6 @@
 .ac-item { padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-item:hover, .ac-item.hi { background: var(--maroon); color: #fff; }
 </style>
-<!-- ── DOCUMENT HEADER ──────────────────────────────────────────────────── -->
-<div class="doc-header-bar">
-  <div class="doc-header-logo">
-    <img src="/static/images/logo.png" alt="Big Ben" onerror="this.style.display='none'">
-  </div>
-  <div class="doc-header-info">
-    <div class="doc-title"  id="docTitle">{{ doc.doc_title }}</div>
-    <div class="doc-sub"    id="docFormCode">{{ doc.doc_form_code }}</div>
-    <div class="doc-sub"    id="docRevision">{{ doc.doc_revision }}</div>
-  </div>
-  <button class="doc-edit-btn" onclick="openDocEdit()" title="Edit document header">
-    <i class="bi bi-pencil-square"></i>
-  </button>
-</div>
-
-<!-- Edit Modal -->
-<div class="modal fade" id="docEditModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Document Header</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label fw-bold" style="font-size:.8rem;">Title</label>
-          <input type="text" class="form-control form-control-sm" id="editDocTitle" value="{{ doc.doc_title }}">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold" style="font-size:.8rem;">Form Code</label>
-          <input type="text" class="form-control form-control-sm" id="editDocFormCode" value="{{ doc.doc_form_code }}">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold" style="font-size:.8rem;">Revision</label>
-          <input type="text" class="form-control form-control-sm" id="editDocRevision" value="{{ doc.doc_revision }}">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-maroon btn-sm" onclick="saveDocHeader()">
-          <i class="bi bi-check-lg me-1"></i>Save
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ── DATE NAVIGATION ──────────────────────────────────────────────────── -->
 <div class="page-header">
   <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -654,29 +565,6 @@ function updateWaveCount(waveId) {
   if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = `(${cnt})`; }
   const panel = document.getElementById(`wave-panel-${waveId}`)?.closest('.truck-panel');
   if (panel) updateTabCount(panel.dataset.truck);
-}
-
-// ── DOCUMENT HEADER EDIT ─────────────────────────────────────────────────
-function openDocEdit() {
-  new bootstrap.Modal(document.getElementById('docEditModal')).show();
-}
-function saveDocHeader() {
-  const title    = document.getElementById('editDocTitle').value.trim();
-  const formCode = document.getElementById('editDocFormCode').value.trim();
-  const revision = document.getElementById('editDocRevision').value.trim();
-  fetch('/api/settings/save', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({doc_title: title, doc_form_code: formCode, doc_revision: revision})
-  })
-  .then(r => r.json())
-  .then(() => {
-    document.getElementById('docTitle').textContent    = title;
-    document.getElementById('docFormCode').textContent = formCode;
-    document.getElementById('docRevision').textContent = revision;
-    bootstrap.Modal.getInstance(document.getElementById('docEditModal')).hide();
-    showToast('Document header updated!');
-  })
-  .catch(() => showToast('Save failed'));
 }
 
 function updateTabCount(truckCode, forceCount) {
