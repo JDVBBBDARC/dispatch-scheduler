@@ -222,10 +222,10 @@ def dashboard():
 
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
 
-    # Base query for the selected date
+    # Base query for the selected date range
     q = (db.session.query(TripRecord)
          .join(Wave)
-         .filter(Wave.date == d))
+         .filter(Wave.date >= trend_start_d, Wave.date <= trend_end_d))
     if filter_truck != 'all':
         tt = TruckTypeDef.query.filter_by(code=filter_truck).first()
         if tt:
