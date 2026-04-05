@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#8B1A2B"/>
+  <!-- Truck body -->
+  <rect x="60" y="210" width="260" height="150" rx="12" fill="#fff"/>
+  <!-- Cab -->
+  <rect x="320" y="250" width="130" height="110" rx="12" fill="#fff"/>
+  <!-- Cab window -->
+  <rect x="335" y="265" width="95" height="55" rx="6" fill="#8B1A2B"/>
+  <!-- Connector -->
+  <rect x="315" y="280" width="15" height="50" fill="#fff"/>
+  <!-- Wheels -->
+  <circle cx="130" cy="380" r="38" fill="#fff"/>
+  <circle cx="130" cy="380" r="18" fill="#8B1A2B"/>
+  <circle cx="270" cy="380" r="38" fill="#fff"/>
+  <circle cx="270" cy="380" r="18" fill="#8B1A2B"/>
+  <circle cx="400" cy="380" r="38" fill="#fff"/>
+  <circle cx="400" cy="380" r="18" fill="#8B1A2B"/>
+  <!-- DS text -->
+  <text x="180" y="195" font-size="90" text-anchor="middle" fill="#fff"
+        font-family="Arial,sans-serif" font-weight="800" letter-spacing="-2">DS</text>
+</svg>
