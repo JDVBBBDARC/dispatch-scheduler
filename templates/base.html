@@ -16,6 +16,45 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
 <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"/>
 <style>
+/* ── Topbar Company Header ── */
+.topbar-company {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.topbar-logo {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.topbar-doc { line-height: 1.2; }
+.topbar-doc-title {
+  font-size: .78rem;
+  font-weight: 800;
+  color: var(--maroon);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.topbar-doc-sub {
+  font-size: .65rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.topbar-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+@media (max-width: 576px) {
+  .topbar-doc { display: none; }
+  .topbar-divider { display: none; }
+}
+
 /* ── Global Search ── */
 .gsearch-overlay {
   display: none;
@@ -166,6 +205,16 @@
     <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
       <i class="bi bi-list"></i>
     </button>
+    <!-- Company Header -->
+    <div class="topbar-company">
+      <img src="/static/images/logo.png" alt="Big Ben" class="topbar-logo"
+           onerror="this.style.display='none'">
+      <div class="topbar-doc">
+        <div class="topbar-doc-title">{{ doc.doc_title }}</div>
+        <div class="topbar-doc-sub">{{ doc.doc_form_code }}&nbsp;&nbsp;·&nbsp;&nbsp;{{ doc.doc_revision }}</div>
+      </div>
+    </div>
+    <div class="topbar-divider"></div>
     <div class="topbar-title">{% block page_title %}{% endblock %}</div>
 
     <button class="activity-btn" onclick="openSearch()" title="Search (Ctrl+K)" style="margin-right:4px;">

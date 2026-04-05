@@ -59,6 +59,7 @@ def master_lists():
 
 @app.context_processor
 def inject_globals():
+    doc = {k: AppSetting.get(k, v) for k, v in DOC_HEADER_DEFAULTS.items()}
     return dict(
         now=datetime.now(),
         today=date.today(),
@@ -66,6 +67,7 @@ def inject_globals():
         statuses=STATUSES,
         current_user=get_user(),
         local_ip=get_local_ip(),
+        doc=doc,
     )
 
 
