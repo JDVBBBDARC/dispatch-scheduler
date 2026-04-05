@@ -214,18 +214,8 @@
       <div class="card-header">
         <span class="card-title"><i class="bi bi-activity me-2"></i>Recent Activity</span>
       </div>
-      <div class="card-body p-0" style="max-height:280px;overflow-y:auto;">
-        {% if recent_changes %}
-        {% for c in recent_changes %}
-        <div class="activity-item">
-          <span class="activity-who">{{ c.user_name }}</span>
-          <span class="activity-what">{{ c.action }}</span>
-          <span class="activity-when">{{ c.timestamp.strftime('%H:%M') }}</span>
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="activity-empty">No activity recorded yet.</div>
-        {% endif %}
+      <div class="card-body p-0" style="max-height:280px;overflow-y:auto;" id="dashActivityList">
+        <div class="activity-empty">Loading…</div>
       </div>
     </div>
   </div>
@@ -502,5 +492,30 @@ new Chart(document.getElementById('absentChart'), {
   }
 });
 {% endif %}
+
+// ── DASHBOARD LIVE ACTIVITY ───────────────────────────────────────────────
+function loadDashActivity() {
+  fetch('/api/activity')
+    .then(r => r.json())
+    .then(d => {
+      const el = document.getElementById('dashActivityList');
+      if (!el) return;
+      if (!d.logs || !d.logs.length) {
+        el.innerHTML = '<div class="activity-empty">No activity recorded yet.</div>';
+        return;
+      }
+      el.innerHTML = d.logs.map(l => `
+        <div class="activity-item">
+          <span class="activity-who">${escHtml(l.user)}</span>
+          <span class="activity-what">${escHtml(l.action)}</span>
+          <span class="activity-when">${l.time}</span>
+        </div>`).join('');
+    }).catch(() => {});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashActivity();
+  setInterval(loadDashActivity, 10000);
+});
 </script>
 {% endblock %}
