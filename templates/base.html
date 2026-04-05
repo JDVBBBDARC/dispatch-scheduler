@@ -173,7 +173,7 @@
       <span id="userChipName">{{ current_user }}</span>
     </div>
 
-    <span class="date-chip d-none d-md-inline">
+    <span class="date-chip d-none d-md-inline" id="liveClock">
       <i class="bi bi-calendar3 me-1"></i>{{ now.strftime('%b %d, %Y') }}
     </span>
   </header>
@@ -391,6 +391,18 @@ function gSearchKey(e) {
   if (e.key === 'Enter') runSearch();
   if (e.key === 'Escape') closeSearch();
 }
+
+// ── LIVE PHILIPPINE TIME CLOCK ────────────────────────────────────────────
+(function tickClock() {
+  const el = document.getElementById('liveClock');
+  if (el) {
+    const now = new Date();
+    const date = now.toLocaleDateString('en-PH', {timeZone:'Asia/Manila', month:'short', day:'2-digit', year:'numeric'});
+    const time = now.toLocaleTimeString('en-PH', {timeZone:'Asia/Manila', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    el.innerHTML = `<i class="bi bi-calendar3 me-1"></i>${date} &nbsp;<i class="bi bi-clock me-1"></i>${time}`;
+  }
+  setTimeout(tickClock, 1000);
+})();
 
 let toastTimer;
 function showToast(msg) {
