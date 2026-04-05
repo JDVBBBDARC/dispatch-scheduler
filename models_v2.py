@@ -16,6 +16,12 @@ TRUCK_TYPES_SEED = [
 
 TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load']
 
+DOC_HEADER_DEFAULTS = {
+    'doc_title':    'LOGISTICS DELIVERY SCHEDULE',
+    'doc_form_code':'F-LG-1.2',
+    'doc_revision': 'Rev.1 09/15/2025',
+}
+
 STATUSES = ['Pending', 'Loading', 'In Transit', 'Delivered']
 
 ATTENDANCE_STATUSES = ['Present', 'Absent', 'Leave', 'Holiday']
@@ -217,6 +223,27 @@ class BreakdownLog(db.Model):
             'remarks':       self.remarks or '',
             'updated_by':    self.updated_by or '',
         }
+
+
+# ── App Settings (key/value store) ────────────────────────────────────────
+class AppSetting(db.Model):
+    __tablename__ = 'app_settings'
+    id    = db.Column(db.Integer, primary_key=True)
+    key   = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text)
+
+    @staticmethod
+    def get(key, default=''):
+        row = AppSetting.query.filter_by(key=key).first()
+        return row.value if row else default
+
+    @staticmethod
+    def set(key, value):
+        row = AppSetting.query.filter_by(key=key).first()
+        if row:
+            row.value = value
+        else:
+            db.session.add(AppSetting(key=key, value=value))
 
 
 # ── Collaboration ──────────────────────────────────────────────────────────

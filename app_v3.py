@@ -4,9 +4,10 @@ from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        Driver, Helper, Product, Client, Dispatcher, Plate,
-                       ChangeLog, Attendance, BreakdownLog,
+                       ChangeLog, Attendance, BreakdownLog, AppSetting,
                        TRUCK_TYPES_SEED, STATUSES,
-                       ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES)
+                       ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
+                       DOC_HEADER_DEFAULTS)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -97,9 +98,10 @@ def schedule(date_str):
                .scalar() or 0)
         counts[tt.code] = cnt
 
+    doc = {k: AppSetting.get(k, v) for k, v in DOC_HEADER_DEFAULTS.items()}
     return render_template('schedule/daily.html',
         d=d, schedule_map=schedule_map, counts=counts,
-        trip_types=TRIP_TYPES,
+        trip_types=TRIP_TYPES, doc=doc,
         **master_lists())
 
 
@@ -721,6 +723,16 @@ def api_breakdown_delete(lid):
 
 
 # ── COLLAB API ─────────────────────────────────────────────────────────────
+@app.route('/api/settings/save', methods=['POST'])
+def api_settings_save():
+    data = request.get_json() or {}
+    for key in DOC_HEADER_DEFAULTS:
+        if key in data:
+            AppSetting.set(key, data[key].strip())
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 @app.route('/api/search')
 def api_search():
     q = request.args.get('q', '').strip()
@@ -812,6 +824,11 @@ def init_db():
         if added:
             db.session.commit()
             print(f"  Truck types added: {', '.join(added)}")
+        # Seed default document header settings
+        for key, val in DOC_HEADER_DEFAULTS.items():
+            if not AppSetting.query.filter_by(key=key).first():
+                db.session.add(AppSetting(key=key, value=val))
+        db.session.commit()
         # Migrate: add trip_type column if it doesn't exist yet (for existing databases)
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
