@@ -783,7 +783,7 @@ def api_activity():
         'logs': [{
             'user':   l.user_name,
             'action': l.action,
-            'time':   l.timestamp.strftime('%H:%M'),
+            'time':   (l.timestamp + timedelta(hours=8)).strftime('%I:%M %p'),
             'ts':     l.timestamp.timestamp(),
         } for l in logs]
     })
