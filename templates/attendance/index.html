@@ -42,7 +42,7 @@
   border-radius: 4px;
   display: inline-block;
 }
-.att-wrap { overflow-x: auto; border-radius: 8px; }
+.att-wrap { overflow-x: auto; border-radius: 8px; overflow-y: visible; }
 .att-wrap table { border-collapse: separate; border-spacing: 0; }
 .att-table {
   width: 100%;
@@ -58,8 +58,8 @@
   font-weight: 600;
   white-space: nowrap;
   position: sticky;
-  top: 0;
-  z-index: 2;
+  top: 58px;
+  z-index: 4;
 }
 .att-table th.driver-col {
   text-align: left;
@@ -67,7 +67,8 @@
   min-width: 160px;
   position: sticky;
   left: 0;
-  z-index: 3;
+  top: 58px;
+  z-index: 5;
   background: var(--maroon);
 }
 .att-table td {
