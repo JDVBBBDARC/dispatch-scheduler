@@ -1,5 +1,16 @@
 import os, io, socket, calendar
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+PH_TZ = ZoneInfo('Asia/Manila')
+
+def ph_now():
+    """Current datetime in Philippine time."""
+    return datetime.now(PH_TZ)
+
+def ph_today():
+    """Current date in Philippine time."""
+    return ph_now().date()
 from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
@@ -27,7 +38,7 @@ db.init_app(app)
 # ── HELPERS ────────────────────────────────────────────────────────────────
 def parse_date(s):
     try:    return date.fromisoformat(s)
-    except: return date.today()
+    except: return ph_today()
 
 def get_user():
     return session.get('user_name', 'Dispatcher')
@@ -61,8 +72,8 @@ def master_lists():
 def inject_globals():
     doc = {k: AppSetting.get(k, v) for k, v in DOC_HEADER_DEFAULTS.items()}
     return dict(
-        now=datetime.now(),
-        today=date.today(),
+        now=ph_now(),
+        today=ph_today(),
         timedelta=timedelta,
         statuses=STATUSES,
         current_user=get_user(),
@@ -74,7 +85,7 @@ def inject_globals():
 # ── INDEX ──────────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
-    return redirect(url_for('schedule', date_str=date.today().isoformat()))
+    return redirect(url_for('schedule', date_str=ph_today().isoformat()))
 
 
 # ── SCHEDULE ───────────────────────────────────────────────────────────────
@@ -213,11 +224,11 @@ def api_trip_delete(tid):
 @app.route('/dashboard')
 def dashboard():
     from collections import defaultdict
-    filter_date  = request.args.get('date',  date.today().isoformat())
+    filter_date  = request.args.get('date',  ph_today().isoformat())
     filter_truck = request.args.get('truck', 'all')
     filter_status= request.args.get('status','all')
-    trend_end_str   = request.args.get('trend_end',   date.today().isoformat())
-    trend_start_str = request.args.get('trend_start', (date.today() - timedelta(days=13)).isoformat())
+    trend_end_str   = request.args.get('trend_end',   ph_today().isoformat())
+    trend_start_str = request.args.get('trend_start', (ph_today() - timedelta(days=13)).isoformat())
     trend_end_d     = parse_date(trend_end_str)
     trend_start_d   = parse_date(trend_start_str)
     if trend_start_d > trend_end_d:
@@ -421,8 +432,8 @@ def api_master_toggle(category, item_id):
 # ── REPORTS ────────────────────────────────────────────────────────────────
 @app.route('/reports')
 def reports():
-    year        = request.args.get('year',  date.today().year,  type=int)
-    month       = request.args.get('month', date.today().month, type=int)
+    year        = request.args.get('year',  ph_today().year,  type=int)
+    month       = request.args.get('month', ph_today().month, type=int)
     filter_truck= request.args.get('truck', 'all')
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
 
@@ -438,7 +449,7 @@ def reports():
     trips = q.order_by(Wave.date, Wave.wave_number, TripRecord.trip_number).all()
 
     by_status = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
-    years     = list(range(2024, date.today().year + 2))
+    years     = list(range(2024, ph_today().year + 2))
 
     return render_template('reports/index.html',
         year=year, month=month, years=years,
@@ -448,8 +459,8 @@ def reports():
 
 @app.route('/reports/export')
 def export():
-    year        = request.args.get('year',  date.today().year,  type=int)
-    month       = request.args.get('month', date.today().month, type=int)
+    year        = request.args.get('year',  ph_today().year,  type=int)
+    month       = request.args.get('month', ph_today().month, type=int)
     filter_truck= request.args.get('truck', 'all')
     last_day    = calendar.monthrange(year, month)[1]
     mo_s        = date(year, month, 1)
@@ -546,9 +557,9 @@ def export():
 # ── ATTENDANCE ─────────────────────────────────────────────────────────────
 @app.route('/attendance')
 def attendance():
-    year   = request.args.get('year',  date.today().year,  type=int)
-    month  = request.args.get('month', date.today().month, type=int)
-    years  = list(range(2024, date.today().year + 2))
+    year   = request.args.get('year',  ph_today().year,  type=int)
+    month  = request.args.get('month', ph_today().month, type=int)
+    years  = list(range(2024, ph_today().year + 2))
 
     last_day = calendar.monthrange(year, month)[1]
     mo_s     = date(year, month, 1)
@@ -620,10 +631,10 @@ def api_attendance_set():
 # ── BREAKDOWN ──────────────────────────────────────────────────────────────
 @app.route('/breakdown')
 def breakdown():
-    year   = request.args.get('year',  date.today().year,  type=int)
-    month  = request.args.get('month', date.today().month, type=int)
+    year   = request.args.get('year',  ph_today().year,  type=int)
+    month  = request.args.get('month', ph_today().month, type=int)
     filter_status = request.args.get('status', 'all')
-    years  = list(range(2024, date.today().year + 2))
+    years  = list(range(2024, ph_today().year + 2))
 
     last_day = calendar.monthrange(year, month)[1]
     mo_s     = date(year, month, 1)
@@ -660,7 +671,7 @@ def breakdown():
 def api_breakdown_add():
     data = request.get_json()
     plate_id    = data.get('plate_id') or None
-    date_str    = data.get('date', date.today().isoformat())
+    date_str    = data.get('date', ph_today().isoformat())
     description = (data.get('description') or '').strip()
     status      = data.get('status', 'Under Repair')
     remarks     = (data.get('remarks') or '').strip()
