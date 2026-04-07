@@ -203,6 +203,16 @@
         <i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span>
       </a>
     </li>
+
+    {% if current_user_role == 'admin' %}
+    <li class="nav-section">ADMIN</li>
+    <li>
+      <a href="{{ url_for('auth.admin_users') }}"
+         class="sidebar-link {% if request.endpoint == 'auth.admin_users' %}active{% endif %}">
+        <i class="bi bi-people"></i><span>User Accounts</span>
+      </a>
+    </li>
+    {% endif %}
   </ul>
 
   <div class="sidebar-footer">
@@ -245,7 +255,15 @@
     <div class="user-chip" onclick="openUserModal()" title="Change your name">
       <span class="user-chip-dot"></span>
       <span id="userChipName">{{ current_user }}</span>
+      {% if current_user_role == 'admin' %}
+      <span style="font-size:.6rem;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 5px;margin-left:4px;">ADMIN</span>
+      {% endif %}
     </div>
+    <a href="{{ url_for('auth.logout') }}" class="activity-btn" title="Logout"
+       style="text-decoration:none;"
+       onclick="return confirm('Are you sure you want to logout?');">
+      <i class="bi bi-box-arrow-right"></i>
+    </a>
 
     <span class="date-chip d-none d-md-inline" id="liveClock">
       <i class="bi bi-calendar3 me-1"></i>{{ now.strftime('%b %d, %Y') }}

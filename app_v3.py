@@ -34,6 +34,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dispatch-scheduler-2026')
 db.init_app(app)
 
+# ── AUTH BLUEPRINT ─────────────────────────────────────────────────────────
+from auth import auth_bp                        # noqa: E402
+from auth.routes import login_required          # noqa: E402
+app.register_blueprint(auth_bp)
+
 
 # ── HELPERS ────────────────────────────────────────────────────────────────
 def parse_date(s):
@@ -77,6 +82,7 @@ def inject_globals():
         timedelta=timedelta,
         statuses=STATUSES,
         current_user=get_user(),
+        current_user_role=session.get('user_role', ''),
         local_ip=get_local_ip(),
         doc=doc,
     )
@@ -90,6 +96,7 @@ def index():
 
 # ── SCHEDULE ───────────────────────────────────────────────────────────────
 @app.route('/schedule/<date_str>')
+@login_required
 def schedule(date_str):
     d = parse_date(date_str)
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
@@ -222,6 +229,7 @@ def api_trip_delete(tid):
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
+@login_required
 def dashboard():
     from collections import defaultdict
     filter_date  = request.args.get('date',  ph_today().isoformat())
@@ -343,6 +351,7 @@ def dashboard():
 
 # ── MASTER DATA ────────────────────────────────────────────────────────────
 @app.route('/master')
+@login_required
 def master():
     truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
     drivers     = Driver.query.order_by(Driver.name).all()
@@ -431,6 +440,7 @@ def api_master_toggle(category, item_id):
 
 # ── REPORTS ────────────────────────────────────────────────────────────────
 @app.route('/reports')
+@login_required
 def reports():
     year        = request.args.get('year',  ph_today().year,  type=int)
     month       = request.args.get('month', ph_today().month, type=int)
@@ -556,6 +566,7 @@ def export():
 
 # ── ATTENDANCE ─────────────────────────────────────────────────────────────
 @app.route('/attendance')
+@login_required
 def attendance():
     year   = request.args.get('year',  ph_today().year,  type=int)
     month  = request.args.get('month', ph_today().month, type=int)
@@ -630,6 +641,7 @@ def api_attendance_set():
 
 # ── BREAKDOWN ──────────────────────────────────────────────────────────────
 @app.route('/breakdown')
+@login_required
 def breakdown():
     year   = request.args.get('year',  ph_today().year,  type=int)
     month  = request.args.get('month', ph_today().month, type=int)
@@ -851,6 +863,14 @@ def init_db():
                 conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
                 conn.commit()
             print("  Migrated: added trip_type column to trip_records")
+        # Create default admin account if none exists
+        from auth.models import User
+        if not User.query.filter_by(username='admin').first():
+            admin = User(username='admin', full_name='Administrator', role='admin')
+            admin.set_password('admin123')
+            db.session.add(admin)
+            db.session.commit()
+            print("  Default admin created — username: admin  password: admin123")
 
 
 # Initialize DB at module level so gunicorn (cloud) can start the app correctly
