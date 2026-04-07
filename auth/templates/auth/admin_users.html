@@ -31,6 +31,7 @@
             <th style="padding:12px 16px;font-weight:700;">Username</th>
             <th style="padding:12px 16px;font-weight:700;">Role</th>
             <th style="padding:12px 16px;font-weight:700;">Status</th>
+            <th style="padding:12px 16px;font-weight:700;">Can Delete</th>
             <th style="padding:12px 16px;font-weight:700;">Last Login</th>
             <th style="padding:12px 16px;font-weight:700;">Actions</th>
           </tr>
@@ -60,6 +61,28 @@
               <span class="badge bg-success">Active</span>
               {% else %}
               <span class="badge bg-danger">Inactive</span>
+              {% endif %}
+            </td>
+            <!-- Can Delete toggle -->
+            <td style="padding:10px 16px;text-align:center;">
+              {% if u.is_admin %}
+                <span title="Admins always have delete permission"
+                      style="color:#8B1A2B;font-size:1.1rem;">
+                  <i class="bi bi-shield-fill-check"></i>
+                </span>
+              {% else %}
+                <form method="POST" action="{{ url_for('auth.admin_toggle_delete', uid=u.id) }}" style="display:inline;">
+                  <button type="submit"
+                          class="btn btn-sm {% if u.can_delete %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                          style="border-radius:20px;font-size:.7rem;padding:2px 10px;"
+                          title="{{ 'Disable delete permission' if u.can_delete else 'Enable delete permission' }}">
+                    {% if u.can_delete %}
+                      <i class="bi bi-check-lg"></i> Allowed
+                    {% else %}
+                      <i class="bi bi-x-lg"></i> Blocked
+                    {% endif %}
+                  </button>
+                </form>
               {% endif %}
             </td>
             <td style="padding:10px 16px;color:#888;font-size:.8rem;">
@@ -180,10 +203,23 @@
             <label class="form-label fw-semibold" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;">
               Role <span class="text-danger">*</span>
             </label>
-            <select name="role" class="form-select">
+            <select name="role" class="form-select" id="createRoleSelect" onchange="toggleCanDeleteOpt()">
               <option value="staff" selected>Staff — Can view and edit schedules</option>
               <option value="admin">Admin — Full access + user management</option>
             </select>
+          </div>
+
+          <div class="mb-3" id="canDeleteWrap">
+            <label class="form-label fw-semibold" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;">
+              Delete Permission
+            </label>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="can_delete" id="canDeleteCheck" value="1"/>
+              <label class="form-check-label" for="canDeleteCheck" style="font-size:.85rem;">
+                Allow this account to delete records
+              </label>
+            </div>
+            <div class="form-text">If OFF, delete buttons will be blocked for this user.</div>
           </div>
 
         </div>
@@ -200,4 +236,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleCanDeleteOpt() {
+  const role = document.getElementById('createRoleSelect').value;
+  const wrap = document.getElementById('canDeleteWrap');
+  wrap.style.display = role === 'admin' ? 'none' : '';
+}
+</script>
 {% endblock %}

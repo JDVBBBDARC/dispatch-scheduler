@@ -7,6 +7,16 @@ from . import auth_bp
 
 
 # ── Decorators ─────────────────────────────────────────────────────────────
+def check_can_delete() -> bool:
+    """Returns True if the current session user is allowed to delete records."""
+    uid = session.get('user_id')
+    if not uid:
+        return False
+    user = User.query.get(uid)
+    # Admins can always delete; staff need can_delete flag
+    return bool(user and (user.is_admin or user.can_delete))
+
+
 def login_required(f):
     """Redirect to login if user is not authenticated."""
     @wraps(f)
@@ -96,7 +106,8 @@ def admin_create_user():
         flash('Password must be at least 4 characters.', 'danger')
         return redirect(url_for('auth.admin_users'))
 
-    user = User(username=username, full_name=full_name or None, role=role)
+    can_del = request.form.get('can_delete') == '1' and role != 'admin'
+    user = User(username=username, full_name=full_name or None, role=role, can_delete=can_del)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -143,4 +154,18 @@ def admin_delete_user(uid):
     db.session.delete(user)
     db.session.commit()
     flash(f'Account "{user.username}" deleted.', 'warning')
+    return redirect(url_for('auth.admin_users'))
+
+
+@auth_bp.route('/admin/users/<int:uid>/toggle-delete', methods=['POST'])
+@admin_required
+def admin_toggle_delete(uid):
+    user = User.query.get_or_404(uid)
+    if user.is_admin:
+        flash('Admins always have delete permission.', 'info')
+        return redirect(url_for('auth.admin_users'))
+    user.can_delete = not user.can_delete
+    db.session.commit()
+    state = 'enabled' if user.can_delete else 'disabled'
+    flash(f'Delete permission {state} for "{user.username}".', 'success')
     return redirect(url_for('auth.admin_users'))

@@ -12,6 +12,7 @@ class User(db.Model):
     full_name     = db.Column(db.String(100))
     role          = db.Column(db.String(20), default='staff')   # admin | staff
     is_active     = db.Column(db.Boolean, default=True)
+    can_delete    = db.Column(db.Boolean, default=False)  # allowed to delete records
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     last_login    = db.Column(db.DateTime)
 

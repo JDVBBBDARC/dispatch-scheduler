@@ -35,8 +35,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dispatch-scheduler-2026
 db.init_app(app)
 
 # ── AUTH BLUEPRINT ─────────────────────────────────────────────────────────
-from auth import auth_bp                        # noqa: E402
-from auth.routes import login_required          # noqa: E402
+from auth import auth_bp                              # noqa: E402
+from auth.routes import login_required, check_can_delete  # noqa: E402
 app.register_blueprint(auth_bp)
 
 
@@ -150,6 +150,8 @@ def api_wave_add():
 
 @app.route('/api/wave/<int:wid>/delete', methods=['POST'])
 def api_wave_delete(wid):
+    if not check_can_delete():
+        return jsonify({'error': 'You do not have permission to delete.'}), 403
     wave = Wave.query.get_or_404(wid)
     info = f"{wave.label} ({wave.truck_type.name}) on {wave.date}"
     db.session.delete(wave)
@@ -218,6 +220,8 @@ def api_trip_save():
 
 @app.route('/api/trip/<int:tid>/delete', methods=['POST'])
 def api_trip_delete(tid):
+    if not check_can_delete():
+        return jsonify({'error': 'You do not have permission to delete.'}), 403
     trip = TripRecord.query.get_or_404(tid)
     wave = trip.wave
     info = f"trip #{trip.trip_number} in {wave.label} ({wave.truck_type.name}) on {wave.date}"
@@ -426,6 +430,8 @@ def api_master_update(category, item_id):
 
 @app.route('/api/master/<category>/<int:item_id>/toggle', methods=['POST'])
 def api_master_toggle(category, item_id):
+    if not check_can_delete():
+        return jsonify({'error': 'You do not have permission to deactivate records.'}), 403
     model_map = {'drivers': Driver, 'helpers': Helper,
                  'products': Product, 'clients': Client,
                  'dispatchers': Dispatcher, 'plates': Plate}
@@ -739,6 +745,8 @@ def api_breakdown_update(lid):
 
 @app.route('/api/breakdown/<int:lid>/delete', methods=['POST'])
 def api_breakdown_delete(lid):
+    if not check_can_delete():
+        return jsonify({'error': 'You do not have permission to delete.'}), 403
     log = BreakdownLog.query.get_or_404(lid)
     info = f"breakdown #{lid}"
     db.session.delete(log)
@@ -863,8 +871,18 @@ def init_db():
                 conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
                 conn.commit()
             print("  Migrated: added trip_type column to trip_records")
-        # Create default admin account if none exists
+        # Migrate: add can_delete column to users if missing
         from auth.models import User
+        try:
+            ucols = [c['name'] for c in inspector.get_columns('users')]
+            if 'can_delete' not in ucols:
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN can_delete BOOLEAN DEFAULT 0'))
+                    conn.commit()
+                print("  Migrated: added can_delete column to users")
+        except Exception:
+            pass  # users table may not exist yet on first run
+        # Create default admin account if none exists
         if not User.query.filter_by(username='admin').first():
             admin = User(username='admin', full_name='Administrator', role='admin')
             admin.set_password('admin123')
