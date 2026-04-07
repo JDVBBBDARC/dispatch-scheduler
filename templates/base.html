@@ -212,6 +212,15 @@
         <i class="bi bi-people"></i><span>User Accounts</span>
       </a>
     </li>
+    <li>
+      <a href="{{ url_for('auth.admin_delete_requests') }}"
+         class="sidebar-link {% if request.endpoint == 'auth.admin_delete_requests' %}active{% endif %}">
+        <i class="bi bi-trash2"></i>
+        <span>Delete Requests</span>
+        <span class="badge rounded-pill text-white ms-auto" id="delReqBadge"
+              style="background:var(--maroon);display:none;font-size:.65rem;"></span>
+      </a>
+    </li>
     {% endif %}
   </ul>
 
@@ -569,7 +578,94 @@ function showToast(msg) {
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── DELETE REQUEST BADGE (admin only) ────────────────────────────────────
+{% if current_user_role == 'admin' %}
+function pollDelReqBadge() {
+  fetch('/api/delete-requests/pending-count')
+    .then(r=>r.json()).then(d=>{
+      const b = document.getElementById('delReqBadge');
+      if(b){
+        if(d.count > 0){
+          b.textContent = d.count;
+          b.style.display = '';
+        } else {
+          b.style.display = 'none';
+        }
+      }
+    }).catch(()=>{});
+}
+pollDelReqBadge();
+setInterval(pollDelReqBadge, 15000);
+{% endif %}
+
+// ── REQUEST DELETION MODAL (global) ──────────────────────────────────────
+function requestDeletion(entityType, entityId, entityInfo) {
+  document.getElementById('delReqType').value    = entityType;
+  document.getElementById('delReqId').value      = entityId;
+  document.getElementById('delReqInfo').value    = entityInfo;
+  document.getElementById('delReqInfoLabel').textContent = entityInfo;
+  document.getElementById('delReqReason').value  = '';
+  const modal = new bootstrap.Modal(document.getElementById('delReqModal'));
+  modal.show();
+}
+
+function submitDelReq() {
+  const entityType = document.getElementById('delReqType').value;
+  const entityId   = document.getElementById('delReqId').value;
+  const entityInfo = document.getElementById('delReqInfo').value;
+  const reason     = document.getElementById('delReqReason').value.trim();
+  fetch('/api/delete-request', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({entity_type:entityType, entity_id:entityId, entity_info:entityInfo, reason:reason})
+  }).then(r=>r.json()).then(d=>{
+    bootstrap.Modal.getInstance(document.getElementById('delReqModal')).hide();
+    showToast('Delete request sent to admin for approval.');
+  });
+}
 </script>
+
+<!-- ── REQUEST DELETION MODAL ─────────────────────────────────────────────── -->
+<div class="modal fade" id="delReqModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius:14px;border:none;">
+      <div class="modal-header" style="background:var(--maroon);color:#fff;border-radius:14px 14px 0 0;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-trash2 me-2"></i>Request Deletion
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <input type="hidden" id="delReqType"/>
+        <input type="hidden" id="delReqId"/>
+        <input type="hidden" id="delReqInfo"/>
+        <p class="mb-3" style="font-size:.88rem;color:#555;">
+          You are requesting deletion of:<br/>
+          <strong id="delReqInfoLabel" style="color:var(--maroon);"></strong>
+        </p>
+        <div class="alert alert-warning" style="font-size:.8rem;border-radius:8px;">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          This will be sent to the <strong>admin</strong> for approval. The record will <strong>not</strong> be deleted until approved.
+        </div>
+        <label class="form-label fw-semibold" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;">
+          Reason <span class="text-muted fw-normal">(optional)</span>
+        </label>
+        <textarea id="delReqReason" class="form-control" rows="3"
+                  placeholder="Why should this record be deleted?"></textarea>
+      </div>
+      <div class="modal-footer border-0" style="padding:0 24px 20px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn text-white fw-bold"
+                style="background:var(--maroon);border-radius:8px;"
+                onclick="submitDelReq()">
+          <i class="bi bi-send me-1"></i>Send Request
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% block scripts %}{% endblock %}
 </body>
 </html>

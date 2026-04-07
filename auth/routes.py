@@ -2,7 +2,7 @@ from functools import wraps
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from models_v2 import db
-from .models import User
+from .models import User, DeleteRequest
 from . import auth_bp
 
 
@@ -155,6 +155,117 @@ def admin_delete_user(uid):
     db.session.commit()
     flash(f'Account "{user.username}" deleted.', 'warning')
     return redirect(url_for('auth.admin_users'))
+
+
+# ── Delete Requests ─────────────────────────────────────────────────────────
+@auth_bp.route('/api/delete-request', methods=['POST'])
+def api_create_delete_request():
+    """Staff submits a deletion request for admin approval."""
+    if not session.get('user_id'):
+        return jsonify({'error': 'Not logged in'}), 401
+    data        = request.get_json() or {}
+    entity_type = data.get('entity_type', '')
+    entity_id   = data.get('entity_id')
+    entity_info = data.get('entity_info', '')
+    reason      = data.get('reason', '').strip()
+
+    if not entity_type or not entity_id:
+        return jsonify({'error': 'Missing fields'}), 400
+
+    req = DeleteRequest(
+        requester_id = session.get('user_id'),
+        entity_type  = entity_type,
+        entity_id    = int(entity_id),
+        entity_info  = entity_info,
+        reason       = reason or None,
+    )
+    db.session.add(req)
+    db.session.commit()
+    return jsonify({'ok': True, 'request_id': req.id})
+
+
+@auth_bp.route('/api/delete-requests/pending-count')
+def api_pending_count():
+    count = DeleteRequest.query.filter_by(status='pending').count()
+    return jsonify({'count': count})
+
+
+@auth_bp.route('/admin/delete-requests')
+@admin_required
+def admin_delete_requests():
+    pending  = DeleteRequest.query.filter_by(status='pending').order_by(DeleteRequest.created_at.desc()).all()
+    history  = DeleteRequest.query.filter(DeleteRequest.status != 'pending').order_by(DeleteRequest.reviewed_at.desc()).limit(30).all()
+    return render_template('auth/delete_requests.html', pending=pending, history=history)
+
+
+@auth_bp.route('/admin/delete-requests/<int:rid>/approve', methods=['POST'])
+@admin_required
+def admin_approve_delete(rid):
+    from flask import current_app
+    req = DeleteRequest.query.get_or_404(rid)
+    if req.status != 'pending':
+        flash('Request already processed.', 'warning')
+        return redirect(url_for('auth.admin_delete_requests'))
+
+    # Perform the actual deletion
+    try:
+        with current_app.app_context():
+            _do_delete(req.entity_type, req.entity_id)
+        req.status       = 'approved'
+        req.reviewed_by  = session.get('user_name', 'Admin')
+        req.reviewed_at  = datetime.utcnow()
+        req.review_notes = request.form.get('notes', '')
+        db.session.commit()
+        flash(f'Request approved — "{req.entity_info}" has been deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        req.status       = 'approved'  # mark approved even if record already gone
+        req.reviewed_by  = session.get('user_name', 'Admin')
+        req.reviewed_at  = datetime.utcnow()
+        req.review_notes = f'Auto-note: {str(e)}'
+        db.session.commit()
+        flash(f'Approved — record may have already been removed.', 'warning')
+
+    return redirect(url_for('auth.admin_delete_requests'))
+
+
+@auth_bp.route('/admin/delete-requests/<int:rid>/reject', methods=['POST'])
+@admin_required
+def admin_reject_delete(rid):
+    req = DeleteRequest.query.get_or_404(rid)
+    if req.status != 'pending':
+        flash('Request already processed.', 'warning')
+        return redirect(url_for('auth.admin_delete_requests'))
+    req.status       = 'rejected'
+    req.reviewed_by  = session.get('user_name', 'Admin')
+    req.reviewed_at  = datetime.utcnow()
+    req.review_notes = request.form.get('notes', '').strip() or None
+    db.session.commit()
+    flash(f'Request rejected.', 'info')
+    return redirect(url_for('auth.admin_delete_requests'))
+
+
+def _do_delete(entity_type: str, entity_id: int):
+    """Execute the actual deletion after admin approval."""
+    from models_v2 import Wave, TripRecord, BreakdownLog, Driver, Helper, Product, Client, Dispatcher, Plate
+    mapping = {
+        'wave':      Wave,
+        'trip':      TripRecord,
+        'breakdown': BreakdownLog,
+        'driver':    Driver,
+        'helper':    Helper,
+        'product':   Product,
+        'client':    Client,
+        'dispatcher':Dispatcher,
+        'plate':     Plate,
+    }
+    Model = mapping.get(entity_type)
+    if not Model:
+        raise ValueError(f'Unknown entity type: {entity_type}')
+    obj = Model.query.get(entity_id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
 
 
 @auth_bp.route('/admin/users/<int:uid>/toggle-delete', methods=['POST'])

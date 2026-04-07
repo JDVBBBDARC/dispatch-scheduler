@@ -1,6 +1,7 @@
 from models_v2 import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import ForeignKey
 
 
 class User(db.Model):
@@ -31,3 +32,21 @@ class User(db.Model):
     @property
     def display_name(self) -> str:
         return self.full_name or self.username
+
+
+class DeleteRequest(db.Model):
+    __tablename__ = 'delete_requests'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.Integer, ForeignKey('users.id'), nullable=True)
+    entity_type  = db.Column(db.String(30))   # wave | trip | breakdown | master
+    entity_id    = db.Column(db.Integer)
+    entity_info  = db.Column(db.String(300))  # human-readable description
+    reason       = db.Column(db.Text)
+    status       = db.Column(db.String(20), default='pending')  # pending | approved | rejected
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    reviewed_by  = db.Column(db.String(80))
+    reviewed_at  = db.Column(db.DateTime)
+    review_notes = db.Column(db.Text)
+
+    requester = db.relationship('User', foreign_keys=[requester_id])

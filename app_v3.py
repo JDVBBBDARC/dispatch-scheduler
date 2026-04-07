@@ -882,6 +882,9 @@ def init_db():
                 print("  Migrated: added can_delete column to users")
         except Exception:
             pass  # users table may not exist yet on first run
+        # Import DeleteRequest so db.create_all() picks it up
+        from auth.models import DeleteRequest  # noqa: F401
+        db.create_all()  # create delete_requests table if new
         # Create default admin account if none exists
         if not User.query.filter_by(username='admin').first():
             admin = User(username='admin', full_name='Administrator', role='admin')

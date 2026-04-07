@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Delete Requests — Dispatch{% endblock %}
+{% block page_title %}Delete Requests{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold mb-0" style="color:var(--maroon);">
+        <i class="bi bi-trash2 me-2"></i>Deletion Requests
+      </h5>
+      <small class="text-muted">Review and approve or reject staff deletion requests</small>
+    </div>
+    {% if pending %}
+    <span class="badge rounded-pill text-white" style="background:var(--maroon);font-size:.85rem;padding:6px 14px;">
+      {{ pending|length }} Pending
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- ── Pending Requests ─────────────────────────────────────────────────── -->
+  <h6 class="fw-bold mb-3" style="color:#555;text-transform:uppercase;font-size:.75rem;letter-spacing:.06em;">
+    <i class="bi bi-clock-history me-1"></i>Pending
+  </h6>
+
+  {% if pending %}
+  <div class="d-flex flex-column gap-3 mb-5">
+    {% for r in pending %}
+    <div class="card border-0 shadow-sm" style="border-radius:12px;border-left:4px solid #f0ad4e !important;border-left-width:4px;">
+      <div class="card-body" style="padding:16px 20px;">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+
+          <!-- Info -->
+          <div style="flex:1;min-width:200px;">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="badge" style="background:#f0ad4e;color:#000;font-size:.7rem;">{{ r.entity_type | upper }}</span>
+              <span class="fw-bold" style="font-size:.92rem;">{{ r.entity_info }}</span>
+            </div>
+            <div style="font-size:.8rem;color:#666;">
+              <i class="bi bi-person me-1"></i>
+              Requested by <strong>{{ r.requester.display_name if r.requester else 'Unknown' }}</strong>
+              &nbsp;·&nbsp;
+              <i class="bi bi-clock me-1"></i>
+              {{ r.created_at.strftime('%b %d, %Y %I:%M %p') }}
+            </div>
+            {% if r.reason %}
+            <div class="mt-2" style="font-size:.83rem;background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:7px 12px;color:#555;">
+              <i class="bi bi-chat-left-text me-1 text-warning"></i><em>{{ r.reason }}</em>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2 align-items-start flex-wrap">
+            <!-- Approve -->
+            <form method="POST" action="{{ url_for('auth.admin_approve_delete', rid=r.id) }}"
+                  onsubmit="return confirm('Approve and permanently delete: {{ r.entity_info }}?');">
+              <button type="submit" class="btn btn-sm btn-success fw-bold" style="border-radius:8px;">
+                <i class="bi bi-check2-circle me-1"></i>Approve & Delete
+              </button>
+            </form>
+            <!-- Reject -->
+            <button class="btn btn-sm btn-outline-danger fw-bold" style="border-radius:8px;"
+                    data-bs-toggle="modal" data-bs-target="#rejectModal{{ r.id }}">
+              <i class="bi bi-x-circle me-1"></i>Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div class="modal fade" id="rejectModal{{ r.id }}" tabindex="-1">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content" style="border-radius:12px;border:none;">
+          <div class="modal-header" style="background:var(--maroon);color:#fff;border-radius:12px 12px 0 0;">
+            <h6 class="modal-title fw-bold"><i class="bi bi-x-circle me-2"></i>Reject Request</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="POST" action="{{ url_for('auth.admin_reject_delete', rid=r.id) }}">
+            <div class="modal-body">
+              <p class="text-muted mb-2" style="font-size:.83rem;">Rejecting: <strong>{{ r.entity_info }}</strong></p>
+              <label class="form-label fw-semibold" style="font-size:.78rem;">Reason (optional)</label>
+              <textarea name="notes" class="form-control form-control-sm" rows="2"
+                        placeholder="Tell them why..."></textarea>
+            </div>
+            <div class="modal-footer border-0">
+              <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-sm btn-danger fw-bold">Reject</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center text-muted py-5 mb-4">
+    <i class="bi bi-check2-all" style="font-size:2.5rem;color:#ccc;display:block;margin-bottom:10px;"></i>
+    No pending deletion requests
+  </div>
+  {% endif %}
+
+
+  <!-- ── History ──────────────────────────────────────────────────────────── -->
+  {% if history %}
+  <h6 class="fw-bold mb-3" style="color:#555;text-transform:uppercase;font-size:.75rem;letter-spacing:.06em;">
+    <i class="bi bi-archive me-1"></i>Recent History
+  </h6>
+  <div class="card border-0 shadow-sm" style="border-radius:12px;overflow:hidden;">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size:.82rem;">
+        <thead style="background:#f4f5f7;">
+          <tr>
+            <th style="padding:10px 16px;">Record</th>
+            <th style="padding:10px 16px;">Requested By</th>
+            <th style="padding:10px 16px;">Status</th>
+            <th style="padding:10px 16px;">Reviewed By</th>
+            <th style="padding:10px 16px;">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in history %}
+          <tr>
+            <td style="padding:9px 16px;">
+              <span class="badge bg-secondary me-1" style="font-size:.65rem;">{{ r.entity_type }}</span>
+              {{ r.entity_info }}
+            </td>
+            <td style="padding:9px 16px;">{{ r.requester.display_name if r.requester else '—' }}</td>
+            <td style="padding:9px 16px;">
+              {% if r.status == 'approved' %}
+              <span class="badge bg-success">Approved</span>
+              {% else %}
+              <span class="badge bg-danger">Rejected</span>
+              {% endif %}
+              {% if r.review_notes %}
+              <small class="text-muted ms-1">· {{ r.review_notes }}</small>
+              {% endif %}
+            </td>
+            <td style="padding:9px 16px;">{{ r.reviewed_by or '—' }}</td>
+            <td style="padding:9px 16px;color:#999;">
+              {{ r.reviewed_at.strftime('%b %d, %Y') if r.reviewed_at else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
