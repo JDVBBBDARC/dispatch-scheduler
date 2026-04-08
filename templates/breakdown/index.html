@@ -442,8 +442,15 @@ function deleteBd(id, btn) {
   if (!confirm('Delete this breakdown log?')) return;
   const tr = btn.closest('tr');
   fetch(`/api/breakdown/${id}/delete`, {method: 'POST'})
-  .then(r => r.json())
-  .then(() => {
+  .then(r => {
+    if (r.status === 403) {
+      requestDeletion('breakdown', id, `Breakdown log #${id}`);
+      return null;
+    }
+    return r.json();
+  })
+  .then(d => {
+    if (!d) return;
     tr.remove();
     updateCount(-1);
     renumberBd();

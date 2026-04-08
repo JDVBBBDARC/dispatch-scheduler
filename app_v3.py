@@ -1,5 +1,5 @@
 import os, io, socket, calendar
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 PH_TZ = ZoneInfo('Asia/Manila')
@@ -828,7 +828,7 @@ def api_activity():
         'logs': [{
             'user':   l.user_name,
             'action': l.action,
-            'time':   (l.timestamp + timedelta(hours=8)).strftime('%I:%M %p'),
+            'time':   l.timestamp.replace(tzinfo=timezone.utc).astimezone(PH_TZ).strftime('%b %d, %I:%M %p'),
             'ts':     l.timestamp.timestamp(),
         } for l in logs]
     })

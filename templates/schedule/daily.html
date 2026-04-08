@@ -514,12 +514,19 @@ function updateTrip(tripId, field, value) {
 // ── DELETE TRIP ───────────────────────────────────────────────────────────
 function deleteTrip(tripId, btn) {
   if (!confirm('Delete this trip row?')) return;
-  const tr = btn.closest('tr');
+  const tr     = btn.closest('tr');
+  const tbody  = tr.parentElement;
+  const waveId = tbody.id.replace('wave-body-', '');
   fetch(`/api/trip/${tripId}/delete`, {method:'POST'})
-  .then(r => r.json())
-  .then(() => {
-    const tbody  = tr.parentElement;
-    const waveId = tbody.id.replace('wave-body-', '');
+  .then(r => {
+    if (r.status === 403) {
+      requestDeletion('trip', tripId, `Trip row #${tripId}`);
+      return null;
+    }
+    return r.json();
+  })
+  .then(d => {
+    if (!d) return;
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
