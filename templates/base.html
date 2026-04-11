@@ -248,14 +248,6 @@
     {% endif %}
   </ul>
 
-  <!-- Google Sheets Sync -->
-  <div class="sidebar-sync">
-    <button onclick="syncToSheets()" id="syncBtn" title="Sync all data to Google Sheets">
-      <i class="bi bi-table me-1"></i> Sync to Sheets
-    </button>
-    <div id="syncStatus" style="font-size:.65rem;color:var(--muted);margin-top:4px;text-align:center;"></div>
-  </div>
-
   <div class="sidebar-footer">
     <span class="online-dot"></span>
     <small>v2.0 &nbsp;·&nbsp; {{ now.year }}</small>
@@ -300,6 +292,20 @@
       <span style="font-size:.6rem;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 5px;margin-left:4px;">ADMIN</span>
       {% endif %}
     </div>
+    <!-- Google Sheets Sync Button -->
+    <div style="position:relative;">
+      <button class="activity-btn" onclick="syncToSheets()" id="syncBtn" title="Sync to Google Sheets">
+        <i class="bi bi-table" id="syncIcon"></i>
+      </button>
+      <div id="syncStatus" style="
+        display:none;position:absolute;top:38px;right:0;
+        background:var(--surface);border:1px solid var(--border);
+        border-radius:8px;padding:6px 10px;font-size:.72rem;
+        white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.12);
+        z-index:999;color:var(--text);">
+      </div>
+    </div>
+
     <a href="{{ url_for('auth.logout') }}" class="activity-btn" title="Logout"
        style="text-decoration:none;"
        onclick="return confirm('Are you sure you want to logout?');">
@@ -614,39 +620,40 @@ function escHtml(s) {
 // ── GOOGLE SHEETS SYNC ───────────────────────────────────────────────────
 function syncToSheets() {
   const btn    = document.getElementById('syncBtn');
+  const icon   = document.getElementById('syncIcon');
   const status = document.getElementById('syncStatus');
   btn.disabled = true;
-  btn.innerHTML = '<i class="bi bi-arrow-repeat me-1" style="animation:spin 1s linear infinite;"></i> Syncing…';
-  status.textContent = '';
+  icon.className = 'bi bi-arrow-repeat';
+  icon.style.animation = 'spin 1s linear infinite';
+  status.style.display = 'none';
 
   fetch('/api/sync-to-sheets', {method:'POST'})
   .then(r => r.json())
   .then(d => {
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-table me-1"></i> Sync to Sheets';
+    icon.className = 'bi bi-table';
+    icon.style.animation = '';
     if (d.ok) {
       const s = d.synced;
-      status.innerHTML = `<span style="color:#27ae60;">✓ Synced!</span> ${s.trips} trips · ${s.attendance} att · ${s.breakdown} bd`;
-      showToast(`Synced to Google Sheets — ${s.trips} trips, ${s.attendance} attendance records`);
+      status.innerHTML = `<span style="color:#27ae60;font-weight:700;">✓ Synced!</span><br>${s.trips} trips · ${s.attendance} att · ${s.breakdown} bd`;
+      status.style.display = 'block';
+      showToast(`✓ Synced to Google Sheets — ${s.trips} trips, ${s.attendance} attendance`);
+      setTimeout(() => status.style.display = 'none', 4000);
     } else {
       status.innerHTML = `<span style="color:#e74c3c;">✗ ${d.error}</span>`;
-      showToast('Sync failed: ' + d.error);
+      status.style.display = 'block';
+      setTimeout(() => status.style.display = 'none', 4000);
     }
   })
-  .catch(err => {
+  .catch(() => {
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-table me-1"></i> Sync to Sheets';
+    icon.className = 'bi bi-table';
+    icon.style.animation = '';
     status.innerHTML = `<span style="color:#e74c3c;">✗ Network error</span>`;
+    status.style.display = 'block';
+    setTimeout(() => status.style.display = 'none', 4000);
   });
 }
-
-// Load last sync time on page load
-fetch('/api/sync-to-sheets/last').then(r=>r.json()).then(d=>{
-  const status = document.getElementById('syncStatus');
-  if (status && d.last_sync) {
-    status.textContent = 'Last: ' + d.last_sync;
-  }
-}).catch(()=>{});
 
 // ── DELETE REQUEST BADGE (admin only) ────────────────────────────────────
 {% if current_user_role == 'admin' %}
