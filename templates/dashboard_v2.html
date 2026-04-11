@@ -79,6 +79,8 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-0">
+        <div id="kpiTruckFilter" class="px-3 py-2 d-flex align-items-center gap-2 flex-wrap"
+             style="border-bottom:1px solid var(--border);background:#fafafa;display:none!important;"></div>
         <div id="kpiModalBody"></div>
       </div>
     </div>
@@ -346,63 +348,96 @@ const STATUS_BADGE_CLASS = {
   'Pending':    'secondary',
 };
 
-function openKpiModal(label, statusKey, color) {
-  const rows = statusKey === 'all' ? ALL_TRIPS : ALL_TRIPS.filter(t => t.status === statusKey);
-  const modal = new bootstrap.Modal(document.getElementById('kpiModal'));
+let _kpiBaseRows = [];
+let _kpiStatusKey = 'all';
 
-  // Header color
+function openKpiModal(label, statusKey, color) {
+  _kpiStatusKey = statusKey;
+  _kpiBaseRows = statusKey === 'all' ? ALL_TRIPS : ALL_TRIPS.filter(t => t.status === statusKey);
+
+  // Header
   document.getElementById('kpiModalHeader').style.background = color;
   document.getElementById('kpiModalHeader').style.color = '#fff';
   document.getElementById('kpiModalTitle').innerHTML =
-    `<i class="bi bi-list-check me-2"></i>${escHtml(label)} — ${rows.length} trip${rows.length !== 1 ? 's' : ''}`;
+    `<i class="bi bi-list-check me-2"></i>${escHtml(label)} <span id="kpiCountBadge" class="ms-2 badge" style="background:rgba(255,255,255,.25);font-size:.85rem;">${_kpiBaseRows.length}</span>`;
 
-  // Build table
+  // Build truck type filter buttons from available trips
+  const truckMap = new Map();
+  _kpiBaseRows.forEach(t => { if (t.truck && !truckMap.has(t.truck)) truckMap.set(t.truck, t.truckColor); });
+
+  const filterEl = document.getElementById('kpiTruckFilter');
+  if (truckMap.size > 1) {
+    filterEl.style.display = 'flex';
+    filterEl.innerHTML = `
+      <small class="text-muted me-1" style="font-size:.75rem;white-space:nowrap;">Truck:</small>
+      <button class="trend-btn active" style="--tc:#555" data-truck="all" onclick="filterKpiByTruck('all',this)">All</button>
+      ${[...truckMap.entries()].map(([name, c]) =>
+        `<button class="trend-btn" style="--tc:${c}" data-truck="${escHtml(name)}"
+                 onclick="filterKpiByTruck(this.dataset.truck,this)">
+           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:4px;vertical-align:middle;"></span>${escHtml(name)}
+         </button>`
+      ).join('')}`;
+  } else {
+    filterEl.style.display = 'none';
+  }
+
+  renderKpiTable('all');
+  new bootstrap.Modal(document.getElementById('kpiModal')).show();
+}
+
+function filterKpiByTruck(truck, btn) {
+  document.querySelectorAll('#kpiTruckFilter .trend-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderKpiTable(truck);
+}
+
+function renderKpiTable(truckFilter) {
+  const rows = truckFilter === 'all' ? _kpiBaseRows : _kpiBaseRows.filter(t => t.truck === truckFilter);
+  const badge = document.getElementById('kpiCountBadge');
+  if (badge) badge.textContent = rows.length;
+
   if (rows.length === 0) {
     document.getElementById('kpiModalBody').innerHTML =
       `<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No trips found.</div>`;
-  } else {
-    const statusCol = statusKey === 'all'
-      ? `<th>Status</th>` : '';
-    const statusCell = (t) => statusKey === 'all'
-      ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : '';
-
-    document.getElementById('kpiModalBody').innerHTML = `
-      <div class="scrollable-x">
-        <table class="tbl" style="font-size:.82rem;">
-          <thead>
-            <tr>
-              <th>Date</th><th>Truck Type</th><th>Wave</th><th>#</th>
-              <th>Driver</th><th>Helper</th><th>Plate</th>
-              <th>Product</th><th>Client</th><th>Volume</th>
-              <th>RS No</th><th>PO No</th><th>DR No</th>
-              ${statusCol}
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-          ${rows.map(t => `
-            <tr>
-              <td style="white-space:nowrap;">${escHtml(t.date)}</td>
-              <td><span class="truck-type-dot" style="background:${escHtml(t.truckColor)};"></span>${escHtml(t.truck)}</td>
-              <td style="white-space:nowrap;">${escHtml(t.wave)}</td>
-              <td class="text-center fw-bold">${t.trip_no}</td>
-              <td>${escHtml(t.driver) || '—'}</td>
-              <td>${escHtml(t.helper) || '—'}</td>
-              <td>${escHtml(t.plate) || '—'}</td>
-              <td>${escHtml(t.product) || '—'}</td>
-              <td>${escHtml(t.client) || '—'}</td>
-              <td>${escHtml(t.volume) || '—'}</td>
-              <td>${escHtml(t.rs_no) || '—'}</td>
-              <td>${escHtml(t.po_no) || '—'}</td>
-              <td>${escHtml(t.dr_no) || '—'}</td>
-              ${statusCell(t)}
-              <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes) || '—'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    return;
   }
-  modal.show();
+
+  const showStatus = _kpiStatusKey === 'all';
+  document.getElementById('kpiModalBody').innerHTML = `
+    <div class="scrollable-x">
+      <table class="tbl" style="font-size:.82rem;">
+        <thead>
+          <tr>
+            <th>Date</th><th>Truck Type</th><th>Wave</th><th>#</th>
+            <th>Driver</th><th>Helper</th><th>Plate</th>
+            <th>Product</th><th>Client</th><th>Volume</th>
+            <th>RS No</th><th>PO No</th><th>DR No</th>
+            ${showStatus ? '<th>Status</th>' : ''}
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+        ${rows.map(t => `
+          <tr>
+            <td style="white-space:nowrap;">${escHtml(t.date)}</td>
+            <td><span class="truck-type-dot" style="background:${t.truckColor};"></span>${escHtml(t.truck)}</td>
+            <td style="white-space:nowrap;">${escHtml(t.wave)}</td>
+            <td class="text-center fw-bold">${t.trip_no}</td>
+            <td>${escHtml(t.driver)||'—'}</td>
+            <td>${escHtml(t.helper)||'—'}</td>
+            <td>${escHtml(t.plate)||'—'}</td>
+            <td>${escHtml(t.product)||'—'}</td>
+            <td>${escHtml(t.client)||'—'}</td>
+            <td>${escHtml(t.volume)||'—'}</td>
+            <td>${escHtml(t.rs_no)||'—'}</td>
+            <td>${escHtml(t.po_no)||'—'}</td>
+            <td>${escHtml(t.dr_no)||'—'}</td>
+            ${showStatus ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : ''}
+            <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes)||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ── DATA ──────────────────────────────────────────────────────────────────
