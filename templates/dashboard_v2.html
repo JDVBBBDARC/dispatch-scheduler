@@ -44,6 +44,7 @@
     ('In Transit',   by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
     ('Loading',      by_status.get('Loading',0),         '#2563EB', 'bi-box-arrow-in-down-right', ((by_status.get('Loading',0)/total*100)|round(1) if total else 0)|string + '%', 'at depot'),
     ('Pending',      by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
+    ('Canceled',     by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
   ] %}
   {% for label, value, color, icon, pct, sub in kpis %}
   {% set status_key = 'all' if label == 'Total Trips' else label %}
@@ -119,7 +120,7 @@
         {% if total > 0 %}
         <canvas id="statusChart" style="max-height:190px;"></canvas>
         <div class="mt-3 w-100">
-          {% set st_colors = [('#16A34A','Delivered'),('#EA580C','In Transit'),('#2563EB','Loading'),('#D97706','Pending')] %}
+          {% set st_colors = [('#16A34A','Delivered'),('#EA580C','In Transit'),('#2563EB','Loading'),('#D97706','Pending'),('#6B7280','Canceled')] %}
           {% for color, label in st_colors %}
           {% set cnt = by_status.get(label, 0) %}
           <div class="d-flex align-items-center justify-content-between mb-1" style="font-size:.8rem;">
@@ -534,15 +535,16 @@ renderTrendChart();
 new Chart(document.getElementById('statusChart'), {
   type: 'pie',
   data: {
-    labels: ['Delivered', 'In Transit', 'Loading', 'Pending'],
+    labels: ['Delivered', 'In Transit', 'Loading', 'Pending', 'Canceled'],
     datasets: [{
       data: [
         BY_STATUS['Delivered']  || 0,
         BY_STATUS['In Transit'] || 0,
         BY_STATUS['Loading']    || 0,
         BY_STATUS['Pending']    || 0,
+        BY_STATUS['Canceled']   || 0,
       ],
-      backgroundColor: ['#16A34A','#EA580C','#2563EB','#D97706'],
+      backgroundColor: ['#16A34A','#EA580C','#2563EB','#D97706','#6B7280'],
       borderColor: '#fff',
       borderWidth: 3,
       hoverOffset: 8,

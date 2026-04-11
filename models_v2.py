@@ -25,7 +25,7 @@ DOC_HEADER_DEFAULTS = {
 SHEETS_WEBHOOK_KEY = 'gsheets_webhook_url'
 SHEETS_WEBHOOK_DEFAULT = 'https://script.google.com/macros/s/AKfycbzEdjd9Pjlln2EyJpcyN8vi_JZIKo0ugtaqTuUy7VOrsCGjnE6otll1g5sZoa0f2RbB/exec'
 
-STATUSES = ['Pending', 'Loading', 'In Transit', 'Delivered']
+STATUSES = ['Pending', 'Loading', 'In Transit', 'Delivered', 'Canceled']
 
 ATTENDANCE_STATUSES = ['Present', 'Absent', 'Leave', 'Holiday']
 
