@@ -934,7 +934,8 @@ def api_restore_from_sheets():
             wave_label = (row.get('Wave') or '').strip()
             wave_num = 1
             for num, label in [(1,'1st Wave'),(2,'2nd Wave'),(3,'3rd Wave'),
-                               (4,'4th Wave'),(5,'5th Wave')]:
+                               (4,'4th Wave'),(5,'5th Wave'),(6,'6th Wave'),
+                               (7,'7th Wave'),(8,'8th Wave')]:
                 if label == wave_label:
                     wave_num = num; break
 
@@ -945,16 +946,33 @@ def api_restore_from_sheets():
                 db.session.add(wave)
                 db.session.commit()
 
-            drv  = Driver.query.filter_by(name=row.get('Driver','')).first()
-            plt  = Plate.query.filter_by(plate_no=row.get('Plate','')).first()
-            prod = Product.query.filter_by(name=row.get('Product','')).first()
-            cli  = Client.query.filter_by(name=row.get('Client','')).first()
+            # Use original trip number from sheet
+            try:
+                trip_num = int(float(str(row.get('Trip #') or 1)))
+            except Exception:
+                trip_num = 1
 
-            last = (TripRecord.query.filter_by(wave_id=wave.id)
-                    .order_by(TripRecord.trip_number.desc()).first())
+            # Skip if this trip already exists in the wave (prevent duplicates)
+            if TripRecord.query.filter_by(wave_id=wave.id, trip_number=trip_num).first():
+                continue
+
+            drv  = Driver.query.filter_by(name=(row.get('Driver') or '').strip()).first()
+            prod = Product.query.filter_by(name=(row.get('Product') or '').strip()).first()
+            cli  = Client.query.filter_by(name=(row.get('Client') or '').strip()).first()
+
+            # Plate display may be "body_no / plate_no" — extract plate_no
+            plate_display = (row.get('Plate') or '').strip()
+            plt = None
+            if plate_display:
+                if ' / ' in plate_display:
+                    plate_no_part = plate_display.split(' / ', 1)[1].strip()
+                    plt = Plate.query.filter_by(plate_no=plate_no_part).first()
+                else:
+                    plt = Plate.query.filter_by(plate_no=plate_display).first()
+
             trip = TripRecord(
                 wave_id      = wave.id,
-                trip_number  = (last.trip_number + 1) if last else 1,
+                trip_number  = trip_num,
                 driver_id    = drv.id  if drv  else None,
                 plate_id     = plt.id  if plt  else None,
                 product_id   = prod.id if prod else None,
