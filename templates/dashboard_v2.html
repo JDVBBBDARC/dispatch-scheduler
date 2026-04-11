@@ -46,8 +46,10 @@
     ('Pending',      by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
   ] %}
   {% for label, value, color, icon, pct, sub in kpis %}
+  {% set status_key = 'all' if label == 'Total Trips' else label %}
   <div class="col-6 col-md-4 col-lg">
-    <div class="card h-100" style="border-left: 4px solid {{ color }}; border-radius:10px;">
+    <div class="card h-100 kpi-card" style="border-left: 4px solid {{ color }}; border-radius:10px; cursor:pointer;"
+         onclick="openKpiModal('{{ label }}', '{{ status_key }}', '{{ color }}')">
       <div class="card-body py-3 px-3">
         <div class="d-flex align-items-start justify-content-between mb-2">
           <div>
@@ -66,6 +68,21 @@
     </div>
   </div>
   {% endfor %}
+</div>
+
+<!-- ── KPI DETAIL MODAL ───────────────────────────────────────────────────── -->
+<div class="modal fade" id="kpiModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" id="kpiModalHeader" style="border-bottom:none;">
+        <h5 class="modal-title fw-bold" id="kpiModalTitle"></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="kpiModalBody"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ── ROW 1: AREA CHART + PIE CHART ────────────────────────────────────── -->
@@ -268,6 +285,17 @@
 
 {% block scripts %}
 <style>
+.kpi-card {
+  transition: transform .15s, box-shadow .15s;
+  user-select: none;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+}
+.kpi-card:active {
+  transform: translateY(0);
+}
 .trend-btn {
   padding: 3px 10px;
   font-size: .75rem;
@@ -285,6 +313,98 @@
 }
 </style>
 <script>
+// ── TRIPS DATA (for KPI modal) ────────────────────────────────────────────
+const ALL_TRIPS = [
+  {% for t in trips %}
+  {
+    date:      "{{ t.wave.date.isoformat() if t.wave else '' }}",
+    truck:     "{{ t.wave.truck_type.name if t.wave and t.wave.truck_type else '' }}",
+    truckColor:"{{ t.wave.truck_type.color if t.wave and t.wave.truck_type else '#999' }}",
+    wave:      "{{ t.wave.label if t.wave else '' }}",
+    trip_no:   {{ t.trip_number }},
+    driver:    "{{ (t.driver.name or '') | replace('"', '\\"') if t.driver else '' }}",
+    helper:    "{{ (t.helper.name or '') | replace('"', '\\"') if t.helper else '' }}",
+    plate:     "{{ (t.plate.display or '') | replace('"', '\\"') if t.plate else '' }}",
+    product:   "{{ (t.product.name or '') | replace('"', '\\"') if t.product else '' }}",
+    client:    "{{ (t.client.name or '') | replace('"', '\\"') if t.client else '' }}",
+    dispatcher:"{{ (t.dispatcher.name or '') | replace('"', '\\"') if t.dispatcher else '' }}",
+    trip_type: "{{ t.trip_type or '' }}",
+    rs_no:     "{{ t.rs_no or '' }}",
+    po_no:     "{{ t.po_no or '' }}",
+    dr_no:     "{{ t.dr_no or '' }}",
+    volume:    "{{ t.volume or '' }}",
+    status:    "{{ t.status or 'Pending' }}",
+    notes:     "{{ (t.notes or '') | replace('"', '\\"') | replace('\n', ' ') }}",
+  },
+  {% endfor %}
+];
+
+const STATUS_BADGE_CLASS = {
+  'Delivered':  'success',
+  'In Transit': 'warning',
+  'Loading':    'primary',
+  'Pending':    'secondary',
+};
+
+function openKpiModal(label, statusKey, color) {
+  const rows = statusKey === 'all' ? ALL_TRIPS : ALL_TRIPS.filter(t => t.status === statusKey);
+  const modal = new bootstrap.Modal(document.getElementById('kpiModal'));
+
+  // Header color
+  document.getElementById('kpiModalHeader').style.background = color;
+  document.getElementById('kpiModalHeader').style.color = '#fff';
+  document.getElementById('kpiModalTitle').innerHTML =
+    `<i class="bi bi-list-check me-2"></i>${escHtml(label)} — ${rows.length} trip${rows.length !== 1 ? 's' : ''}`;
+
+  // Build table
+  if (rows.length === 0) {
+    document.getElementById('kpiModalBody').innerHTML =
+      `<div class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No trips found.</div>`;
+  } else {
+    const statusCol = statusKey === 'all'
+      ? `<th>Status</th>` : '';
+    const statusCell = (t) => statusKey === 'all'
+      ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : '';
+
+    document.getElementById('kpiModalBody').innerHTML = `
+      <div class="scrollable-x">
+        <table class="tbl" style="font-size:.82rem;">
+          <thead>
+            <tr>
+              <th>Date</th><th>Truck Type</th><th>Wave</th><th>#</th>
+              <th>Driver</th><th>Helper</th><th>Plate</th>
+              <th>Product</th><th>Client</th><th>Volume</th>
+              <th>RS No</th><th>PO No</th><th>DR No</th>
+              ${statusCol}
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+          ${rows.map(t => `
+            <tr>
+              <td style="white-space:nowrap;">${escHtml(t.date)}</td>
+              <td><span class="truck-type-dot" style="background:${escHtml(t.truckColor)};"></span>${escHtml(t.truck)}</td>
+              <td style="white-space:nowrap;">${escHtml(t.wave)}</td>
+              <td class="text-center fw-bold">${t.trip_no}</td>
+              <td>${escHtml(t.driver) || '—'}</td>
+              <td>${escHtml(t.helper) || '—'}</td>
+              <td>${escHtml(t.plate) || '—'}</td>
+              <td>${escHtml(t.product) || '—'}</td>
+              <td>${escHtml(t.client) || '—'}</td>
+              <td>${escHtml(t.volume) || '—'}</td>
+              <td>${escHtml(t.rs_no) || '—'}</td>
+              <td>${escHtml(t.po_no) || '—'}</td>
+              <td>${escHtml(t.dr_no) || '—'}</td>
+              ${statusCell(t)}
+              <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes) || '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+  modal.show();
+}
+
 // ── DATA ──────────────────────────────────────────────────────────────────
 const TREND_DAYS        = {{ trend_days|tojson }};
 const TREND_TOTAL       = {{ trend_counts|tojson }};
