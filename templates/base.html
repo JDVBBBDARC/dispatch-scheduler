@@ -292,10 +292,16 @@
       <span style="font-size:.6rem;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 5px;margin-left:4px;">ADMIN</span>
       {% endif %}
     </div>
-    <!-- Google Sheets Sync Button -->
+    {% if current_user_role == 'admin' %}
+    <!-- Google Sheets Sync Button (Admin only) -->
     <div style="position:relative;">
       <button class="activity-btn" onclick="syncToSheets()" id="syncBtn" title="Sync to Google Sheets">
         <i class="bi bi-table" id="syncIcon"></i>
+      </button>
+      <!-- Restore from Sheets Button -->
+      <button class="activity-btn" onclick="openRestoreModal()" title="Restore from Google Sheets"
+              style="color:#27ae60;">
+        <i class="bi bi-cloud-download"></i>
       </button>
       <div id="syncStatus" style="
         display:none;position:absolute;top:38px;right:0;
@@ -305,6 +311,7 @@
         z-index:999;color:var(--text);">
       </div>
     </div>
+    {% endif %}
 
     <a href="{{ url_for('auth.logout') }}" class="activity-btn" title="Logout"
        style="text-decoration:none;"
@@ -655,6 +662,54 @@ function syncToSheets() {
   });
 }
 
+// ── RESTORE FROM SHEETS ───────────────────────────────────────────────────
+{% if current_user_role == 'admin' %}
+function openRestoreModal() {
+  document.getElementById('restoreStatus').style.display = 'none';
+  document.getElementById('restoreBtn').disabled = false;
+  document.getElementById('restoreBtn').innerHTML = '<i class="bi bi-cloud-download me-1"></i>Restore Now';
+  new bootstrap.Modal(document.getElementById('restoreModal')).show();
+}
+
+function doRestore() {
+  const btn    = document.getElementById('restoreBtn');
+  const status = document.getElementById('restoreStatus');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-repeat me-1" style="animation:spin 1s linear infinite;display:inline-block;"></i> Restoring…';
+  status.style.display = 'none';
+
+  fetch('/api/restore-from-sheets', {method:'POST'})
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Restore Now';
+    if (d.ok) {
+      const r = d.restored;
+      status.innerHTML = `
+        <div class="alert alert-success" style="border-radius:8px;font-size:.83rem;margin:0;">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>Restore complete!</strong><br>
+          ${r.trips} trips · ${r.drivers} drivers · ${r.plates} plates restored.
+        </div>`;
+      status.style.display = 'block';
+      showToast('✓ Restore complete from Google Sheets!');
+    } else {
+      status.innerHTML = `
+        <div class="alert alert-danger" style="border-radius:8px;font-size:.83rem;margin:0;">
+          <i class="bi bi-x-circle-fill me-2"></i>${d.error}
+        </div>`;
+      status.style.display = 'block';
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Restore Now';
+    status.innerHTML = `<div class="alert alert-danger" style="border-radius:8px;font-size:.83rem;margin:0;">Network error. Try again.</div>`;
+    status.style.display = 'block';
+  });
+}
+{% endif %}
+
 // ── DELETE REQUEST BADGE (admin only) ────────────────────────────────────
 {% if current_user_role == 'admin' %}
 function pollDelReqBadge() {
@@ -701,6 +756,40 @@ function submitDelReq() {
   });
 }
 </script>
+
+<!-- ── RESTORE FROM SHEETS MODAL ──────────────────────────────────────────── -->
+{% if current_user_role == 'admin' %}
+<div class="modal fade" id="restoreModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius:14px;border:none;">
+      <div class="modal-header" style="background:#27ae60;color:#fff;border-radius:14px 14px 0 0;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-cloud-download me-2"></i>Restore from Google Sheets
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div class="alert alert-warning" style="border-radius:8px;font-size:.83rem;">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Warning!</strong> This will <strong>add/update</strong> records from Google Sheets into the database. Existing records will not be deleted.
+        </div>
+        <p style="font-size:.88rem;color:#555;">
+          This will pull all data from your <strong>Dispatch Backup</strong> Google Sheet and restore it into the app.
+        </p>
+        <div id="restoreStatus" style="display:none;margin-top:12px;"></div>
+      </div>
+      <div class="modal-footer border-0" style="padding:0 24px 20px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn fw-bold text-white" id="restoreBtn"
+                style="background:#27ae60;border-radius:8px;"
+                onclick="doRestore()">
+          <i class="bi bi-cloud-download me-1"></i>Restore Now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- ── REQUEST DELETION MODAL ─────────────────────────────────────────────── -->
 <div class="modal fade" id="delReqModal" tabindex="-1">

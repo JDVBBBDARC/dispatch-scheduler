@@ -868,6 +868,118 @@ def api_sync_to_sheets():
         return jsonify({'error': str(ex)}), 500
 
 
+@app.route('/api/restore-from-sheets', methods=['POST'])
+@login_required
+def api_restore_from_sheets():
+    import urllib.request, json as _json
+    from auth.routes import check_can_delete
+
+    # Admin only
+    if session.get('user_role') != 'admin':
+        return jsonify({'error': 'Admin access required.'}), 403
+
+    webhook_url = AppSetting.get(SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT)
+    if not webhook_url:
+        return jsonify({'error': 'Webhook URL not configured.'}), 400
+
+    # Fetch data from Google Sheets via Apps Script doGet
+    try:
+        get_url = webhook_url + '?action=export'
+        req = urllib.request.Request(get_url, method='GET')
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode('utf-8')
+            data = _json.loads(raw)
+    except Exception as ex:
+        return jsonify({'error': f'Could not fetch from Google Sheets: {str(ex)}'}), 500
+
+    if not data.get('ok'):
+        return jsonify({'error': data.get('error', 'Unknown error from Google Sheets')}), 500
+
+    restored = {'trips': 0, 'drivers': 0, 'plates': 0, 'attendance': 0, 'breakdown': 0}
+
+    try:
+        # ── Restore Drivers ───────────────────────────────────────────────
+        for row in data.get('drivers', []):
+            name = (row.get('Name') or '').strip()
+            if not name: continue
+            if not Driver.query.filter_by(name=name).first():
+                db.session.add(Driver(name=name, active=True))
+                restored['drivers'] += 1
+        db.session.commit()
+
+        # ── Restore Plates ────────────────────────────────────────────────
+        for row in data.get('plates', []):
+            plate_no = (row.get('Plate No') or '').strip()
+            if not plate_no: continue
+            if not Plate.query.filter_by(plate_no=plate_no).first():
+                db.session.add(Plate(plate_no=plate_no,
+                                     body_no=row.get('Body No') or None,
+                                     active=True))
+                restored['plates'] += 1
+        db.session.commit()
+
+        # ── Restore Trips ─────────────────────────────────────────────────
+        for row in data.get('trips', []):
+            date_str = (row.get('Date') or '').strip()
+            if not date_str: continue
+            try:
+                d = date.fromisoformat(date_str)
+            except Exception:
+                continue
+
+            truck_name = (row.get('Truck Type') or '').strip()
+            tt = TruckTypeDef.query.filter_by(name=truck_name).first()
+            if not tt: continue
+
+            wave_label = (row.get('Wave') or '').strip()
+            wave_num = 1
+            for num, label in [(1,'1st Wave'),(2,'2nd Wave'),(3,'3rd Wave'),
+                               (4,'4th Wave'),(5,'5th Wave')]:
+                if label == wave_label:
+                    wave_num = num; break
+
+            wave = Wave.query.filter_by(date=d, truck_type_id=tt.id,
+                                        wave_number=wave_num).first()
+            if not wave:
+                wave = Wave(date=d, truck_type_id=tt.id, wave_number=wave_num)
+                db.session.add(wave)
+                db.session.commit()
+
+            drv  = Driver.query.filter_by(name=row.get('Driver','')).first()
+            plt  = Plate.query.filter_by(plate_no=row.get('Plate','')).first()
+            prod = Product.query.filter_by(name=row.get('Product','')).first()
+            cli  = Client.query.filter_by(name=row.get('Client','')).first()
+
+            last = (TripRecord.query.filter_by(wave_id=wave.id)
+                    .order_by(TripRecord.trip_number.desc()).first())
+            trip = TripRecord(
+                wave_id      = wave.id,
+                trip_number  = (last.trip_number + 1) if last else 1,
+                driver_id    = drv.id  if drv  else None,
+                plate_id     = plt.id  if plt  else None,
+                product_id   = prod.id if prod else None,
+                client_id    = cli.id  if cli  else None,
+                trip_type    = row.get('Trip Type') or None,
+                rs_no        = row.get('RS No') or None,
+                po_no        = row.get('PO No') or None,
+                dr_no        = row.get('DR No') or None,
+                volume       = row.get('Volume') or None,
+                status       = row.get('Status') or 'Pending',
+                notes        = row.get('Notes') or None,
+            )
+            db.session.add(trip)
+            restored['trips'] += 1
+        db.session.commit()
+
+        log_change('Restored data from Google Sheets', 'backup')
+        db.session.commit()
+        return jsonify({'ok': True, 'restored': restored})
+
+    except Exception as ex:
+        db.session.rollback()
+        return jsonify({'error': f'Restore failed: {str(ex)}'}), 500
+
+
 @app.route('/api/sync-to-sheets/last')
 def api_last_sync():
     return jsonify({'last_sync': AppSetting.get('last_sheets_sync', None)})
