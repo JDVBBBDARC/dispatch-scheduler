@@ -69,6 +69,30 @@
   .topbar-divider { display: none; }
 }
 
+/* ── Sidebar Sync Button ── */
+.sidebar-sync {
+  padding: 10px 14px 6px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-sync button {
+  width: 100%;
+  background: rgba(139,26,43,.1);
+  border: 1.5px solid var(--maroon);
+  color: var(--maroon);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-sync button:hover { background: var(--maroon); color: #fff; }
+.sidebar-sync button:disabled { opacity: .6; cursor: not-allowed; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Global Search ── */
 .gsearch-overlay {
   display: none;
@@ -223,6 +247,14 @@
     </li>
     {% endif %}
   </ul>
+
+  <!-- Google Sheets Sync -->
+  <div class="sidebar-sync">
+    <button onclick="syncToSheets()" id="syncBtn" title="Sync all data to Google Sheets">
+      <i class="bi bi-table me-1"></i> Sync to Sheets
+    </button>
+    <div id="syncStatus" style="font-size:.65rem;color:var(--muted);margin-top:4px;text-align:center;"></div>
+  </div>
 
   <div class="sidebar-footer">
     <span class="online-dot"></span>
@@ -578,6 +610,43 @@ function showToast(msg) {
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── GOOGLE SHEETS SYNC ───────────────────────────────────────────────────
+function syncToSheets() {
+  const btn    = document.getElementById('syncBtn');
+  const status = document.getElementById('syncStatus');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-repeat me-1" style="animation:spin 1s linear infinite;"></i> Syncing…';
+  status.textContent = '';
+
+  fetch('/api/sync-to-sheets', {method:'POST'})
+  .then(r => r.json())
+  .then(d => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-table me-1"></i> Sync to Sheets';
+    if (d.ok) {
+      const s = d.synced;
+      status.innerHTML = `<span style="color:#27ae60;">✓ Synced!</span> ${s.trips} trips · ${s.attendance} att · ${s.breakdown} bd`;
+      showToast(`Synced to Google Sheets — ${s.trips} trips, ${s.attendance} attendance records`);
+    } else {
+      status.innerHTML = `<span style="color:#e74c3c;">✗ ${d.error}</span>`;
+      showToast('Sync failed: ' + d.error);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-table me-1"></i> Sync to Sheets';
+    status.innerHTML = `<span style="color:#e74c3c;">✗ Network error</span>`;
+  });
+}
+
+// Load last sync time on page load
+fetch('/api/sync-to-sheets/last').then(r=>r.json()).then(d=>{
+  const status = document.getElementById('syncStatus');
+  if (status && d.last_sync) {
+    status.textContent = 'Last: ' + d.last_sync;
+  }
+}).catch(()=>{});
 
 // ── DELETE REQUEST BADGE (admin only) ────────────────────────────────────
 {% if current_user_role == 'admin' %}

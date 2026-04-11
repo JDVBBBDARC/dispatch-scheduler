@@ -18,7 +18,7 @@ from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        ChangeLog, Attendance, BreakdownLog, AppSetting,
                        TRUCK_TYPES_SEED, STATUSES,
                        ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
-                       DOC_HEADER_DEFAULTS)
+                       DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -755,6 +755,136 @@ def api_breakdown_delete(lid):
     return jsonify({'ok': True})
 
 
+# ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────
+@app.route('/api/sync-to-sheets', methods=['POST'])
+@login_required
+def api_sync_to_sheets():
+    import urllib.request, json as _json
+
+    webhook_url = AppSetting.get(SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT)
+    if not webhook_url:
+        return jsonify({'error': 'Google Sheets webhook URL not configured.'}), 400
+
+    # ── Build payload ──────────────────────────────────────────────────────
+    # TRIPS
+    trip_headers = ['Date','Truck Type','Wave','Trip #','Driver','Helper',
+                    'Plate','Product','Client','Dispatcher','Trip Type',
+                    'RS No','PO No','Reference','DR No','Volume','Status','Notes']
+    trips_rows = []
+    for w in Wave.query.order_by(Wave.date.desc()).all():
+        for t in w.trips:
+            trips_rows.append([
+                w.date.isoformat(),
+                w.truck_type.name if w.truck_type else '',
+                w.label,
+                t.trip_number,
+                t.driver.name     if t.driver     else '',
+                t.helper.name     if t.helper     else '',
+                t.plate.display   if t.plate      else '',
+                t.product.name    if t.product    else '',
+                t.client.name     if t.client     else '',
+                t.dispatcher.name if t.dispatcher else '',
+                t.trip_type or '',
+                t.rs_no or '', t.po_no or '', t.reference or '',
+                t.dr_no or '', t.volume or '',
+                t.status or '', t.notes or '',
+            ])
+
+    # ATTENDANCE
+    att_headers = ['Driver','Date','Status','Remarks']
+    att_rows = []
+    for a in Attendance.query.order_by(Attendance.date.desc()).all():
+        att_rows.append([
+            a.driver.name if a.driver else '',
+            a.date.isoformat(),
+            a.status or '',
+            a.remarks or '',
+        ])
+
+    # BREAKDOWN
+    bd_headers = ['Plate','Date','Description','Status','Resolved Date','Remarks']
+    bd_rows = []
+    for b in BreakdownLog.query.order_by(BreakdownLog.date.desc()).all():
+        bd_rows.append([
+            b.plate.display if b.plate else '',
+            b.date.isoformat(),
+            b.description or '',
+            b.status or '',
+            b.resolved_date.isoformat() if b.resolved_date else '',
+            b.remarks or '',
+        ])
+
+    # DRIVERS
+    drv_headers = ['Name','Active']
+    drv_rows = [[d.name, 'Yes' if d.active else 'No']
+                for d in Driver.query.order_by(Driver.name).all()]
+
+    # PLATES
+    plt_headers = ['Plate No','Body No','Truck Type','Active']
+    plt_rows = [[p.plate_no, p.body_no or '',
+                 p.truck_type.name if p.truck_type else '',
+                 'Yes' if p.active else 'No']
+                for p in Plate.query.order_by(Plate.plate_no).all()]
+
+    payload = {
+        'action': 'sync_all',
+        'trips':      {'headers': trip_headers, 'rows': trips_rows},
+        'attendance': {'headers': att_headers,  'rows': att_rows},
+        'breakdown':  {'headers': bd_headers,   'rows': bd_rows},
+        'drivers':    {'headers': drv_headers,  'rows': drv_rows},
+        'plates':     {'headers': plt_headers,  'rows': plt_rows},
+    }
+
+    # ── POST to Google Apps Script ─────────────────────────────────────────
+    try:
+        body = _json.dumps(payload).encode('utf-8')
+        req  = urllib.request.Request(
+            webhook_url,
+            data=body,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = _json.loads(resp.read().decode('utf-8'))
+
+        if result.get('ok'):
+            # Save last sync timestamp
+            AppSetting.set('last_sheets_sync', ph_now().strftime('%b %d, %Y %I:%M %p'))
+            db.session.commit()
+            log_change('Synced data to Google Sheets', 'backup')
+            db.session.commit()
+            return jsonify({'ok': True,
+                            'synced': {
+                                'trips': len(trips_rows),
+                                'attendance': len(att_rows),
+                                'breakdown': len(bd_rows),
+                                'drivers': len(drv_rows),
+                                'plates': len(plt_rows),
+                            }})
+        else:
+            return jsonify({'error': result.get('error', 'Unknown error from Google Sheets')}), 500
+
+    except Exception as ex:
+        return jsonify({'error': str(ex)}), 500
+
+
+@app.route('/api/sync-to-sheets/last')
+def api_last_sync():
+    return jsonify({'last_sync': AppSetting.get('last_sheets_sync', None)})
+
+
+@app.route('/api/sync-to-sheets/webhook', methods=['POST'])
+@login_required
+def api_save_webhook():
+    data = request.get_json() or {}
+    url  = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    AppSetting.set(SHEETS_WEBHOOK_KEY, url)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 # ── COLLAB API ─────────────────────────────────────────────────────────────
 @app.route('/api/settings/save', methods=['POST'])
 def api_settings_save():
@@ -861,6 +991,9 @@ def init_db():
         for key, val in DOC_HEADER_DEFAULTS.items():
             if not AppSetting.query.filter_by(key=key).first():
                 db.session.add(AppSetting(key=key, value=val))
+        # Seed Google Sheets webhook URL
+        if not AppSetting.query.filter_by(key=SHEETS_WEBHOOK_KEY).first():
+            db.session.add(AppSetting(key=SHEETS_WEBHOOK_KEY, value=SHEETS_WEBHOOK_DEFAULT))
         db.session.commit()
         # Migrate: add trip_type column if it doesn't exist yet (for existing databases)
         from sqlalchemy import inspect, text
