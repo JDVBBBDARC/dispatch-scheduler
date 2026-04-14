@@ -4,6 +4,25 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>{% block title %}Dispatch Scheduler{% endblock %}</title>
+<!-- Firebase JS SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  const _fbApp = firebase.initializeApp({
+    databaseURL: 'https://dispatch-scheduler-ce39f-default-rtdb.firebaseio.com/'
+  });
+  const _fbDb = firebase.database();
+  _fbDb.ref('dispatch_updates').on('value', snap => {
+    const data = snap.val();
+    if (!data) return;
+    // Only react after page has fully loaded
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      if (typeof loadActivity === 'function') loadActivity();
+      if (typeof pollDelReqBadge === 'function') pollDelReqBadge();
+      if (typeof loadDashActivity === 'function') loadDashActivity();
+    }
+  });
+</script>
 <!-- PWA -->
 <link rel="manifest" href="/static/manifest.json"/>
 <meta name="theme-color" content="#8B1A2B"/>

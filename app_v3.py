@@ -2,6 +2,34 @@ import os, io, socket, calendar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+# ── FIREBASE SETUP ─────────────────────────────────────────────────────────
+try:
+    import firebase_admin
+    from firebase_admin import credentials as fb_credentials, db as fb_db
+    _fb_key = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           'dispatch-scheduler-ce39f-firebase-adminsdk-fbsvc-affa3531e0.json')
+    if not firebase_admin._apps and os.path.exists(_fb_key):
+        firebase_admin.initialize_app(
+            fb_credentials.Certificate(_fb_key),
+            {'databaseURL': 'https://dispatch-scheduler-ce39f-default-rtdb.firebaseio.com/'}
+        )
+    FIREBASE_OK = True
+except Exception as _fb_err:
+    FIREBASE_OK = False
+    print(f"[Firebase] init skipped: {_fb_err}")
+
+def firebase_notify(event='update'):
+    """Push a tiny timestamp to Firebase so all browsers know to refresh."""
+    if not FIREBASE_OK:
+        return
+    try:
+        fb_db.reference('dispatch_updates').set({
+            'ts': int(datetime.utcnow().timestamp() * 1000),
+            'event': event
+        })
+    except Exception as e:
+        print(f"[Firebase] notify failed: {e}")
+
 PH_TZ = ZoneInfo('Asia/Manila')
 
 def ph_now():
@@ -50,6 +78,7 @@ def get_user():
 
 def log_change(action, entity='trip'):
     db.session.add(ChangeLog(user_name=get_user(), action=action, entity=entity))
+    firebase_notify(entity)
 
 def get_local_ip():
     try:
