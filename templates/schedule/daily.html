@@ -95,6 +95,7 @@
           <table class="trip-table" id="trip-table-{{ wave.id }}">
             <thead>
               <tr>
+                <th style="width:28px;"></th>
                 <th class="center" style="width:36px;">#</th>
                 <th style="min-width:120px;">Trip Type</th>
                 <th style="min-width:120px;">Driver</th>
@@ -116,6 +117,11 @@
             <tbody id="wave-body-{{ wave.id }}">
               {% for trip in wave.trips %}
               <tr data-trip-id="{{ trip.id }}">
+                <td class="center" style="padding:0 2px;">
+                  <button class="btn-dup" onclick="duplicateTrip({{ trip.id }}, {{ wave.id }}, this)" title="Duplicate row">
+                    <i class="bi bi-copy"></i>
+                  </button>
+                </td>
                 <td class="trip-num">{{ trip.trip_number }}</td>
                 <td><select class="ti ti-sel" data-field="trip_type" onchange="updateTrip({{ trip.id }}, 'trip_type', this.value)">
                   <option value="">— Type —</option>
@@ -163,7 +169,7 @@
               </tr>
               {% else %}
               <tr class="empty-trip-row">
-                <td colspan="16" class="empty-state py-3">
+                <td colspan="17" class="empty-state py-3">
                   <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
                 </td>
               </tr>
@@ -444,6 +450,7 @@ function addTrip(waveId) {
   const tr = document.createElement('tr');
   tr.dataset.tripId = '';
   tr.innerHTML = `
+    <td class="center" style="padding:0 2px;"><button class="btn-dup" disabled title="Save row first"><i class="bi bi-copy"></i></button></td>
     <td class="trip-num">${rowNum}</td>
     <td>${makeAcHTML('trip_type','')}</td>
     <td>${makeAcHTML('driver_id','')}</td>
@@ -496,6 +503,8 @@ function saveNewTrip(waveId, changedEl) {
     if (badge) { badge.dataset.tripId = data.id; badge.onclick = () => cycleStatus(badge); }
     const delBtn = tr.querySelector('.btn-danger');
     if (delBtn) delBtn.onclick = () => deleteTrip(data.id, delBtn);
+    const dupBtn = tr.querySelector('.btn-dup');
+    if (dupBtn) { dupBtn.disabled = false; dupBtn.onclick = () => duplicateTrip(data.id, waveId, dupBtn); }
     updateWaveCount(waveId);
     showToast('Row saved');
   })
@@ -530,11 +539,72 @@ function deleteTrip(tripId, btn) {
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
-      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="16" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="17" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
     }
     updateWaveCount(waveId);
     showToast('Row deleted');
   });
+}
+
+// ── DUPLICATE TRIP ────────────────────────────────────────────────────────
+function duplicateTrip(tripId, waveId, btn) {
+  const tbody  = document.getElementById(`wave-body-${waveId}`);
+  const srcRow = btn.closest('tr');
+
+  // Collect all field values from source row
+  const payload = { wave_id: waveId };
+  srcRow.querySelectorAll('.ac-v[data-field]').forEach(el => {
+    payload[el.dataset.field] = el.value || '';
+  });
+  srcRow.querySelectorAll('input[data-field]:not(.ac-v)').forEach(el => {
+    payload[el.dataset.field] = el.value || '';
+  });
+  const badge = srcRow.querySelector('.s-badge');
+  payload.status = badge ? (badge.dataset.status || 'Pending') : 'Pending';
+
+  btn.disabled = true;
+  fetch('/api/trip/save', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    tbody.querySelector('.empty-trip-row')?.remove();
+    const rowNum = tbody.rows.length + 1;
+    const status = payload.status || 'Pending';
+    const tr = document.createElement('tr');
+    tr.dataset.tripId = data.id;
+    tr.innerHTML = `
+      <td class="center" style="padding:0 2px;">
+        <button class="btn-dup" onclick="duplicateTrip(${data.id},${waveId},this)" title="Duplicate row"><i class="bi bi-copy"></i></button>
+      </td>
+      <td class="trip-num">${rowNum}</td>
+      <td>${makeAcHTML('trip_type',   payload.trip_type    || '')}</td>
+      <td>${makeAcHTML('driver_id',   payload.driver_id    || '')}</td>
+      <td>${makeAcHTML('helper_id',   payload.helper_id    || '')}</td>
+      <td>${makeAcHTML('plate_id',    payload.plate_id     || '')}</td>
+      <td>${makeAcHTML('product_id',  payload.product_id   || '')}</td>
+      <td>${makeAcHTML('client_id',   payload.client_id    || '')}</td>
+      <td>${makeAcHTML('dispatcher_id', payload.dispatcher_id || '')}</td>
+      <td><input class="ti ti-sm"  type="text" data-field="rs_no"     value="${escAtt(payload.rs_no||'')}"     onchange="updateTrip(${data.id},'rs_no',this.value)"     placeholder="RS No."></td>
+      <td><input class="ti ti-sm"  type="text" data-field="po_no"     value="${escAtt(payload.po_no||'')}"     onchange="updateTrip(${data.id},'po_no',this.value)"     placeholder="PO No."></td>
+      <td><input class="ti ti-sm"  type="text" data-field="reference" value="${escAtt(payload.reference||'')}" onchange="updateTrip(${data.id},'reference',this.value)" placeholder="Ref"></td>
+      <td><input class="ti ti-sm"  type="text" data-field="dr_no"     value="${escAtt(payload.dr_no||'')}"     onchange="updateTrip(${data.id},'dr_no',this.value)"     placeholder="DR No."></td>
+      <td><input class="ti ti-num" type="text" data-field="volume"    value="${escAtt(payload.volume||'')}"    onchange="updateTrip(${data.id},'volume',this.value)"    placeholder="Vol."></td>
+      <td><span class="s-badge s-${status.replace(/ /g,'-')}" data-status="${status}" data-trip-id="${data.id}" onclick="cycleStatus(this)">${status}</span></td>
+      <td><input class="ti ti-md"  type="text" data-field="notes"     value="${escAtt(payload.notes||'')}"     onchange="updateTrip(${data.id},'notes',this.value)"     placeholder="Notes…"></td>
+      <td class="center">
+        <button class="btn btn-danger btn-xs" onclick="deleteTrip(${data.id},this)" title="Delete row"><i class="bi bi-trash"></i></button>
+      </td>`;
+    tbody.appendChild(tr);
+    renumberRows(tbody);
+    updateWaveCount(waveId);
+    tr.style.background = '#fffbe6';
+    setTimeout(() => { tr.style.transition = 'background .6s'; tr.style.background = ''; }, 50);
+    showToast('Row duplicated!');
+  })
+  .catch(() => { btn.disabled = false; showToast('Duplicate failed'); });
 }
 
 // ── STATUS CYCLE ──────────────────────────────────────────────────────────

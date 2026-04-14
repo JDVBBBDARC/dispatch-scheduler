@@ -196,6 +196,9 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
 .btn { padding:7px 16px; border-radius:6px; border:none; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-size:.88rem; font-weight:700; letter-spacing:.5px; display:inline-flex; align-items:center; gap:5px; transition:all .15s; }
 .btn-sm { padding:4px 11px; font-size:.78rem; }
 .btn-xs { padding:2px 8px; font-size:.72rem; }
+.btn-dup { background:none; border:none; color:#adb5bd; cursor:pointer; padding:2px 4px; border-radius:4px; font-size:.78rem; line-height:1; transition:color .15s, background .15s; }
+.btn-dup:hover { color:#8B1A2B; background:#f8e8ea; }
+.btn-dup:disabled { color:#ddd; cursor:default; }
 .btn-success { background:#16a34a; color:#fff; }
 .btn-success:hover { background:#15803d; }
 .btn-danger  { background:#dc2626; color:#fff; }
