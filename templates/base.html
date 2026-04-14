@@ -491,7 +491,16 @@ function renderActivity(logs) {
 }
 
 function startActivityPoll() {
-  setInterval(()=>{
+  let paused = false;
+
+  // Pause polling when tab is hidden, resume when visible again
+  document.addEventListener('visibilitychange', () => {
+    paused = document.hidden;
+    if (!paused) pollOnce(); // immediate refresh when user comes back
+  });
+
+  function pollOnce() {
+    if (paused || document.hidden) return;
     fetch(`/api/activity?since=${lastTs}`)
       .then(r=>r.json())
       .then(d=>{
@@ -507,7 +516,9 @@ function startActivityPoll() {
           if (activityOpen) renderActivity(d.logs);
         }
       }).catch(()=>{});
-  }, 10000);
+  }
+
+  setInterval(pollOnce, 30000); // reduced from 10s → 30s
 }
 
 // ── GLOBAL SEARCH ────────────────────────────────────────────────────────
@@ -727,7 +738,7 @@ function pollDelReqBadge() {
     }).catch(()=>{});
 }
 pollDelReqBadge();
-setInterval(pollDelReqBadge, 15000);
+setInterval(() => { if (!document.hidden) pollDelReqBadge(); }, 30000);
 {% endif %}
 
 // ── REQUEST DELETION MODAL (global) ──────────────────────────────────────

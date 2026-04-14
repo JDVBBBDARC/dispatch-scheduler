@@ -672,7 +672,7 @@ function loadDashActivity() {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDashActivity();
-  setInterval(loadDashActivity, 10000);
+  setInterval(() => { if (!document.hidden) loadDashActivity(); }, 30000);
 });
 </script>
 {% endblock %}
