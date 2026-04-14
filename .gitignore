@@ -6,3 +6,4 @@ dispatch.db
 *.db
 launch.bat
 .env
+*firebase-adminsdk*.json
