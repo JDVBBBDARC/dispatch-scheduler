@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% block title %}Helper Attendance — {{ mo_s.strftime('%B %Y') }}{% endblock %}
+{% block page_title %}Helper Attendance{% endblock %}
+
+{% block content %}
+<style>
+.att-filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 16px; margin-bottom: 18px;
+}
+.att-filter-bar label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.att-filter-bar select {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 10px; font-size: .83rem; background: var(--bg); color: var(--text);
+}
+.att-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.att-legend-item { display: flex; align-items: center; gap: 6px; font-size: .78rem; }
+.att-legend-dot { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+.att-wrap { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 220px); border-radius: 8px; }
+.att-wrap table { border-collapse: separate; border-spacing: 0; }
+.att-table { width: 100%; border-collapse: collapse; font-size: .78rem; min-width: 900px; }
+.att-table th {
+  background: var(--maroon); color: #fff; padding: 6px 4px;
+  text-align: center; font-weight: 600; white-space: nowrap;
+  position: sticky; top: 0; z-index: 4;
+}
+.att-table th.driver-col {
+  text-align: left; padding-left: 12px; min-width: 160px;
+  position: sticky; left: 0; top: 0; z-index: 5; background: var(--maroon);
+}
+.att-table td { border: 1px solid var(--border); padding: 0; text-align: center; vertical-align: middle; }
+.att-table td.driver-name {
+  text-align: left; padding: 6px 12px; font-weight: 600; white-space: nowrap;
+  background: var(--surface); position: sticky; left: 0; z-index: 2;
+  border-right: 2px solid var(--maroon); box-shadow: 3px 0 6px rgba(0,0,0,.08);
+}
+.att-table tr:hover td.driver-name { background: #f5eaec; }
+.att-cell {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; cursor: pointer; border-radius: 3px;
+  margin: 2px; transition: transform .1s, opacity .1s; user-select: none;
+}
+.att-cell:hover { transform: scale(1.15); opacity: .85; }
+.att-cell.empty  { background: #f0f0f0; color: #bbb; font-weight: 400; }
+.att-cell.P      { background: #C6EFCE; color: #276221; }
+.att-cell.A      { background: #FFB3B3; color: #8B0000; }
+.att-cell.L      { background: #DDEEFF; color: #1a4a8a; }
+.att-cell.H      { background: #FFF2CC; color: #856404; }
+.att-summary-row td { background: var(--bg); font-size: .72rem; font-weight: 600; padding: 4px 6px; }
+.att-summary-row td.driver-name { background: var(--bg); }
+.s-count { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: .7rem; font-weight: 700; }
+.s-count.P { background:#C6EFCE; color:#276221; }
+.s-count.A { background:#FFB3B3; color:#8B0000; }
+.s-count.L { background:#DDEEFF; color:#1a4a8a; }
+.s-count.H { background:#FFF2CC; color:#856404; }
+.att-day-hdr { font-size:.7rem; }
+.att-day-name { font-size:.62rem; opacity:.8; display:block; }
+.att-weekend-hdr { background: #6b1224 !important; }
+.att-total-col { min-width: 38px; background: #f5f0f0 !important; }
+</style>
+
+<div class="page-header">
+  <h1><i class="bi bi-person-check me-2"></i>Helper Attendance</h1>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="att-filter-bar">
+  <label>Year</label>
+  <select name="year" onchange="this.form.submit()">
+    {% for y in years %}<option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+  </select>
+  <label>Month</label>
+  <select name="month" onchange="this.form.submit()">
+    {% for m in range(1,13) %}
+    <option value="{{ m }}" {% if m==month %}selected{% endif %}>
+      {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+    </option>
+    {% endfor %}
+  </select>
+  <span style="font-size:.78rem;color:var(--muted);margin-left:auto;">
+    <i class="bi bi-info-circle me-1"></i>Click a cell to cycle status
+  </span>
+</form>
+
+<!-- Legend -->
+<div class="att-legend">
+  {% for s, color, tcolor in [('Present','#C6EFCE','#276221'),('Absent','#FFB3B3','#8B0000'),('Leave','#DDEEFF','#1a4a8a'),('Holiday','#FFF2CC','#856404')] %}
+  <div class="att-legend-item">
+    <span class="att-legend-dot" style="background:{{ color }};border:1px solid {{ tcolor }}20;"></span>
+    <span>{{ s[:1] }} — {{ s }}</span>
+  </div>
+  {% endfor %}
+  <div class="att-legend-item">
+    <span class="att-legend-dot" style="background:#f0f0f0;border:1px solid #ddd;"></span>
+    <span>— Not marked</span>
+  </div>
+</div>
+
+<!-- Attendance Grid -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="bi bi-grid me-2"></i>{{ mo_s.strftime('%B %Y') }}</span>
+    <span style="font-size:.78rem;opacity:.8;">{{ helpers|length }} helper(s)</span>
+  </div>
+
+  {% if helpers %}
+  <div class="att-wrap">
+    <table class="att-table" id="attTable">
+      <thead>
+        <tr>
+          <th class="driver-col">Helper</th>
+          {% for day in days %}
+          {% set d_obj = mo_s.replace(day=day) %}
+          <th class="att-day-hdr {% if d_obj.weekday() >= 5 %}att-weekend-hdr{% endif %}"
+              title="{{ d_obj.strftime('%A, %B %d') }}">
+            {{ day }}
+            <span class="att-day-name">{{ d_obj.strftime('%a') }}</span>
+          </th>
+          {% endfor %}
+          <th class="att-total-col">P</th>
+          <th class="att-total-col">A</th>
+          <th class="att-total-col">L</th>
+          <th class="att-total-col">H</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for hlp in helpers %}
+        <tr data-helper-id="{{ hlp.id }}">
+          <td class="driver-name">{{ hlp.name }}</td>
+          {% for day in days %}
+          {% set d_obj = mo_s.replace(day=day) %}
+          {% set st = att_map.get((hlp.id, day), '') %}
+          <td>
+            <div class="att-cell {% if st %}{{ st }}{% else %}empty{% endif %}"
+                 data-helper="{{ hlp.id }}"
+                 data-date="{{ '%04d-%02d-%02d'|format(year, month, day) }}"
+                 data-status="{{ st }}"
+                 onclick="cycleAtt(this)">
+              {{ st[:1] if st else '·' }}
+            </div>
+          </td>
+          {% endfor %}
+          <td class="att-total-col"><span class="s-count P">{{ summary[hlp.id]['Present'] }}</span></td>
+          <td class="att-total-col"><span class="s-count A">{{ summary[hlp.id]['Absent'] }}</span></td>
+          <td class="att-total-col"><span class="s-count L">{{ summary[hlp.id]['Leave'] }}</span></td>
+          <td class="att-total-col"><span class="s-count H">{{ summary[hlp.id]['Holiday'] }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state py-5">
+    <i class="bi bi-person-x"></i>
+    No active helpers found.<br>
+    <a href="{{ url_for('master') }}" class="btn btn-maroon btn-sm mt-3">
+      <i class="bi bi-database me-1"></i>Go to Master Data
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ATT_STATUSES = ['Present', 'Absent', 'Leave', 'Holiday'];
+
+function cycleAtt(cell) {
+  const cur      = cell.dataset.status || '';
+  const helperId = cell.dataset.helper;
+  const dateStr  = cell.dataset.date;
+
+  let next = '';
+  if (cur === '') next = 'Present';
+  else {
+    const idx = ATT_STATUSES.indexOf(cur);
+    next = idx >= 0 && idx < ATT_STATUSES.length - 1 ? ATT_STATUSES[idx + 1] : '';
+  }
+
+  applyCell(cell, next);
+
+  fetch('/api/helper-attendance/set', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      helper_id: parseInt(helperId),
+      date: dateStr,
+      status: next || null
+    })
+  })
+  .then(r => r.json())
+  .then(() => {
+    updateRowTotals(cell.closest('tr'));
+    showToast(next ? `${next} saved` : 'Cleared');
+  })
+  .catch(() => showToast('Save failed'));
+}
+
+function applyCell(cell, status) {
+  cell.dataset.status = status;
+  cell.className = 'att-cell ' + (status ? status : 'empty');
+  cell.textContent = status ? status[0] : '·';
+}
+
+function updateRowTotals(tr) {
+  if (!tr) return;
+  const counts = {Present:0, Absent:0, Leave:0, Holiday:0};
+  tr.querySelectorAll('.att-cell').forEach(c => {
+    const st = c.dataset.status;
+    if (st && counts[st] !== undefined) counts[st]++;
+  });
+  const totCells = tr.querySelectorAll('.att-total-col .s-count');
+  if (totCells.length >= 4) {
+    totCells[0].textContent = counts.Present;
+    totCells[1].textContent = counts.Absent;
+    totCells[2].textContent = counts.Leave;
+    totCells[3].textContent = counts.Holiday;
+  }
+}
+</script>
+{% endblock %}

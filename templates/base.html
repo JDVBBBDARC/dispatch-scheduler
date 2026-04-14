@@ -223,7 +223,13 @@
     <li>
       <a href="{{ url_for('attendance') }}"
          class="sidebar-link {% if request.endpoint == 'attendance' %}active{% endif %}">
-        <i class="bi bi-person-check"></i><span>Attendance</span>
+        <i class="bi bi-person-check"></i><span>Driver Attendance</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('helper_attendance') }}"
+         class="sidebar-link {% if request.endpoint == 'helper_attendance' %}active{% endif %}">
+        <i class="bi bi-person-check-fill"></i><span>Helper Attendance</span>
       </a>
     </li>
     <li>

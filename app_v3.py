@@ -43,7 +43,7 @@ from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        Driver, Helper, Product, Client, Dispatcher, Plate,
-                       ChangeLog, Attendance, BreakdownLog, AppSetting,
+                       ChangeLog, Attendance, HelperAttendance, BreakdownLog, AppSetting,
                        TRUCK_TYPES_SEED, STATUSES,
                        ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
                        DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT)
@@ -672,6 +672,79 @@ def api_attendance_set():
     db.session.commit()
 
     return jsonify({'status': status, 'date': date_str, 'driver_id': driver_id})
+
+
+# ── HELPER ATTENDANCE ──────────────────────────────────────────────────────
+@app.route('/helper-attendance')
+@login_required
+def helper_attendance():
+    year   = request.args.get('year',  ph_today().year,  type=int)
+    month  = request.args.get('month', ph_today().month, type=int)
+    years  = list(range(2024, ph_today().year + 2))
+
+    last_day = calendar.monthrange(year, month)[1]
+    mo_s     = date(year, month, 1)
+    mo_e     = date(year, month, last_day)
+    days     = list(range(1, last_day + 1))
+
+    helpers = Helper.query.filter_by(active=True).order_by(Helper.name).all()
+
+    records = (HelperAttendance.query
+               .filter(HelperAttendance.date >= mo_s, HelperAttendance.date <= mo_e)
+               .all())
+    att_map = {}
+    for r in records:
+        att_map[(r.helper_id, r.date.day)] = r.status
+
+    summary = {}
+    for hlp in helpers:
+        summary[hlp.id] = {s: 0 for s in ATTENDANCE_STATUSES}
+        for day in days:
+            st = att_map.get((hlp.id, day))
+            if st and st in summary[hlp.id]:
+                summary[hlp.id][st] += 1
+
+    return render_template('attendance/helper_index.html',
+        year=year, month=month, years=years,
+        mo_s=mo_s, days=days,
+        helpers=helpers, att_map=att_map, summary=summary,
+        att_statuses=ATTENDANCE_STATUSES)
+
+
+@app.route('/api/helper-attendance/set', methods=['POST'])
+@login_required
+def api_helper_attendance_set():
+    data      = request.get_json()
+    helper_id = data.get('helper_id')
+    date_str  = data.get('date')
+    status    = data.get('status')
+
+    if not helper_id or not date_str:
+        return jsonify({'error': 'Missing fields'}), 400
+
+    d = parse_date(date_str)
+    record = HelperAttendance.query.filter_by(helper_id=helper_id, date=d).first()
+
+    if status is None or status == '':
+        if record:
+            db.session.delete(record)
+            db.session.commit()
+        return jsonify({'status': '', 'date': date_str, 'helper_id': helper_id})
+
+    if not record:
+        record = HelperAttendance(helper_id=helper_id, date=d)
+        db.session.add(record)
+
+    record.status     = status
+    record.updated_by = get_user()
+    record.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    hlp = Helper.query.get(helper_id)
+    log_change(f"Helper Attendance {hlp.name if hlp else helper_id}: {status} on {d}", 'attendance')
+    db.session.commit()
+
+    return jsonify({'status': status, 'date': date_str, 'helper_id': helper_id})
 
 
 # ── BREAKDOWN ──────────────────────────────────────────────────────────────

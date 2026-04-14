@@ -61,7 +61,8 @@ class Helper(db.Model):
     name   = db.Column(db.String(80), nullable=False)
     active = db.Column(db.Boolean, default=True)
 
-    trips_helped = db.relationship('TripRecord', foreign_keys='TripRecord.helper_id', back_populates='helper')
+    trips_helped       = db.relationship('TripRecord', foreign_keys='TripRecord.helper_id', back_populates='helper')
+    attendance_records = db.relationship('HelperAttendance', back_populates='helper', cascade='all, delete-orphan')
 
 
 class Product(db.Model):
@@ -196,6 +197,22 @@ class Attendance(db.Model):
     driver = db.relationship('Driver', back_populates='attendance_records')
 
     __table_args__ = (db.UniqueConstraint('driver_id', 'date', name='uq_attendance_driver_date'),)
+
+
+# ── Helper Attendance ──────────────────────────────────────────────────────
+class HelperAttendance(db.Model):
+    __tablename__ = 'helper_attendance'
+    id         = db.Column(db.Integer, primary_key=True)
+    helper_id  = db.Column(db.Integer, db.ForeignKey('helpers.id'), nullable=False)
+    date       = db.Column(db.Date, nullable=False, index=True)
+    status     = db.Column(db.String(20), default='Present')
+    remarks    = db.Column(db.String(200))
+    updated_by = db.Column(db.String(64))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    helper = db.relationship('Helper', back_populates='attendance_records')
+
+    __table_args__ = (db.UniqueConstraint('helper_id', 'date', name='uq_helper_att_helper_date'),)
 
 
 # ── Breakdown Log ──────────────────────────────────────────────────────────
