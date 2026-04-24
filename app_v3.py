@@ -265,6 +265,32 @@ def api_trip_delete(tid):
     return jsonify({'ok': True})
 
 
+# ── DASHBOARD KPI REFRESH API ──────────────────────────────────────────────
+@app.route('/api/dashboard/kpis')
+@login_required
+def api_dashboard_kpis():
+    """Lightweight endpoint for live KPI card refresh (called by Firebase listener)."""
+    from_date = request.args.get('trend_start', (ph_today() - timedelta(days=13)).isoformat())
+    to_date   = request.args.get('trend_end',   ph_today().isoformat())
+    truck     = request.args.get('truck',  'all')
+    status    = request.args.get('status', 'all')
+    from_d = parse_date(from_date)
+    to_d   = parse_date(to_date)
+    q = (db.session.query(TripRecord).join(Wave)
+         .filter(Wave.date >= from_d, Wave.date <= to_d))
+    if truck != 'all':
+        tt = TruckTypeDef.query.filter_by(code=truck).first()
+        if tt:
+            q = q.filter(Wave.truck_type_id == tt.id)
+    if status != 'all':
+        q = q.filter(TripRecord.status == status)
+    trips = q.all()
+    return jsonify({
+        'total':          len(trips),
+        'by_status':      {s: sum(1 for t in trips if t.status == s) for s in STATUSES},
+        'total_toll_fee': sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
+    })
+
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 @login_required
