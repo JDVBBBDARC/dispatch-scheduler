@@ -358,7 +358,7 @@ function openKpiModal(label, statusKey, color) {
   if (statusKey === 'all') {
     _kpiBaseRows = ALL_TRIPS;
   } else if (statusKey === 'Toll Fee') {
-    _kpiBaseRows = ALL_TRIPS.filter(t => (t.toll_fee || 0) > 0);
+    _kpiBaseRows = ALL_TRIPS.filter(t => (t.toll_fee || 0) > 0 && t.status !== 'Canceled');
   } else {
     _kpiBaseRows = ALL_TRIPS.filter(t => t.status === statusKey);
   }

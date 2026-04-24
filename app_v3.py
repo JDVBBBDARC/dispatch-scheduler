@@ -299,7 +299,7 @@ def dashboard():
     # Stats
     total          = len(trips)
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
-    total_toll_fee = sum((t.toll_fee or 0) for t in trips)
+    total_toll_fee = sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled')
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
