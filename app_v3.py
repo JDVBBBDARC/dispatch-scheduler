@@ -893,9 +893,9 @@ def api_toll_expressways():
 def api_toll_stations(expressway):
     data = get_toll_data()
     exp = data.get(expressway, {})
-    # Get stations from Class 1 (same for all classes)
-    matrix = exp.get('Class 1', exp.get('Class 2', exp.get('Class 3', {})))
-    stations = list(matrix.keys())
+    # Collect stations from all classes (union), then sort alphabetically
+    matrix = exp.get('Class 3', exp.get('Class 1', exp.get('Class 2', {})))
+    stations = sorted(matrix.keys())
     return jsonify(stations)
 
 @app.route('/api/toll/calculate', methods=['POST'])
