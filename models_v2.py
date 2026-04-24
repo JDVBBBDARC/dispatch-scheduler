@@ -25,7 +25,7 @@ DOC_HEADER_DEFAULTS = {
 SHEETS_WEBHOOK_KEY = 'gsheets_webhook_url'
 SHEETS_WEBHOOK_DEFAULT = 'https://script.google.com/macros/s/AKfycbzEdjd9Pjlln2EyJpcyN8vi_JZIKo0ugtaqTuUy7VOrsCGjnE6otll1g5sZoa0f2RbB/exec'
 
-STATUSES = ['Pending', 'Loading', 'In Transit', 'Delivered', 'Canceled']
+STATUSES = ['Pending', 'In Transit', 'Delivered', 'Canceled']
 
 ATTENDANCE_STATUSES = ['Present', 'Absent', 'Leave', 'Holiday']
 
@@ -76,9 +76,10 @@ class Product(db.Model):
 
 class Client(db.Model):
     __tablename__ = 'clients'
-    id     = db.Column(db.Integer, primary_key=True)
-    name   = db.Column(db.String(100), nullable=False)
-    active = db.Column(db.Boolean, default=True)
+    id       = db.Column(db.Integer, primary_key=True)
+    name     = db.Column(db.String(100), nullable=False)
+    active   = db.Column(db.Boolean, default=True)
+    toll_fee = db.Column(db.Float, default=0.0, nullable=True)
 
     trips = db.relationship('TripRecord', foreign_keys='TripRecord.client_id', back_populates='client')
 

@@ -96,9 +96,12 @@
     <div class="master-list" id="list-clients">
       {% for c in clients %}
       <div class="master-item {% if not c.active %}inactive-item{% endif %}" data-id="{{ c.id }}" data-cat="clients">
-        <div class="master-item-name">{{ c.name }}</div>
+        <div>
+          <div class="master-item-name">{{ c.name }}</div>
+          {% if c.toll_fee %}<div class="master-item-sub">Toll: ₱{{ '{:,.0f}'.format(c.toll_fee) }}</div>{% endif %}
+        </div>
         <div class="d-flex gap-1">
-          <button class="btn btn-ghost btn-xs" onclick="editItem('clients',{{ c.id }},'{{ c.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="editItem('clients',{{ c.id }},'{{ c.name|replace("'","\\'") }}',{{ c.toll_fee or 0 }})"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-xs {% if c.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('clients',{{ c.id }},this)">
             <i class="bi bi-{{ 'toggle-on' if c.active else 'toggle-off' }}"></i>
           </button>
@@ -106,9 +109,12 @@
       </div>
       {% else %}<div class="master-empty">No clients yet.</div>{% endfor %}
     </div>
-    <div class="master-add-row">
-      <input type="text" id="new-clients" placeholder="Client name…" onkeydown="if(event.key==='Enter')addItem('clients')">
-      <button class="btn btn-maroon btn-sm" onclick="addItem('clients')"><i class="bi bi-plus-lg"></i></button>
+    <div class="master-add-row d-flex flex-column gap-1">
+      <div class="d-flex gap-1">
+        <input type="text" id="new-clients" placeholder="Client name…" style="flex:1;" onkeydown="if(event.key==='Enter')addClient()">
+        <input type="number" id="new-clients-toll" placeholder="Toll ₱" style="width:90px;" min="0" step="1">
+        <button class="btn btn-maroon btn-sm" onclick="addClient()"><i class="bi bi-plus-lg"></i></button>
+      </div>
     </div>
   </div>
 
@@ -245,6 +251,45 @@ function addItem(cat) {
   });
 }
 
+// ── ADD CLIENT (with toll fee) ────────────────────────────────────────────
+function addClient() {
+  const nameInput = document.getElementById('new-clients');
+  const tollInput = document.getElementById('new-clients-toll');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const toll_fee = parseFloat(tollInput.value) || 0;
+
+  fetch('/api/master/clients/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, toll_fee})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const list = document.getElementById('list-clients');
+    list.querySelector('.master-empty')?.remove();
+    const div = document.createElement('div');
+    div.className = 'master-item';
+    div.dataset.id  = data.id;
+    div.dataset.cat = 'clients';
+    const tollHtml = data.toll_fee ? `<div class="master-item-sub">Toll: ₱${Number(data.toll_fee).toLocaleString()}</div>` : '';
+    div.innerHTML = `
+      <div>
+        <div class="master-item-name">${escHtml(data.name)}</div>
+        ${tollHtml}
+      </div>
+      <div class="d-flex gap-1">
+        <button class="btn btn-ghost btn-xs" onclick="editItem('clients',${data.id},'${data.name.replace(/'/g,"\\'")}',${data.toll_fee||0})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleItem('clients',${data.id},this)"><i class="bi bi-toggle-on"></i></button>
+      </div>`;
+    list.appendChild(div);
+    nameInput.value = '';
+    tollInput.value = '';
+    updateCount('clients', list);
+    showToast(`${data.name} added`);
+  });
+}
+
 // ── ADD PLATE ─────────────────────────────────────────────────────────────
 function addPlate() {
   const plateNo = document.getElementById('new-plate-no').value.trim();
@@ -282,12 +327,18 @@ function addPlate() {
 }
 
 // ── EDIT ITEM ─────────────────────────────────────────────────────────────
-function editItem(cat, id, currentName) {
+function editItem(cat, id, currentName, tollFee) {
   editCat = cat; editId = id;
   document.getElementById('editModalTitle').textContent = `Edit ${cat.slice(0,-1)}`;
-  document.getElementById('editModalBody').innerHTML = `
+  let body = `
     <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Name</label>
     <input type="text" id="editValue" class="form-control mt-1" value="${escHtml(currentName)}">`;
+  if (cat === 'clients') {
+    body += `
+    <label class="mt-3 d-block" style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Toll Fee (₱)</label>
+    <input type="number" id="editTollFee" class="form-control mt-1" value="${tollFee || 0}" min="0" step="1" placeholder="0">`;
+  }
+  document.getElementById('editModalBody').innerHTML = body;
   editModal.show();
   setTimeout(() => document.getElementById('editValue').focus(), 200);
 }
@@ -325,6 +376,9 @@ function saveEdit() {
     const val = document.getElementById('editValue')?.value.trim();
     if (!val) return;
     payload = {name: val};
+    if (editCat === 'clients') {
+      payload.toll_fee = parseFloat(document.getElementById('editTollFee')?.value) || 0;
+    }
   }
   fetch(`/api/master/${editCat}/${editId}/update`, {
     method:'POST', headers:{'Content-Type':'application/json'},

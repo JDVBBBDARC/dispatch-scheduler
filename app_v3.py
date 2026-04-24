@@ -292,8 +292,9 @@ def dashboard():
     trips = q.all()
 
     # Stats
-    total       = len(trips)
-    by_status   = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
+    total          = len(trips)
+    by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
+    total_toll_fee = sum((t.client.toll_fee or 0) for t in trips if t.client)
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
@@ -374,7 +375,7 @@ def dashboard():
         filter_truck=filter_truck, filter_status=filter_status,
         trend_start_str=trend_start_str, trend_end_str=trend_end_str,
         truck_types=truck_types, trips=trips,
-        total=total, by_status=by_status, by_truck=by_truck,
+        total=total, by_status=by_status, by_truck=by_truck, total_toll_fee=total_toll_fee,
         trend_days=trend_days, trend_counts=trend_counts,
         trend_by_truck=trend_by_truck,
         recent_changes=recent_changes,
@@ -427,11 +428,13 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
+    if category == 'clients':
+        obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
-    return jsonify({'id': obj.id, 'name': obj.name})
+    return jsonify({'id': obj.id, 'name': obj.name, 'toll_fee': getattr(obj, 'toll_fee', 0) or 0})
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
@@ -451,6 +454,8 @@ def api_master_update(category, item_id):
         obj.truck_type_id = int(ttid) if ttid else None
     else:
         obj.name = (data.get('name') or obj.name).strip()
+        if category == 'clients' and 'toll_fee' in data:
+            obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
