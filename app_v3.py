@@ -214,14 +214,19 @@ def api_trip_save():
         'product_id':('product_id',int),
         'client_id': ('client_id', int),
         'dispatcher_id':('dispatcher_id',int),
-        'trip_type': ('trip_type', str),
-        'rs_no':     ('rs_no',     str),
-        'po_no':     ('po_no',     str),
-        'reference': ('reference', str),
-        'dr_no':     ('dr_no',     str),
-        'volume':    ('volume',    str),
-        'status':    ('status',    str),
-        'notes':     ('notes',     str),
+        'trip_type':       ('trip_type',       str),
+        'rs_no':           ('rs_no',           str),
+        'po_no':           ('po_no',           str),
+        'reference':       ('reference',       str),
+        'dr_no':           ('dr_no',           str),
+        'volume':          ('volume',          str),
+        'status':          ('status',          str),
+        'toll_fee':        ('toll_fee',        float),
+        'toll_expressway': ('toll_expressway', str),
+        'toll_entry':      ('toll_entry',      str),
+        'toll_exit':       ('toll_exit',       str),
+        'toll_class':      ('toll_class',      str),
+        'notes':           ('notes',           str),
     }
     for key, (attr, cast) in field_map.items():
         if key in data:
@@ -294,7 +299,7 @@ def dashboard():
     # Stats
     total          = len(trips)
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
-    total_toll_fee = sum((t.client.toll_fee or 0) for t in trips if t.client)
+    total_toll_fee = sum((t.toll_fee or 0) for t in trips)
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
@@ -860,6 +865,61 @@ def api_breakdown_delete(lid):
     log_change(f"Deleted {info}", 'breakdown')
     db.session.commit()
     return jsonify({'ok': True})
+
+
+# ── TOLL CALCULATOR ───────────────────────────────────────────────────────
+import json as _json_mod
+_TOLL_DATA = None
+
+def get_toll_data():
+    global _TOLL_DATA
+    if _TOLL_DATA is None:
+        try:
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'toll_rates.json')
+            with open(p, 'r') as f:
+                _TOLL_DATA = _json_mod.load(f)
+        except Exception as e:
+            print(f'[Toll] Could not load toll_rates.json: {e}')
+            _TOLL_DATA = {}
+    return _TOLL_DATA
+
+@app.route('/api/toll/expressways')
+def api_toll_expressways():
+    data = get_toll_data()
+    result = [{'key': k, 'name': v.get('name', k)} for k, v in data.items()]
+    return jsonify(result)
+
+@app.route('/api/toll/stations/<expressway>')
+def api_toll_stations(expressway):
+    data = get_toll_data()
+    exp = data.get(expressway, {})
+    # Get stations from Class 1 (same for all classes)
+    matrix = exp.get('Class 1', exp.get('Class 2', exp.get('Class 3', {})))
+    stations = list(matrix.keys())
+    return jsonify(stations)
+
+@app.route('/api/toll/calculate', methods=['POST'])
+def api_toll_calculate():
+    req = request.get_json()
+    expressway  = req.get('expressway', '')
+    entry       = req.get('entry', '')
+    exit_point  = req.get('exit', '')
+    toll_class  = req.get('toll_class', 'Class 3')
+    data = get_toll_data()
+    exp = data.get(expressway, {})
+    matrix = exp.get(toll_class, {})
+    # Try entry→exit first, then exit→entry (symmetric)
+    amount = (matrix.get(entry, {}).get(exit_point) or
+              matrix.get(exit_point, {}).get(entry))
+    if amount is None:
+        return jsonify({'error': 'Rate not found', 'amount': 0})
+    return jsonify({'amount': amount, 'expressway': expressway,
+                    'entry': entry, 'exit': exit_point, 'toll_class': toll_class})
+
+@app.route('/toll-calculator')
+@login_required
+def toll_calculator():
+    return render_template('toll_calculator.html')
 
 
 # ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}Toll Calculator{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width:600px;">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-cash-coin" style="font-size:2rem;color:var(--maroon);"></i>
+    <div>
+      <h4 class="mb-0 fw-bold">Toll Calculator</h4>
+      <small class="text-muted">Official TRB rates — Effective January 1, 2026</small>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 rounded-4 p-4">
+
+    <!-- Expressway -->
+    <div class="mb-3">
+      <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">Expressway</label>
+      <select id="tc-expressway" class="form-select" onchange="loadStations()">
+        <option value="">— Select Expressway —</option>
+      </select>
+    </div>
+
+    <!-- Toll Class -->
+    <div class="mb-3">
+      <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">Vehicle Class</label>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary class-btn" data-class="Class 1" onclick="setClass(this)">Class 1 <small>(Light)</small></button>
+        <button class="btn btn-sm btn-outline-secondary class-btn" data-class="Class 2" onclick="setClass(this)">Class 2 <small>(Medium)</small></button>
+        <button class="btn btn-sm btn-maroon class-btn active" data-class="Class 3" onclick="setClass(this)">Class 3 <small>(Heavy)</small></button>
+      </div>
+    </div>
+
+    <!-- Entry / Exit -->
+    <div class="row g-3 mb-4">
+      <div class="col-6">
+        <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">Entry Point</label>
+        <select id="tc-entry" class="form-select" onchange="computeToll()">
+          <option value="">— Select Entry —</option>
+        </select>
+      </div>
+      <div class="col-6">
+        <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">Exit Point</label>
+        <select id="tc-exit" class="form-select" onchange="computeToll()">
+          <option value="">— Select Exit —</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="tc-result" class="rounded-3 p-4 text-center" style="background:#f8f9fa;display:none;">
+      <div style="font-size:.8rem;text-transform:uppercase;color:var(--muted);font-weight:700;">Toll Fee</div>
+      <div id="tc-amount" style="font-size:2.8rem;font-weight:800;color:var(--maroon);letter-spacing:-1px;">₱0</div>
+      <div id="tc-route" style="font-size:.82rem;color:var(--muted);"></div>
+    </div>
+
+    <div id="tc-error" class="alert alert-warning mt-3" style="display:none;">
+      <i class="bi bi-exclamation-triangle me-2"></i>Rate not found for this combination.
+    </div>
+
+  </div>
+
+  <!-- Reference table hint -->
+  <div class="mt-3 text-muted" style="font-size:.78rem;">
+    <i class="bi bi-info-circle me-1"></i>
+    Rates are VAT-inclusive. Source: Toll Regulatory Board (TRB), effective Jan 1, 2026.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedClass = 'Class 3';
+let stations = [];
+
+// Load expressways on page load
+fetch('/api/toll/expressways')
+  .then(r => r.json())
+  .then(list => {
+    const sel = document.getElementById('tc-expressway');
+    list.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e.key; o.textContent = e.name;
+      sel.appendChild(o);
+    });
+  });
+
+function setClass(btn) {
+  document.querySelectorAll('.class-btn').forEach(b => {
+    b.classList.remove('btn-maroon','active');
+    b.classList.add('btn-outline-secondary');
+  });
+  btn.classList.add('btn-maroon','active');
+  btn.classList.remove('btn-outline-secondary');
+  selectedClass = btn.dataset.class;
+  computeToll();
+}
+
+function loadStations() {
+  const exp = document.getElementById('tc-expressway').value;
+  const entry = document.getElementById('tc-entry');
+  const exit  = document.getElementById('tc-exit');
+  entry.innerHTML = '<option value="">— Select Entry —</option>';
+  exit.innerHTML  = '<option value="">— Select Exit —</option>';
+  document.getElementById('tc-result').style.display = 'none';
+  document.getElementById('tc-error').style.display = 'none';
+  if (!exp) return;
+
+  fetch(`/api/toll/stations/${exp}`)
+    .then(r => r.json())
+    .then(list => {
+      stations = list;
+      list.forEach(s => {
+        entry.innerHTML += `<option value="${s}">${s}</option>`;
+        exit.innerHTML  += `<option value="${s}">${s}</option>`;
+      });
+    });
+}
+
+function computeToll() {
+  const exp   = document.getElementById('tc-expressway').value;
+  const entry = document.getElementById('tc-entry').value;
+  const exit  = document.getElementById('tc-exit').value;
+  const resEl = document.getElementById('tc-result');
+  const errEl = document.getElementById('tc-error');
+
+  resEl.style.display = 'none';
+  errEl.style.display = 'none';
+
+  if (!exp || !entry || !exit) return;
+  if (entry === exit) { errEl.style.display = 'block'; errEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Entry and exit cannot be the same.'; return; }
+
+  fetch('/api/toll/calculate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({expressway: exp, entry, exit: exit, toll_class: selectedClass})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error || !data.amount) {
+      errEl.style.display = 'block';
+      errEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Rate not found for this combination.';
+    } else {
+      document.getElementById('tc-amount').textContent = '₱' + data.amount.toLocaleString('en-PH', {minimumFractionDigits:2});
+      document.getElementById('tc-route').textContent  = `${entry}  →  ${exit}  |  ${selectedClass}`;
+      resEl.style.display = 'block';
+    }
+  });
+}
+</script>
+{% endblock %}

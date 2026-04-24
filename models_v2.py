@@ -150,6 +150,11 @@ class TripRecord(db.Model):
     dr_no         = db.Column(db.String(50))
     volume        = db.Column(db.String(50))
     status        = db.Column(db.String(20), default='Pending')
+    toll_fee      = db.Column(db.Float, nullable=True)
+    toll_expressway = db.Column(db.String(50), nullable=True)
+    toll_entry    = db.Column(db.String(80), nullable=True)
+    toll_exit     = db.Column(db.String(80), nullable=True)
+    toll_class    = db.Column(db.String(10), nullable=True)
     notes         = db.Column(db.Text)
     updated_by    = db.Column(db.String(64))
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -179,8 +184,13 @@ class TripRecord(db.Model):
             'reference':     self.reference or '',
             'dr_no':         self.dr_no or '',
             'volume':        self.volume or '',
-            'status':        self.status or 'Pending',
-            'notes':         self.notes or '',
+            'status':           self.status or 'Pending',
+            'toll_fee':         self.toll_fee or 0,
+            'toll_expressway':  self.toll_expressway or '',
+            'toll_entry':       self.toll_entry or '',
+            'toll_exit':        self.toll_exit or '',
+            'toll_class':       self.toll_class or '',
+            'notes':            self.notes or '',
         }
 
 
