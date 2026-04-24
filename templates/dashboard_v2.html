@@ -337,6 +337,7 @@ const ALL_TRIPS = [
     dr_no:     "{{ t.dr_no or '' }}",
     volume:    "{{ t.volume or '' }}",
     status:    "{{ t.status or 'Pending' }}",
+    toll_fee:  {{ t.toll_fee or 0 }},
     notes:     "{{ (t.notes or '') | replace('"', '\\"') | replace('\n', ' ') }}",
   },
   {% endfor %}
@@ -354,13 +355,22 @@ let _kpiStatusKey = 'all';
 
 function openKpiModal(label, statusKey, color) {
   _kpiStatusKey = statusKey;
-  _kpiBaseRows = statusKey === 'all' ? ALL_TRIPS : ALL_TRIPS.filter(t => t.status === statusKey);
+  if (statusKey === 'all') {
+    _kpiBaseRows = ALL_TRIPS;
+  } else if (statusKey === 'Toll Fee') {
+    _kpiBaseRows = ALL_TRIPS.filter(t => (t.toll_fee || 0) > 0);
+  } else {
+    _kpiBaseRows = ALL_TRIPS.filter(t => t.status === statusKey);
+  }
 
   // Header
   document.getElementById('kpiModalHeader').style.background = color;
   document.getElementById('kpiModalHeader').style.color = '#fff';
+  const badgeVal = statusKey === 'Toll Fee'
+    ? '₱' + _kpiBaseRows.reduce((s, t) => s + (t.toll_fee || 0), 0).toLocaleString('en-PH', {minimumFractionDigits: 2})
+    : _kpiBaseRows.length;
   document.getElementById('kpiModalTitle').innerHTML =
-    `<i class="bi bi-list-check me-2"></i>${escHtml(label)} <span id="kpiCountBadge" class="ms-2 badge" style="background:rgba(255,255,255,.25);font-size:.85rem;">${_kpiBaseRows.length}</span>`;
+    `<i class="bi bi-list-check me-2"></i>${escHtml(label)} <span id="kpiCountBadge" class="ms-2 badge" style="background:rgba(255,255,255,.25);font-size:.85rem;">${badgeVal}</span>`;
 
   // Build truck type filter buttons from available trips
   const truckMap = new Map();
@@ -403,7 +413,11 @@ function renderKpiTable(truckFilter) {
     return;
   }
 
-  const showStatus = _kpiStatusKey === 'all';
+  const showStatus  = _kpiStatusKey === 'all';
+  const showToll    = _kpiStatusKey === 'Toll Fee';
+  const tollTotal   = showToll ? rows.reduce((s, t) => s + (t.toll_fee || 0), 0) : 0;
+  const fmtPeso = v => '₱' + Number(v).toLocaleString('en-PH', {minimumFractionDigits: 2});
+
   document.getElementById('kpiModalBody').innerHTML = `
     <div class="scrollable-x">
       <table class="tbl" style="font-size:.82rem;">
@@ -414,6 +428,7 @@ function renderKpiTable(truckFilter) {
             <th>Product</th><th>Client</th><th>Volume</th>
             <th>RS No</th><th>PO No</th><th>DR No</th>
             ${showStatus ? '<th>Status</th>' : ''}
+            ${showToll   ? '<th>Toll Fee</th>' : ''}
             <th>Notes</th>
           </tr>
         </thead>
@@ -434,9 +449,18 @@ function renderKpiTable(truckFilter) {
             <td>${escHtml(t.po_no)||'—'}</td>
             <td>${escHtml(t.dr_no)||'—'}</td>
             ${showStatus ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : ''}
+            ${showToll   ? `<td class="fw-bold" style="color:#0891B2;white-space:nowrap;">${t.toll_fee ? fmtPeso(t.toll_fee) : '—'}</td>` : ''}
             <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes)||'—'}</td>
           </tr>`).join('')}
         </tbody>
+        ${showToll ? `
+        <tfoot>
+          <tr style="background:#e0f2fe;font-weight:700;">
+            <td colspan="13" style="text-align:right;padding-right:.75rem;">Total</td>
+            <td style="color:#0891B2;white-space:nowrap;">${fmtPeso(tollTotal)}</td>
+            <td></td>
+          </tr>
+        </tfoot>` : ''}
       </table>
     </div>`;
 }
