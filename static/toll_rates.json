@@ -4534,5 +4534,110 @@
         "Sison": 62
       }
     }
+  },
+  "Skyway_Stage3": {
+    "name": "Skyway Stage 3",
+    "Class 1": {
+      "Quirino": {
+        "Quezon Ave.": 264,
+        "Balintawak": 264
+      },
+      "Nagtahan": {
+        "Buendia": 105,
+        "Quezon Ave.": 264,
+        "Balintawak": 264
+      },
+      "E. Rodriguez": {
+        "Quezon Ave.": 129,
+        "Balintawak": 129
+      },
+      "Quezon Ave.": {
+        "Buendia": 264,
+        "Quirino": 264,
+        "Nagtahan": 264,
+        "E. Rodriguez": 129,
+        "Balintawak": 129
+      },
+      "Balintawak": {
+        "Buendia": 264,
+        "Quirino": 264,
+        "Nagtahan": 264,
+        "E. Rodriguez": 129,
+        "Quezon Ave.": 129
+      },
+      "Buendia": {
+        "Nagtahan": 105,
+        "Quezon Ave.": 264,
+        "Balintawak": 264
+      }
+    },
+    "Class 2": {
+      "Quirino": {
+        "Quezon Ave.": 528,
+        "Balintawak": 528
+      },
+      "Nagtahan": {
+        "Buendia": 210,
+        "Quezon Ave.": 528,
+        "Balintawak": 528
+      },
+      "E. Rodriguez": {
+        "Quezon Ave.": 258,
+        "Balintawak": 258
+      },
+      "Quezon Ave.": {
+        "Buendia": 528,
+        "Quirino": 528,
+        "Nagtahan": 528,
+        "E. Rodriguez": 258,
+        "Balintawak": 258
+      },
+      "Balintawak": {
+        "Buendia": 528,
+        "Quirino": 528,
+        "Nagtahan": 528,
+        "E. Rodriguez": 258,
+        "Quezon Ave.": 258
+      },
+      "Buendia": {
+        "Nagtahan": 210,
+        "Quezon Ave.": 528,
+        "Balintawak": 528
+      }
+    },
+    "Class 3": {
+      "Quirino": {
+        "Quezon Ave.": 792,
+        "Balintawak": 792
+      },
+      "Nagtahan": {
+        "Buendia": 315,
+        "Quezon Ave.": 792,
+        "Balintawak": 792
+      },
+      "E. Rodriguez": {
+        "Quezon Ave.": 387,
+        "Balintawak": 387
+      },
+      "Quezon Ave.": {
+        "Buendia": 792,
+        "Quirino": 792,
+        "Nagtahan": 792,
+        "E. Rodriguez": 387,
+        "Balintawak": 387
+      },
+      "Balintawak": {
+        "Buendia": 792,
+        "Quirino": 792,
+        "Nagtahan": 792,
+        "E. Rodriguez": 387,
+        "Quezon Ave.": 387
+      },
+      "Buendia": {
+        "Nagtahan": 315,
+        "Quezon Ave.": 792,
+        "Balintawak": 792
+      }
+    }
   }
 }

@@ -887,15 +887,17 @@ def get_toll_data():
 # Expressway connection points — where two expressways physically meet.
 # Each pair is bidirectional: (expA, stationA) <-> (expB, stationB)
 _TOLL_CONNECTIONS = [
-    # NLEX south end ↔ Skyway/SLEX north end
-    (('NLEX_SCTEX', 'Balintawak'),       ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
-    (('NLEX_SCTEX', 'Mindanao Avenue'),  ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
+    # NLEX south end ↔ Skyway Stage 3 north end (Balintawak) — free transfer, same physical point
+    (('NLEX_SCTEX', 'Balintawak'),        ('Skyway_Stage3', 'Balintawak')),
+    (('NLEX_SCTEX', 'Mindanao Avenue'),   ('Skyway_Stage3', 'Balintawak')),
+    # Skyway Stage 3 south end ↔ Skyway / SLEX north end (Buendia) — free transfer
+    (('Skyway_Stage3', 'Buendia'),        ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
     # Skyway/SLEX south end ↔ STAR north end
-    (('Skyway_SLEX_MCX', 'Sto. Tomas'), ('STAR', 'Sto. Tomas')),
+    (('Skyway_SLEX_MCX', 'Sto. Tomas'),  ('STAR', 'Sto. Tomas')),
     # NLEX/SCTEX north end ↔ TPLEX south end
-    (('NLEX_SCTEX', 'Tarlac'),           ('TPLEX', 'La Paz')),
+    (('NLEX_SCTEX', 'Tarlac'),            ('TPLEX', 'La Paz')),
     # Skyway/SLEX ↔ CALAX
-    (('Skyway_SLEX_MCX', 'Mamplasan'),   ('CALAX', 'Laguna Boulevard')),
+    (('Skyway_SLEX_MCX', 'Mamplasan'),    ('CALAX', 'Laguna Boulevard')),
 ]
 
 def _toll_lookup(matrix, a, b):
