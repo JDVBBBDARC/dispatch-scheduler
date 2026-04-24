@@ -79,15 +79,14 @@
 .tc-combo-input { border-radius: .5rem; }
 
 .tc-drop {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
+  position: fixed;   /* fixed so it escapes card overflow clipping */
   background: #fff;
   border: 1px solid #dee2e6;
   border-radius: .5rem;
   max-height: 230px;
   overflow-y: auto;
   z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
 }
 
 .tc-item {
@@ -154,7 +153,17 @@ function setClass(btn) {
 // ── Combobox helpers ───────────────────────────────────────────────────────
 function openDrop(which) {
   const query = document.getElementById(`tc-${which}-input`).value.toLowerCase().trim();
+  positionDrop(which);
   renderDrop(which, query);
+}
+
+function positionDrop(which) {
+  const input = document.getElementById(`tc-${which}-input`);
+  const drop  = document.getElementById(`tc-${which}-drop`);
+  const rect  = input.getBoundingClientRect();
+  drop.style.top   = (rect.bottom + 4) + 'px';
+  drop.style.left  = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
 }
 
 function closeDrop(which) {
@@ -168,6 +177,7 @@ function filterStations(which) {
   // clear the hidden value when the user re-types
   document.getElementById(`tc-${which}`).value = '';
   const query = document.getElementById(`tc-${which}-input`).value.toLowerCase().trim();
+  positionDrop(which);
   renderDrop(which, query);
 }
 
