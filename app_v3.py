@@ -889,11 +889,25 @@ def api_toll_expressways():
     result = [{'key': k, 'name': v.get('name', k)} for k, v in data.items()]
     return jsonify(result)
 
+@app.route('/api/toll/all-stations')
+def api_toll_all_stations():
+    """Return every station across all expressways with which expressway(s) it belongs to."""
+    data = get_toll_data()
+    station_map = {}   # station_name -> set of expressway keys
+    for exp_key, exp_data in data.items():
+        matrix = exp_data.get('Class 3', exp_data.get('Class 1', exp_data.get('Class 2', {})))
+        for stn in matrix.keys():
+            station_map.setdefault(stn, set()).add(exp_key)
+    result = [
+        {'station': s, 'expressways': sorted(exps)}
+        for s, exps in sorted(station_map.items())
+    ]
+    return jsonify(result)
+
 @app.route('/api/toll/stations/<expressway>')
 def api_toll_stations(expressway):
     data = get_toll_data()
     exp = data.get(expressway, {})
-    # Collect stations from all classes (union), then sort alphabetically
     matrix = exp.get('Class 3', exp.get('Class 1', exp.get('Class 2', {})))
     stations = sorted(matrix.keys())
     return jsonify(stations)
@@ -901,14 +915,24 @@ def api_toll_stations(expressway):
 @app.route('/api/toll/calculate', methods=['POST'])
 def api_toll_calculate():
     req = request.get_json()
-    expressway  = req.get('expressway', '')
+    expressway  = req.get('expressway', '')   # optional – auto-detected if blank
     entry       = req.get('entry', '')
     exit_point  = req.get('exit', '')
     toll_class  = req.get('toll_class', 'Class 3')
     data = get_toll_data()
+
+    # Auto-detect expressway: try every expressway until a rate is found
+    if not expressway:
+        for exp_key, exp_data in data.items():
+            matrix = exp_data.get(toll_class, {})
+            amt = (matrix.get(entry, {}).get(exit_point) or
+                   matrix.get(exit_point, {}).get(entry))
+            if amt is not None:
+                expressway = exp_key
+                break
+
     exp = data.get(expressway, {})
     matrix = exp.get(toll_class, {})
-    # Try entry→exit first, then exit→entry (symmetric)
     amount = (matrix.get(entry, {}).get(exit_point) or
               matrix.get(exit_point, {}).get(entry))
     if amount is None:
