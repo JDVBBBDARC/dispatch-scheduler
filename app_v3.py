@@ -433,13 +433,11 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
-    if category == 'clients':
-        obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
-    return jsonify({'id': obj.id, 'name': obj.name, 'toll_fee': getattr(obj, 'toll_fee', 0) or 0})
+    return jsonify({'id': obj.id, 'name': obj.name})
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
@@ -459,8 +457,6 @@ def api_master_update(category, item_id):
         obj.truck_type_id = int(ttid) if ttid else None
     else:
         obj.name = (data.get('name') or obj.name).strip()
-        if category == 'clients' and 'toll_fee' in data:
-            obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
