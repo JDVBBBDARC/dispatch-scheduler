@@ -869,6 +869,7 @@ def api_breakdown_delete(lid):
 
 # ── TOLL CALCULATOR ───────────────────────────────────────────────────────
 import json as _json_mod
+from collections import deque
 _TOLL_DATA = None
 
 def get_toll_data():
@@ -882,6 +883,86 @@ def get_toll_data():
             print(f'[Toll] Could not load toll_rates.json: {e}')
             _TOLL_DATA = {}
     return _TOLL_DATA
+
+# Expressway connection points — where two expressways physically meet.
+# Each pair is bidirectional: (expA, stationA) <-> (expB, stationB)
+_TOLL_CONNECTIONS = [
+    # NLEX south end ↔ Skyway/SLEX north end
+    (('NLEX_SCTEX', 'Balintawak'),       ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
+    (('NLEX_SCTEX', 'Mindanao Avenue'),  ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
+    # Skyway/SLEX south end ↔ STAR north end
+    (('Skyway_SLEX_MCX', 'Sto. Tomas'), ('STAR', 'Sto. Tomas')),
+    # NLEX/SCTEX north end ↔ TPLEX south end
+    (('NLEX_SCTEX', 'Tarlac'),           ('TPLEX', 'La Paz')),
+    # Skyway/SLEX ↔ CALAX
+    (('Skyway_SLEX_MCX', 'Mamplasan'),   ('CALAX', 'Laguna Boulevard')),
+]
+
+def _toll_lookup(matrix, a, b):
+    """Symmetric rate lookup in a class matrix."""
+    return matrix.get(a, {}).get(b) or matrix.get(b, {}).get(a)
+
+def find_toll_route(entry, exit_point, toll_class, data):
+    """
+    BFS across expressway connection points to find the cheapest multi-hop route.
+    Returns (total_amount, segments_list) or (None, None).
+    segments_list = [{'expressway': key, 'from': stn, 'to': stn, 'amount': float}, ...]
+    """
+    # Build bidirectional neighbour map for connection stations
+    conn_neighbours = {}   # (exp, stn) -> [(exp, stn), ...]
+    for (e1, s1), (e2, s2) in _TOLL_CONNECTIONS:
+        conn_neighbours.setdefault((e1, s1), []).append((e2, s2))
+        conn_neighbours.setdefault((e2, s2), []).append((e1, s1))
+
+    # BFS state: (exp_key, station, accumulated_cost, segments)
+    # Seed with every expressway that contains the entry station
+    queue = deque()
+    for exp_key, exp_data in data.items():
+        matrix = exp_data.get(toll_class, {})
+        if entry in matrix or any(entry in v for v in matrix.values()):
+            queue.append((exp_key, entry, 0.0, []))
+
+    visited   = set()
+    best_cost = None
+    best_segs = None
+
+    while queue:
+        cur_exp, cur_stn, cost_so_far, segs = queue.popleft()
+
+        state = (cur_exp, cur_stn)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        matrix = data.get(cur_exp, {}).get(toll_class, {})
+
+        # ── Can we reach the exit from current expressway? ──────────────────
+        amt = _toll_lookup(matrix, cur_stn, exit_point)
+        if amt is not None:
+            total = cost_so_far + amt
+            if best_cost is None or total < best_cost:
+                best_cost = total
+                best_segs = segs + [{'expressway': cur_exp,
+                                      'from': cur_stn, 'to': exit_point,
+                                      'amount': amt}]
+            continue   # don't expand further — already reached destination
+
+        # ── Try every connection point reachable from current expressway ────
+        for (c_exp, c_stn), neighbours in conn_neighbours.items():
+            if c_exp != cur_exp:
+                continue
+            conn_amt = _toll_lookup(matrix, cur_stn, c_stn) if cur_stn != c_stn else 0.0
+            if conn_amt is None:
+                continue
+            new_segs = segs + [{'expressway': cur_exp,
+                                 'from': cur_stn, 'to': c_stn,
+                                 'amount': conn_amt}]
+            for next_exp, next_stn in neighbours:
+                if (next_exp, next_stn) not in visited:
+                    queue.append((next_exp, next_stn,
+                                  cost_so_far + conn_amt, new_segs))
+
+    return best_cost, best_segs
 
 @app.route('/api/toll/expressways')
 def api_toll_expressways():
@@ -936,8 +1017,16 @@ def api_toll_calculate():
     amount = (matrix.get(entry, {}).get(exit_point) or
               matrix.get(exit_point, {}).get(entry))
     if amount is None:
+        # ── Fallback: BFS multi-expressway routing ──────────────────────────
+        best_cost, best_segs = find_toll_route(entry, exit_point, toll_class, data)
+        if best_cost is not None:
+            return jsonify({'amount': best_cost, 'segments': best_segs,
+                            'expressway': 'multi', 'entry': entry,
+                            'exit': exit_point, 'toll_class': toll_class})
         return jsonify({'error': 'Rate not found', 'amount': 0})
     return jsonify({'amount': amount, 'expressway': expressway,
+                    'segments': [{'expressway': expressway, 'from': entry,
+                                  'to': exit_point, 'amount': amount}],
                     'entry': entry, 'exit': exit_point, 'toll_class': toll_class})
 
 @app.route('/toll-calculator')

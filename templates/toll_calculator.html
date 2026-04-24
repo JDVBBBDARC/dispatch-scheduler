@@ -57,10 +57,11 @@
 
     <!-- Result -->
     <div id="tc-result" class="rounded-3 p-4 text-center" style="background:#f8f9fa;display:none;">
-      <div style="font-size:.8rem;text-transform:uppercase;color:var(--muted);font-weight:700;">Toll Fee</div>
+      <div style="font-size:.8rem;text-transform:uppercase;color:var(--muted);font-weight:700;">Total Toll Fee</div>
       <div id="tc-amount" style="font-size:2.8rem;font-weight:800;color:var(--maroon);letter-spacing:-1px;">₱0</div>
       <div id="tc-route"  style="font-size:.82rem;color:var(--muted);margin-top:.25rem;"></div>
-      <div id="tc-exp-label" style="font-size:.75rem;color:var(--muted);opacity:.75;margin-top:.2rem;"></div>
+      <!-- Segment breakdown (multi-expressway routes) -->
+      <div id="tc-segments" style="margin-top:.9rem;display:none;text-align:left;"></div>
     </div>
 
     <div id="tc-error" class="alert alert-warning mt-3" style="display:none;"></div>
@@ -119,6 +120,52 @@
   font-size: .85rem;
   color: var(--muted);
   font-style: italic;
+}
+
+/* ── Segment breakdown ─────────────────────────────────── */
+.tc-seg-header {
+  font-size: .72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: .5rem;
+  letter-spacing: .05em;
+}
+.tc-seg-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff;
+  border-radius: .4rem;
+  padding: .45rem .65rem;
+  margin-bottom: .25rem;
+  font-size: .82rem;
+  border: 1px solid #e9ecef;
+}
+.tc-seg-exp {
+  font-weight: 700;
+  color: var(--maroon);
+  flex-shrink: 0;
+  min-width: 110px;
+}
+.tc-seg-arrow {
+  flex: 1;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tc-seg-amt {
+  font-weight: 700;
+  color: #222;
+  flex-shrink: 0;
+}
+.tc-seg-conn {
+  text-align: center;
+  font-size: .72rem;
+  color: var(--muted);
+  margin: .1rem 0 .25rem;
+  opacity: .75;
 }
 </style>
 {% endblock %}
@@ -245,8 +292,38 @@ function computeToll() {
         '₱' + data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
       document.getElementById('tc-route').textContent =
         `${entry}  →  ${exit}  |  ${selectedClass}`;
-      document.getElementById('tc-exp-label').textContent =
-        expNames[data.expressway] || data.expressway;
+
+      // ── Segment breakdown ──────────────────────────────────────────────
+      const segEl  = document.getElementById('tc-segments');
+      const segs   = data.segments || [];
+      const isMulti = data.expressway === 'multi' || segs.length > 1;
+
+      if (isMulti && segs.length > 1) {
+        let html = `<div class="tc-seg-header">Route Breakdown</div>`;
+        segs.forEach((s, i) => {
+          const expLabel = expNames[s.expressway] || s.expressway;
+          const amt = '₱' + s.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+          html += `
+            <div class="tc-seg-row">
+              <span class="tc-seg-exp">${expLabel}</span>
+              <span class="tc-seg-arrow">${s.from} → ${s.to}</span>
+              <span class="tc-seg-amt">${amt}</span>
+            </div>`;
+          if (i < segs.length - 1) {
+            html += `<div class="tc-seg-conn"><i class="bi bi-arrow-down"></i> transfer</div>`;
+          }
+        });
+        segEl.innerHTML = html;
+        segEl.style.display = 'block';
+      } else {
+        // Single-expressway: show expressway name only
+        segEl.style.display = 'none';
+        segEl.innerHTML = '';
+        const expLabel = segs[0] ? (expNames[segs[0].expressway] || segs[0].expressway) : '';
+        document.getElementById('tc-route').textContent =
+          `${entry}  →  ${exit}  |  ${selectedClass}  |  ${expLabel}`;
+      }
+
       resEl.style.display = 'block';
     }
   });
