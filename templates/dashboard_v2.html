@@ -195,6 +195,34 @@
   </div>
 </div>
 
+<!-- ── ROW 2.5: FLEET UTILIZATION ───────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="card-title">
+          <i class="bi bi-speedometer2 me-2" style="color:#0891B2;"></i>
+          Fleet Utilization
+          &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">
+            {{ trend_start_str }} → {{ trend_end_str }} · 100% = daily target met
+          </small>
+        </span>
+        <div class="d-flex gap-1 flex-wrap" id="fleetUtilFilterBtns">
+          <button class="trend-btn active" data-tt="all" onclick="setFleetUtilFilter('all',this)">All</button>
+          {% for tt in truck_types %}
+          <button class="trend-btn" data-tt="{{ tt.code }}" onclick="setFleetUtilFilter('{{ tt.code }}',this)"
+                  style="--tc:{{ tt.color }}">{{ tt.code }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-body">
+        <canvas id="fleetUtilChart" height="120"></canvas>
+        <div id="fleetUtilLegend" class="mt-3 d-flex flex-wrap gap-3" style="font-size:.75rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── ROW 3: TRUCK BREAKDOWN + RECENT ACTIVITY ─────────────────────────── -->
 <div class="row g-4 mb-4">
 
@@ -560,6 +588,139 @@ function setTrend(truck, btn) {
 
 renderTrendChart();
 
+// ── FLEET UTILIZATION CHART ───────────────────────────────────────────────
+let fleetUtilChart = null;
+let fleetUtilData  = null;        // last fetched payload {days, series}
+let fleetUtilFilter = 'all';      // 'all' or a truck-type code
+
+function fetchFleetUtilization() {
+  const params = new URLSearchParams(window.location.search);
+  fetch('/api/dashboard/fleet-utilization?' + params.toString())
+    .then(r => r.json())
+    .then(d => {
+      fleetUtilData = d;
+      renderFleetUtilChart();
+    })
+    .catch(() => {});
+}
+
+function buildFleetUtilDatasets() {
+  if (!fleetUtilData) return [];
+  return fleetUtilData.series
+    .filter(s => fleetUtilFilter === 'all' || s.code === fleetUtilFilter)
+    .map(s => ({
+      label: `${s.name} (${s.truck_count} trucks · target ${s.daily_target}/truck)`,
+      data: s.util_pct,
+      borderColor: s.color,
+      backgroundColor: hex2rgba(s.color, 0.18),
+      borderWidth: 2,
+      pointRadius: 2.5,
+      pointHoverRadius: 5,
+      tension: 0.35,
+      fill: fleetUtilFilter !== 'all',  // fill area when single type focused
+      _truckCount: s.truck_count,
+      _points: s.points,
+    }));
+}
+
+function renderFleetUtilChart() {
+  if (!fleetUtilData) return;
+  if (fleetUtilChart) fleetUtilChart.destroy();
+
+  const ctx = document.getElementById('fleetUtilChart');
+  if (!ctx) return;
+
+  fleetUtilChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: fleetUtilData.days,
+      datasets: buildFleetUtilDatasets(),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (item) => {
+              const ds  = item.dataset;
+              const pts = ds._points ? ds._points[item.dataIndex] : 0;
+              const tc  = ds._truckCount || 0;
+              return `${ds.label.split(' (')[0]}: ${item.parsed.y.toFixed(1)}%  (${pts} pts / ${tc} trucks)`;
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => v + '%' },
+          title: { display: true, text: 'Utilization %', font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,.05)' },
+          // 100% reference line
+          afterDraw: () => {},
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      },
+    },
+    plugins: [{
+      id: 'targetLine',
+      afterDraw: (chart) => {
+        const yScale = chart.scales.y;
+        const xScale = chart.scales.x;
+        if (!yScale || !xScale) return;
+        const y100 = yScale.getPixelForValue(100);
+        const ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.strokeStyle = 'rgba(220, 38, 38, 0.5)';
+        ctx2.setLineDash([4, 4]);
+        ctx2.lineWidth = 1.5;
+        ctx2.beginPath();
+        ctx2.moveTo(xScale.left, y100);
+        ctx2.lineTo(xScale.right, y100);
+        ctx2.stroke();
+        // Label
+        ctx2.fillStyle = 'rgba(220, 38, 38, 0.85)';
+        ctx2.font = '10px Barlow, sans-serif';
+        ctx2.fillText('100% target', xScale.right - 60, y100 - 4);
+        ctx2.restore();
+      },
+    }],
+  });
+
+  // Render compact legend
+  const legendEl = document.getElementById('fleetUtilLegend');
+  if (legendEl && fleetUtilData) {
+    const visibleSeries = fleetUtilData.series.filter(
+      s => fleetUtilFilter === 'all' || s.code === fleetUtilFilter
+    );
+    legendEl.innerHTML = visibleSeries.map(s => {
+      const totalPts = s.points.reduce((a, b) => a + b, 0);
+      const avgUtil  = s.util_pct.length
+        ? (s.util_pct.reduce((a, b) => a + b, 0) / s.util_pct.length).toFixed(1)
+        : '0.0';
+      return `
+        <div class="d-flex align-items-center gap-2" style="padding:.3rem .65rem;background:#f8f9fa;border-radius:6px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.color};"></span>
+          <strong style="color:${s.color};">${escHtml(s.code)}</strong>
+          <span style="color:var(--muted);">${s.truck_count} trucks · ${s.point_per_leg} pts/leg · target ${s.daily_target}</span>
+          <span style="font-weight:600;">avg ${avgUtil}%</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+function setFleetUtilFilter(ttCode, btn) {
+  fleetUtilFilter = ttCode;
+  document.querySelectorAll('#fleetUtilFilterBtns .trend-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderFleetUtilChart();
+}
+
+fetchFleetUtilization();
+
 // ── PIE CHART (status mix) ────────────────────────────────────────────────
 {% if total > 0 %}
 new Chart(document.getElementById('statusChart'), {
@@ -722,7 +883,8 @@ function refreshKpis() {
 
 // ── DASHBOARD LIVE ACTIVITY ───────────────────────────────────────────────
 function loadDashActivity() {
-  refreshKpis();   // always refresh KPIs alongside activity
+  refreshKpis();              // refresh KPI card numbers
+  fetchFleetUtilization();    // refresh fleet utilization chart
   fetch('/api/activity')
     .then(r => r.json())
     .then(d => {

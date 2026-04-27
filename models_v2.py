@@ -4,15 +4,22 @@ from datetime import datetime
 db = SQLAlchemy()
 
 # ── Truck type seed data ───────────────────────────────────────────────────
+# point_per_leg / daily_target_points control fleet utilization scoring.
+# 10W uses the 0.5/4.0 "point" system (each delivered leg = 0.5 pts,
+# 4.0 pts/day = 100% utilization). All others use whole-trip counting
+# with a target of 1.5 trips/day = 100% (i.e., 3 trips per 2 days).
 TRUCK_TYPES_SEED = [
-    {'code': '10W',  'name': '10 Wheeler Dump Truck', 'color': '#c0392b', 'sort_order': 1},
-    {'code': '12W',  'name': '12 Wheeler Dump Truck', 'color': '#8e44ad', 'sort_order': 2},
-    {'code': '22WD', 'name': '22W Dump Trailer',      'color': '#2980b9', 'sort_order': 3},
-    {'code': '22WB', 'name': '22W Bulk Carrier',      'color': '#27ae60', 'sort_order': 4},
-    {'code': 'FB',   'name': 'Flat Bed Trailer',      'color': '#d35400', 'sort_order': 5},
-    {'code': 'LB',   'name': 'Lowbed Trailer',        'color': '#16a085', 'sort_order': 6},
-    {'code': 'OT',   'name': 'Others',                'color': '#7f8c8d', 'sort_order': 7},
+    {'code': '10W',  'name': '10 Wheeler Dump Truck', 'color': '#c0392b', 'sort_order': 1, 'point_per_leg': 0.5, 'daily_target_points': 4.0},
+    {'code': '12W',  'name': '12 Wheeler Dump Truck', 'color': '#8e44ad', 'sort_order': 2, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
+    {'code': '22WD', 'name': '22W Dump Trailer',      'color': '#2980b9', 'sort_order': 3, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
+    {'code': '22WB', 'name': '22W Bulk Carrier',      'color': '#27ae60', 'sort_order': 4, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
+    {'code': 'FB',   'name': 'Flat Bed Trailer',      'color': '#d35400', 'sort_order': 5, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
+    {'code': 'LB',   'name': 'Lowbed Trailer',        'color': '#16a085', 'sort_order': 6, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
+    {'code': 'OT',   'name': 'Others',                'color': '#7f8c8d', 'sort_order': 7, 'point_per_leg': 1.0, 'daily_target_points': 1.5},
 ]
+
+# Products that are inherently full-day commitments (auto-flagged on first init).
+FULL_DAY_PRODUCTS_SEED = ['ASPHALT']
 
 TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load']
 
@@ -40,6 +47,9 @@ class TruckTypeDef(db.Model):
     name       = db.Column(db.String(60), nullable=False)
     color      = db.Column(db.String(20), default='#8B1A2B')
     sort_order = db.Column(db.Integer, default=0)
+    # Fleet-utilization scoring (editable in master data)
+    point_per_leg       = db.Column(db.Float, default=1.0)   # 0.5 for 10W, 1.0 for others
+    daily_target_points = db.Column(db.Float, default=1.5)   # 4.0 for 10W, 1.5 for others
 
     waves  = db.relationship('Wave',  back_populates='truck_type', cascade='all, delete-orphan')
     plates = db.relationship('Plate', back_populates='truck_type')
@@ -70,6 +80,10 @@ class Product(db.Model):
     id     = db.Column(db.Integer, primary_key=True)
     name   = db.Column(db.String(100), nullable=False)
     active = db.Column(db.Boolean, default=True)
+    # Full-day commitment flag for fleet-utilization scoring
+    # When True, a delivered trip with this product counts as the truck's full
+    # daily target instead of the per-leg point value (e.g., ASPHALT runs).
+    is_full_day_trip = db.Column(db.Boolean, default=False, nullable=False)
 
     trips = db.relationship('TripRecord', foreign_keys='TripRecord.product_id', back_populates='product')
 

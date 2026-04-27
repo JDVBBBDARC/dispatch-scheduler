@@ -46,7 +46,8 @@ from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        ChangeLog, Attendance, HelperAttendance, BreakdownLog, AppSetting,
                        TRUCK_TYPES_SEED, STATUSES,
                        ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
-                       DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT)
+                       DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT,
+                       FULL_DAY_PRODUCTS_SEED)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -291,6 +292,108 @@ def api_dashboard_kpis():
         'total_toll_fee': sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
     })
 
+
+# ── FLEET UTILIZATION API ──────────────────────────────────────────────────
+@app.route('/api/dashboard/fleet-utilization')
+@login_required
+def api_dashboard_fleet_utilization():
+    """
+    Compute fleet utilization % per truck type per day for the requested range.
+
+    Scoring rules (configurable per truck type):
+      - point_per_leg       = points awarded per delivered trip leg (0.5 for 10W)
+      - daily_target_points = daily 100% threshold (4.0 for 10W, 1.5 for others)
+
+    Special-case: trips whose product has is_full_day_trip = True count for the
+    truck type's full daily_target_points instead of point_per_leg
+    (e.g., ASPHALT runs).
+
+    Active truck count per type = active plates assigned to that type.
+    """
+    from_date = request.args.get('trend_start',
+                                 (ph_today() - timedelta(days=13)).isoformat())
+    to_date   = request.args.get('trend_end', ph_today().isoformat())
+    from_d = parse_date(from_date)
+    to_d   = parse_date(to_date)
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+
+    truck_types = TruckTypeDef.query.order_by(TruckTypeDef.sort_order).all()
+
+    # Active truck count per type (active plates only)
+    plate_counts = dict(
+        db.session.query(Plate.truck_type_id, db.func.count(Plate.id))
+                  .filter(Plate.active == True, Plate.truck_type_id.isnot(None))
+                  .group_by(Plate.truck_type_id).all()
+    )
+
+    # Fetch all delivered trips in range with their wave + product info
+    trips = (db.session.query(TripRecord, Wave)
+             .join(Wave, TripRecord.wave_id == Wave.id)
+             .filter(Wave.date >= from_d, Wave.date <= to_d,
+                     TripRecord.status == 'Delivered')
+             .all())
+
+    # Build product → is_full_day map (only for products that appear in the trips)
+    product_ids = {t.product_id for (t, _w) in trips if t.product_id}
+    full_day_products = set()
+    if product_ids:
+        full_day_products = {
+            pid for (pid,) in db.session.query(Product.id)
+                                        .filter(Product.id.in_(product_ids),
+                                                Product.is_full_day_trip == True).all()
+        }
+
+    # Build day list
+    days = []
+    cur = from_d
+    while cur <= to_d:
+        days.append(cur)
+        cur += timedelta(days=1)
+
+    # Aggregate points per (truck_type_id, day)
+    points_map = {tt.id: {d: 0.0 for d in days} for tt in truck_types}
+    for trip, wave in trips:
+        if not wave or wave.truck_type_id not in points_map:
+            continue
+        tt = next((x for x in truck_types if x.id == wave.truck_type_id), None)
+        if not tt:
+            continue
+        if trip.product_id and trip.product_id in full_day_products:
+            pts = float(tt.daily_target_points or 1.5)
+        else:
+            pts = float(tt.point_per_leg or 1.0)
+        if wave.date in points_map[tt.id]:
+            points_map[tt.id][wave.date] += pts
+
+    # Build series per truck type
+    series = []
+    for tt in truck_types:
+        truck_count   = plate_counts.get(tt.id, 0)
+        target_per_truck = float(tt.daily_target_points or 1.5)
+        max_per_day   = truck_count * target_per_truck if truck_count > 0 else 0
+        daily_pts     = [points_map[tt.id][d] for d in days]
+        daily_util    = [(p / max_per_day * 100.0) if max_per_day > 0 else 0.0
+                         for p in daily_pts]
+        series.append({
+            'code':              tt.code,
+            'name':              tt.name,
+            'color':             tt.color,
+            'point_per_leg':     float(tt.point_per_leg or 1.0),
+            'daily_target':      target_per_truck,
+            'truck_count':       truck_count,
+            'max_per_day':       max_per_day,
+            'points':            [round(v, 2) for v in daily_pts],
+            'util_pct':          [round(v, 2) for v in daily_util],
+        })
+
+    return jsonify({
+        'days':        [d.strftime('%b %d') for d in days],
+        'days_iso':    [d.isoformat() for d in days],
+        'series':      series,
+    })
+
+
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 @login_required
@@ -483,10 +586,36 @@ def api_master_update(category, item_id):
         obj.truck_type_id = int(ttid) if ttid else None
     else:
         obj.name = (data.get('name') or obj.name).strip()
+        # Products: optional is_full_day_trip toggle
+        if category == 'products' and 'is_full_day_trip' in data:
+            obj.is_full_day_trip = bool(data.get('is_full_day_trip'))
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
     return jsonify({'ok': True})
+
+
+@app.route('/api/master/truck-type/<int:tt_id>/update', methods=['POST'])
+@login_required
+def api_truck_type_update(tt_id):
+    """Update fleet-utilization scoring fields for a truck type."""
+    data = request.get_json() or {}
+    tt = TruckTypeDef.query.get_or_404(tt_id)
+    if 'point_per_leg' in data:
+        try:
+            tt.point_per_leg = float(data['point_per_leg'])
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid point_per_leg'}), 400
+    if 'daily_target_points' in data:
+        try:
+            tt.daily_target_points = float(data['daily_target_points'])
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid daily_target_points'}), 400
+    db.session.commit()
+    log_change(f"Updated truck type {tt.code} scoring (pts/leg={tt.point_per_leg}, target={tt.daily_target_points})", 'master')
+    db.session.commit()
+    return jsonify({'ok': True, 'point_per_leg': tt.point_per_leg,
+                    'daily_target_points': tt.daily_target_points})
 
 
 @app.route('/api/master/<category>/<int:item_id>/toggle', methods=['POST'])
@@ -1438,6 +1567,39 @@ def init_db():
                 conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
                 conn.commit()
             print("  Migrated: added trip_type column to trip_records")
+        # Migrate: add fleet-utilization columns to truck_type_defs
+        tt_cols = [c['name'] for c in inspector.get_columns('truck_type_defs')]
+        if 'point_per_leg' not in tt_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE truck_type_defs ADD COLUMN point_per_leg FLOAT DEFAULT 1.0'))
+                conn.commit()
+            print("  Migrated: added point_per_leg column to truck_type_defs")
+        if 'daily_target_points' not in tt_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE truck_type_defs ADD COLUMN daily_target_points FLOAT DEFAULT 1.5'))
+                conn.commit()
+            print("  Migrated: added daily_target_points column to truck_type_defs")
+        # Backfill defaults for existing truck types based on code (10W gets 0.5/4.0)
+        for tt in TruckTypeDef.query.all():
+            seed = next((s for s in TRUCK_TYPES_SEED if s['code'] == tt.code), None)
+            if seed:
+                if tt.point_per_leg is None or tt.point_per_leg == 1.0 and tt.code == '10W':
+                    tt.point_per_leg = seed['point_per_leg']
+                if tt.daily_target_points is None or (tt.daily_target_points == 1.5 and tt.code == '10W'):
+                    tt.daily_target_points = seed['daily_target_points']
+        # Migrate: add is_full_day_trip column to products
+        prod_cols = [c['name'] for c in inspector.get_columns('products')]
+        if 'is_full_day_trip' not in prod_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0'))
+                conn.commit()
+            print("  Migrated: added is_full_day_trip column to products")
+        # Auto-flag known full-day products (case-insensitive name match)
+        for prod_name in FULL_DAY_PRODUCTS_SEED:
+            prod = Product.query.filter(db.func.upper(Product.name) == prod_name.upper()).first()
+            if prod and not prod.is_full_day_trip:
+                prod.is_full_day_trip = True
+        db.session.commit()
         # Migrate: add can_delete column to users if missing
         from auth.models import User
         try:
