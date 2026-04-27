@@ -2707,7 +2707,8 @@
         "Cabuyao": 217.0,
         "Silangan": 223.0,
         "Calamba": 244.0,
-        "Sto. Tomas": 278.0
+        "Sto. Tomas": 278.0,
+        "C-5": 49.0
       },
       "Magallanes": {
         "Merville": 49.0,
@@ -2726,7 +2727,8 @@
         "Cabuyao": 217.0,
         "Silangan": 223.0,
         "Calamba": 244.0,
-        "Sto. Tomas": 278.0
+        "Sto. Tomas": 278.0,
+        "C-5": 0
       },
       "Bicutan": {
         "Skyway / Buendia": 72.0,
@@ -2746,7 +2748,8 @@
         "Cabuyao": 168.0,
         "Silangan": 174.0,
         "Calamba": 195.0,
-        "Sto. Tomas": 229.0
+        "Sto. Tomas": 229.0,
+        "C-5": 49.0
       },
       "Skyway / Buendia": {
         "Bicutan": 72.0,
@@ -2784,7 +2787,8 @@
         "Cabuyao": 133.0,
         "Silangan": 139.0,
         "Calamba": 160.0,
-        "Sto. Tomas": 194.0
+        "Sto. Tomas": 194.0,
+        "C-5": 84.0
       },
       "Alabang": {
         "Skyway / Buendia": 164.0,
@@ -2804,7 +2808,8 @@
         "Cabuyao": 99.0,
         "Silangan": 105.0,
         "Calamba": 126.0,
-        "Sto. Tomas": 160.0
+        "Sto. Tomas": 160.0,
+        "C-5": 118.0
       },
       "Filinvest": {
         "Skyway / Buendia": 170.0,
@@ -2824,7 +2829,8 @@
         "Cabuyao": 93.0,
         "Silangan": 100.0,
         "Calamba": 121.0,
-        "Sto. Tomas": 155.0
+        "Sto. Tomas": 155.0,
+        "C-5": 124.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 208.0,
@@ -2844,7 +2850,8 @@
         "Cabuyao": 101.0,
         "Silangan": 107.0,
         "Calamba": 128.0,
-        "Sto. Tomas": 162.0
+        "Sto. Tomas": 162.0,
+        "C-5": 162.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 185.0,
@@ -2864,7 +2871,8 @@
         "Cabuyao": 78.0,
         "Silangan": 84.0,
         "Calamba": 105.0,
-        "Sto. Tomas": 139.0
+        "Sto. Tomas": 139.0,
+        "C-5": 139.0
       },
       "San Pedro": {
         "Skyway / Buendia": 192.0,
@@ -2884,7 +2892,8 @@
         "Cabuyao": 71.0,
         "Silangan": 77.0,
         "Calamba": 98.0,
-        "Sto. Tomas": 132.0
+        "Sto. Tomas": 132.0,
+        "C-5": 146.0
       },
       "Southwoods": {
         "Skyway / Buendia": 210.0,
@@ -2904,7 +2913,8 @@
         "Cabuyao": 53.0,
         "Silangan": 60.0,
         "Calamba": 81.0,
-        "Sto. Tomas": 115.0
+        "Sto. Tomas": 115.0,
+        "C-5": 164.0
       },
       "Carmona": {
         "Skyway / Buendia": 216.0,
@@ -2924,7 +2934,8 @@
         "Cabuyao": 46.0,
         "Silangan": 53.0,
         "Calamba": 74.0,
-        "Sto. Tomas": 108.0
+        "Sto. Tomas": 108.0,
+        "C-5": 170.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 228.0,
@@ -2944,7 +2955,8 @@
         "Cabuyao": 35.0,
         "Silangan": 41.0,
         "Calamba": 62.0,
-        "Sto. Tomas": 96.0
+        "Sto. Tomas": 96.0,
+        "C-5": 182.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 239.0,
@@ -2964,7 +2976,8 @@
         "Cabuyao": 24.0,
         "Silangan": 31.0,
         "Calamba": 52.0,
-        "Sto. Tomas": 86.0
+        "Sto. Tomas": 86.0,
+        "C-5": 193.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 253.0,
@@ -2984,7 +2997,8 @@
         "Cabuyao": 9.0,
         "Silangan": 16.0,
         "Calamba": 37.0,
-        "Sto. Tomas": 71.0
+        "Sto. Tomas": 71.0,
+        "C-5": 207.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 263.0,
@@ -3004,7 +3018,8 @@
         "ABI/Greenfield": 9.0,
         "Silangan": 7.0,
         "Calamba": 27.0,
-        "Sto. Tomas": 61.0
+        "Sto. Tomas": 61.0,
+        "C-5": 217.0
       },
       "Silangan": {
         "Skyway / Buendia": 269.0,
@@ -3024,7 +3039,8 @@
         "ABI/Greenfield": 16.0,
         "Cabuyao": 7.0,
         "Calamba": 21.0,
-        "Sto. Tomas": 55.0
+        "Sto. Tomas": 55.0,
+        "C-5": 223.0
       },
       "Calamba": {
         "Skyway / Buendia": 290.0,
@@ -3044,7 +3060,8 @@
         "ABI/Greenfield": 37.0,
         "Cabuyao": 27.0,
         "Silangan": 21.0,
-        "Sto. Tomas": 34.0
+        "Sto. Tomas": 34.0,
+        "C-5": 244.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 324.0,
@@ -3064,7 +3081,28 @@
         "ABI/Greenfield": 71.0,
         "Cabuyao": 61.0,
         "Silangan": 55.0,
-        "Calamba": 34.0
+        "Calamba": 34.0,
+        "C-5": 278.0
+      },
+      "C-5": {
+        "Merville": 49.0,
+        "Bicutan": 49.0,
+        "Sucat": 84.0,
+        "Alabang": 118.0,
+        "Filinvest": 124.0,
+        "Muntinlupa-Cavite X'way": 162.0,
+        "Susana Heights": 139.0,
+        "San Pedro": 146.0,
+        "Southwoods": 164.0,
+        "Carmona": 170.0,
+        "Mamplasan": 182.0,
+        "Sta. Rosa": 193.0,
+        "ABI/Greenfield": 207.0,
+        "Cabuyao": 217.0,
+        "Silangan": 223.0,
+        "Calamba": 244.0,
+        "Sto. Tomas": 278.0,
+        "Magallanes": 0
       }
     },
     "Class 2": {
@@ -3085,7 +3123,8 @@
         "Cabuyao": 435.0,
         "Silangan": 448.0,
         "Calamba": 490.0,
-        "Sto. Tomas": 558.0
+        "Sto. Tomas": 558.0,
+        "C-5": 98.0
       },
       "Magallanes": {
         "Merville": 98.0,
@@ -3104,7 +3143,8 @@
         "Cabuyao": 435.0,
         "Silangan": 448.0,
         "Calamba": 490.0,
-        "Sto. Tomas": 558.0
+        "Sto. Tomas": 558.0,
+        "C-5": 0
       },
       "Bicutan": {
         "Skyway / Buendia": 145.0,
@@ -3124,7 +3164,8 @@
         "Cabuyao": 336.0,
         "Silangan": 349.0,
         "Calamba": 391.0,
-        "Sto. Tomas": 459.0
+        "Sto. Tomas": 459.0,
+        "C-5": 98.0
       },
       "Skyway / Buendia": {
         "Bicutan": 145.0,
@@ -3162,7 +3203,8 @@
         "Cabuyao": 267.0,
         "Silangan": 280.0,
         "Calamba": 322.0,
-        "Sto. Tomas": 390.0
+        "Sto. Tomas": 390.0,
+        "C-5": 168.0
       },
       "Alabang": {
         "Skyway / Buendia": 329.0,
@@ -3182,7 +3224,8 @@
         "Cabuyao": 198.0,
         "Silangan": 211.0,
         "Calamba": 253.0,
-        "Sto. Tomas": 321.0
+        "Sto. Tomas": 321.0,
+        "C-5": 237.0
       },
       "Filinvest": {
         "Skyway / Buendia": 340.0,
@@ -3202,7 +3245,8 @@
         "Cabuyao": 187.0,
         "Silangan": 200.0,
         "Calamba": 242.0,
-        "Sto. Tomas": 310.0
+        "Sto. Tomas": 310.0,
+        "C-5": 248.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 418.0,
@@ -3222,7 +3266,8 @@
         "Cabuyao": 203.0,
         "Silangan": 216.0,
         "Calamba": 258.0,
-        "Sto. Tomas": 326.0
+        "Sto. Tomas": 326.0,
+        "C-5": 326.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 371.0,
@@ -3242,7 +3287,8 @@
         "Cabuyao": 156.0,
         "Silangan": 169.0,
         "Calamba": 211.0,
-        "Sto. Tomas": 279.0
+        "Sto. Tomas": 279.0,
+        "C-5": 279.0
       },
       "San Pedro": {
         "Skyway / Buendia": 385.0,
@@ -3262,7 +3308,8 @@
         "Cabuyao": 142.0,
         "Silangan": 155.0,
         "Calamba": 197.0,
-        "Sto. Tomas": 265.0
+        "Sto. Tomas": 265.0,
+        "C-5": 293.0
       },
       "Southwoods": {
         "Skyway / Buendia": 420.0,
@@ -3282,7 +3329,8 @@
         "Cabuyao": 107.0,
         "Silangan": 120.0,
         "Calamba": 162.0,
-        "Sto. Tomas": 230.0
+        "Sto. Tomas": 230.0,
+        "C-5": 328.0
       },
       "Carmona": {
         "Skyway / Buendia": 434.0,
@@ -3302,7 +3350,8 @@
         "Cabuyao": 93.0,
         "Silangan": 106.0,
         "Calamba": 148.0,
-        "Sto. Tomas": 216.0
+        "Sto. Tomas": 216.0,
+        "C-5": 342.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 457.0,
@@ -3322,7 +3371,8 @@
         "Cabuyao": 69.0,
         "Silangan": 83.0,
         "Calamba": 124.0,
-        "Sto. Tomas": 192.0
+        "Sto. Tomas": 192.0,
+        "C-5": 365.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 478.0,
@@ -3342,7 +3392,8 @@
         "Cabuyao": 49.0,
         "Silangan": 62.0,
         "Calamba": 104.0,
-        "Sto. Tomas": 172.0
+        "Sto. Tomas": 172.0,
+        "C-5": 386.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 508.0,
@@ -3362,7 +3413,8 @@
         "Cabuyao": 19.0,
         "Silangan": 32.0,
         "Calamba": 74.0,
-        "Sto. Tomas": 142.0
+        "Sto. Tomas": 142.0,
+        "C-5": 416.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 527.0,
@@ -3382,7 +3434,8 @@
         "ABI/Greenfield": 19.0,
         "Silangan": 13.0,
         "Calamba": 55.0,
-        "Sto. Tomas": 123.0
+        "Sto. Tomas": 123.0,
+        "C-5": 435.0
       },
       "Silangan": {
         "Skyway / Buendia": 540.0,
@@ -3402,7 +3455,8 @@
         "ABI/Greenfield": 32.0,
         "Cabuyao": 13.0,
         "Calamba": 42.0,
-        "Sto. Tomas": 110.0
+        "Sto. Tomas": 110.0,
+        "C-5": 448.0
       },
       "Calamba": {
         "Skyway / Buendia": 582.0,
@@ -3422,7 +3476,8 @@
         "ABI/Greenfield": 74.0,
         "Cabuyao": 55.0,
         "Silangan": 42.0,
-        "Sto. Tomas": 68.0
+        "Sto. Tomas": 68.0,
+        "C-5": 490.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 650.0,
@@ -3442,7 +3497,28 @@
         "ABI/Greenfield": 142.0,
         "Cabuyao": 123.0,
         "Silangan": 110.0,
-        "Calamba": 68.0
+        "Calamba": 68.0,
+        "C-5": 558.0
+      },
+      "C-5": {
+        "Merville": 98.0,
+        "Bicutan": 98.0,
+        "Sucat": 168.0,
+        "Alabang": 237.0,
+        "Filinvest": 248.0,
+        "Muntinlupa-Cavite X'way": 326.0,
+        "Susana Heights": 279.0,
+        "San Pedro": 293.0,
+        "Southwoods": 328.0,
+        "Carmona": 342.0,
+        "Mamplasan": 365.0,
+        "Sta. Rosa": 386.0,
+        "ABI/Greenfield": 416.0,
+        "Cabuyao": 435.0,
+        "Silangan": 448.0,
+        "Calamba": 490.0,
+        "Sto. Tomas": 558.0,
+        "Magallanes": 0
       }
     },
     "Class 3": {
@@ -3463,7 +3539,8 @@
         "Cabuyao": 653.0,
         "Silangan": 672.0,
         "Calamba": 735.0,
-        "Sto. Tomas": 837.0
+        "Sto. Tomas": 837.0,
+        "C-5": 147.0
       },
       "Magallanes": {
         "Merville": 147.0,
@@ -3482,7 +3559,8 @@
         "Cabuyao": 653.0,
         "Silangan": 672.0,
         "Calamba": 735.0,
-        "Sto. Tomas": 837.0
+        "Sto. Tomas": 837.0,
+        "C-5": 0
       },
       "Bicutan": {
         "Skyway / Buendia": 218.0,
@@ -3502,7 +3580,8 @@
         "Cabuyao": 505.0,
         "Silangan": 524.0,
         "Calamba": 587.0,
-        "Sto. Tomas": 689.0
+        "Sto. Tomas": 689.0,
+        "C-5": 147.0
       },
       "Skyway / Buendia": {
         "Bicutan": 218.0,
@@ -3540,7 +3619,8 @@
         "Cabuyao": 401.0,
         "Silangan": 420.0,
         "Calamba": 483.0,
-        "Sto. Tomas": 585.0
+        "Sto. Tomas": 585.0,
+        "C-5": 252.0
       },
       "Alabang": {
         "Skyway / Buendia": 493.0,
@@ -3560,7 +3640,8 @@
         "Cabuyao": 297.0,
         "Silangan": 316.0,
         "Calamba": 379.0,
-        "Sto. Tomas": 481.0
+        "Sto. Tomas": 481.0,
+        "C-5": 356.0
       },
       "Filinvest": {
         "Skyway / Buendia": 510.0,
@@ -3580,7 +3661,8 @@
         "Cabuyao": 280.0,
         "Silangan": 300.0,
         "Calamba": 362.0,
-        "Sto. Tomas": 464.0
+        "Sto. Tomas": 464.0,
+        "C-5": 373.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 626.0,
@@ -3600,7 +3682,8 @@
         "Cabuyao": 304.0,
         "Silangan": 323.0,
         "Calamba": 386.0,
-        "Sto. Tomas": 488.0
+        "Sto. Tomas": 488.0,
+        "C-5": 489.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 556.0,
@@ -3620,7 +3703,8 @@
         "Cabuyao": 234.0,
         "Silangan": 253.0,
         "Calamba": 316.0,
-        "Sto. Tomas": 418.0
+        "Sto. Tomas": 418.0,
+        "C-5": 419.0
       },
       "San Pedro": {
         "Skyway / Buendia": 577.0,
@@ -3640,7 +3724,8 @@
         "Cabuyao": 212.0,
         "Silangan": 232.0,
         "Calamba": 295.0,
-        "Sto. Tomas": 397.0
+        "Sto. Tomas": 397.0,
+        "C-5": 440.0
       },
       "Southwoods": {
         "Skyway / Buendia": 630.0,
@@ -3660,7 +3745,8 @@
         "Cabuyao": 160.0,
         "Silangan": 180.0,
         "Calamba": 242.0,
-        "Sto. Tomas": 344.0
+        "Sto. Tomas": 344.0,
+        "C-5": 493.0
       },
       "Carmona": {
         "Skyway / Buendia": 650.0,
@@ -3680,7 +3766,8 @@
         "Cabuyao": 139.0,
         "Silangan": 159.0,
         "Calamba": 222.0,
-        "Sto. Tomas": 324.0
+        "Sto. Tomas": 324.0,
+        "C-5": 513.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 685.0,
@@ -3700,7 +3787,8 @@
         "Cabuyao": 104.0,
         "Silangan": 124.0,
         "Calamba": 187.0,
-        "Sto. Tomas": 289.0
+        "Sto. Tomas": 289.0,
+        "C-5": 548.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 717.0,
@@ -3720,7 +3808,8 @@
         "Cabuyao": 73.0,
         "Silangan": 93.0,
         "Calamba": 155.0,
-        "Sto. Tomas": 257.0
+        "Sto. Tomas": 257.0,
+        "C-5": 580.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 761.0,
@@ -3740,7 +3829,8 @@
         "Cabuyao": 28.0,
         "Silangan": 48.0,
         "Calamba": 111.0,
-        "Sto. Tomas": 213.0
+        "Sto. Tomas": 213.0,
+        "C-5": 624.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 790.0,
@@ -3760,7 +3850,8 @@
         "ABI/Greenfield": 28.0,
         "Silangan": 20.0,
         "Calamba": 82.0,
-        "Sto. Tomas": 184.0
+        "Sto. Tomas": 184.0,
+        "C-5": 653.0
       },
       "Silangan": {
         "Skyway / Buendia": 809.0,
@@ -3780,7 +3871,8 @@
         "ABI/Greenfield": 48.0,
         "Cabuyao": 20.0,
         "Calamba": 63.0,
-        "Sto. Tomas": 165.0
+        "Sto. Tomas": 165.0,
+        "C-5": 672.0
       },
       "Calamba": {
         "Skyway / Buendia": 872.0,
@@ -3800,7 +3892,8 @@
         "ABI/Greenfield": 111.0,
         "Cabuyao": 82.0,
         "Silangan": 63.0,
-        "Sto. Tomas": 102.0
+        "Sto. Tomas": 102.0,
+        "C-5": 735.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 974.0,
@@ -3820,7 +3913,28 @@
         "ABI/Greenfield": 213.0,
         "Cabuyao": 184.0,
         "Silangan": 165.0,
-        "Calamba": 102.0
+        "Calamba": 102.0,
+        "C-5": 837.0
+      },
+      "C-5": {
+        "Merville": 147.0,
+        "Bicutan": 147.0,
+        "Sucat": 252.0,
+        "Alabang": 356.0,
+        "Filinvest": 373.0,
+        "Muntinlupa-Cavite X'way": 489.0,
+        "Susana Heights": 419.0,
+        "San Pedro": 440.0,
+        "Southwoods": 493.0,
+        "Carmona": 513.0,
+        "Mamplasan": 548.0,
+        "Sta. Rosa": 580.0,
+        "ABI/Greenfield": 624.0,
+        "Cabuyao": 653.0,
+        "Silangan": 672.0,
+        "Calamba": 735.0,
+        "Sto. Tomas": 837.0,
+        "Magallanes": 0
       }
     }
   },
