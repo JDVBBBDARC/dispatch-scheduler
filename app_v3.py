@@ -403,20 +403,41 @@ def api_dashboard_driver_truck_ratio():
     """
     Daily breakdown of working trucks vs present drivers.
 
-    Working Trucks  = active plates - plates currently under repair on that day
-                      (BreakdownLog with status='Under Repair' covering the date,
-                      i.e., date <= D AND (resolved_date IS NULL OR resolved_date > D)).
-    Present Drivers = distinct drivers with attendance.status = 'Present' on that date.
+    Working Trucks  = active plates of selected truck type(s) - plates currently
+                      under repair on that day (BreakdownLog with status='Under
+                      Repair' covering the date, i.e., date <= D AND
+                      (resolved_date IS NULL OR resolved_date > D)).
+    Present Drivers = WHEN no truck-type filter: distinct drivers with
+                      attendance.status='Present' that day (system-wide).
+                      WHEN filtered: distinct drivers who DROVE a truck of any
+                      selected type that day (from TripRecord, regardless of
+                      trip status).
     Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
     Driver Shortage = max(0, Working Trucks - Present Drivers).
+
+    Query params:
+        trend_start, trend_end – date range (defaults to last 14 days)
+        truck_types – comma-separated list of truck-type codes, e.g., '10W,12W'
+                      (omit or empty = all)
     """
     from_date = request.args.get('trend_start',
                                  (ph_today() - timedelta(days=13)).isoformat())
     to_date   = request.args.get('trend_end', ph_today().isoformat())
+    raw_codes = request.args.get('truck_types', '').strip()
+    selected_codes = [c.strip() for c in raw_codes.split(',') if c.strip()]
+
     from_d = parse_date(from_date)
     to_d   = parse_date(to_date)
     if from_d > to_d:
         from_d, to_d = to_d, from_d
+
+    # Resolve truck-type codes -> ids (skip unknown codes silently)
+    selected_tt_ids = set()
+    if selected_codes:
+        selected_tt_ids = {
+            tt.id for tt in TruckTypeDef.query.filter(
+                TruckTypeDef.code.in_(selected_codes)).all()
+        }
 
     # Day list
     days = []
@@ -425,24 +446,44 @@ def api_dashboard_driver_truck_ratio():
         days.append(cur)
         cur += timedelta(days=1)
 
-    # Total active plates (capacity baseline)
-    total_active_plates = Plate.query.filter_by(active=True).count()
+    # Active plates (filtered by truck type if requested)
+    plates_q = Plate.query.filter_by(active=True)
+    if selected_tt_ids:
+        plates_q = plates_q.filter(Plate.truck_type_id.in_(selected_tt_ids))
+    active_plate_ids = {p.id for p in plates_q.all()}
+    total_active_plates = len(active_plate_ids)
 
-    # Pre-fetch all relevant breakdowns (status = 'Under Repair') once
-    breakdowns = (db.session.query(BreakdownLog.plate_id, BreakdownLog.date,
-                                   BreakdownLog.resolved_date)
-                  .filter(BreakdownLog.status == 'Under Repair',
-                          BreakdownLog.date <= to_d)
-                  .all())
+    # Pre-fetch breakdowns for ONLY plates we care about
+    breakdown_q = db.session.query(
+            BreakdownLog.plate_id, BreakdownLog.date, BreakdownLog.resolved_date
+        ).filter(BreakdownLog.status == 'Under Repair',
+                 BreakdownLog.date <= to_d)
+    if active_plate_ids:
+        breakdown_q = breakdown_q.filter(BreakdownLog.plate_id.in_(active_plate_ids))
+    breakdowns = breakdown_q.all()
 
-    # Pre-fetch attendance counts per day in range
-    attn_rows = (db.session.query(Attendance.date,
-                                  db.func.count(db.distinct(Attendance.driver_id)))
-                 .filter(Attendance.status == 'Present',
-                         Attendance.date >= from_d,
-                         Attendance.date <= to_d)
-                 .group_by(Attendance.date).all())
-    attn_map = {row[0]: row[1] for row in attn_rows}
+    # Drivers present per day:
+    # If no filter: system-wide attendance count.
+    # If filtered: distinct drivers who drove a selected truck-type on that day.
+    drivers_per_day = {}
+    if not selected_tt_ids:
+        attn_rows = (db.session.query(Attendance.date,
+                                      db.func.count(db.distinct(Attendance.driver_id)))
+                     .filter(Attendance.status == 'Present',
+                             Attendance.date >= from_d,
+                             Attendance.date <= to_d)
+                     .group_by(Attendance.date).all())
+        drivers_per_day = {row[0]: row[1] for row in attn_rows}
+    else:
+        # distinct drivers from TripRecords on each date with matching truck type
+        trip_rows = (db.session.query(Wave.date,
+                                      db.func.count(db.distinct(TripRecord.driver_id)))
+                     .join(TripRecord, TripRecord.wave_id == Wave.id)
+                     .filter(Wave.date >= from_d, Wave.date <= to_d,
+                             Wave.truck_type_id.in_(selected_tt_ids),
+                             TripRecord.driver_id.isnot(None))
+                     .group_by(Wave.date).all())
+        drivers_per_day = {row[0]: row[1] for row in trip_rows}
 
     working = []
     present = []
@@ -455,7 +496,7 @@ def api_dashboard_driver_truck_ratio():
             if b.date <= d and (b.resolved_date is None or b.resolved_date > d)
         }
         wt = max(0, total_active_plates - len(broken_plate_ids))
-        pd = attn_map.get(d, 0)
+        pd = drivers_per_day.get(d, 0)
         rt = round((pd / wt), 3) if wt > 0 else 0
         sh = max(0, wt - pd)
         working.append(wt)
@@ -471,6 +512,8 @@ def api_dashboard_driver_truck_ratio():
         'coverage_ratio':  ratios,
         'driver_shortage': shortages,
         'total_plates':    total_active_plates,
+        'selected_codes':  selected_codes,
+        'driver_source':   'attendance' if not selected_tt_ids else 'trips',
     })
 
 
