@@ -409,10 +409,11 @@ def api_dashboard_driver_truck_ratio():
                       (resolved_date IS NULL OR resolved_date > D)).
     Present Drivers = WHEN no truck-type filter: distinct drivers with
                       attendance.status='Present' that day (system-wide).
-                      WHEN filtered: distinct drivers categorized to one of the
-                      selected truck types (Driver.truck_type_id) AND with
-                      attendance.status='Present' that day. Uncategorized
-                      drivers are excluded from filtered views.
+                      WHEN filtered: distinct drivers QUALIFIED for one of the
+                      selected truck types (via Driver.truck_types many-to-many)
+                      AND with attendance.status='Present' that day. Drivers
+                      qualified for multiple selected types are counted once.
+                      Uncategorized drivers are excluded from filtered views.
     Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
     Driver Shortage = max(0, Working Trucks - Present Drivers).
 
@@ -476,14 +477,18 @@ def api_dashboard_driver_truck_ratio():
                      .group_by(Attendance.date).all())
         drivers_per_day = {row[0]: row[1] for row in attn_rows}
     else:
-        # Filter by Driver.truck_type_id — only drivers categorized to selected types
+        # Filter via M2M: drivers qualified for ANY of the selected truck types.
+        # Use the driver_truck_types association table so a single driver who
+        # is qualified for multiple selected types is still counted once per day.
+        from models_v2 import driver_truck_types
         attn_rows = (db.session.query(Attendance.date,
                                       db.func.count(db.distinct(Attendance.driver_id)))
-                     .join(Driver, Driver.id == Attendance.driver_id)
+                     .join(driver_truck_types,
+                           driver_truck_types.c.driver_id == Attendance.driver_id)
                      .filter(Attendance.status == 'Present',
                              Attendance.date >= from_d,
                              Attendance.date <= to_d,
-                             Driver.truck_type_id.in_(selected_tt_ids))
+                             driver_truck_types.c.truck_type_id.in_(selected_tt_ids))
                      .group_by(Attendance.date).all())
         drivers_per_day = {row[0]: row[1] for row in attn_rows}
 
@@ -688,23 +693,19 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
-    # Drivers can be assigned a truck type category at creation time
+    # Drivers can be qualified for multiple truck types
     if category == 'drivers':
-        ttid = data.get('truck_type_id') or None
-        if ttid:
-            try: obj.truck_type_id = int(ttid)
-            except (TypeError, ValueError): pass
+        tt_ids = data.get('truck_type_ids') or []
+        if isinstance(tt_ids, list) and tt_ids:
+            tts = TruckTypeDef.query.filter(TruckTypeDef.id.in_(tt_ids)).all()
+            obj.truck_types = tts
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
     resp = {'id': obj.id, 'name': obj.name}
-    if category == 'drivers' and obj.truck_type_id:
-        tt = TruckTypeDef.query.get(obj.truck_type_id)
-        if tt:
-            resp['truck_type_id']    = tt.id
-            resp['truck_type_name']  = tt.name
-            resp['truck_type_color'] = tt.color
+    if category == 'drivers':
+        resp['truck_type_ids'] = [t.id for t in obj.truck_types]
     return jsonify(resp)
 
 
@@ -728,11 +729,16 @@ def api_master_update(category, item_id):
         # Products: optional is_full_day_trip toggle
         if category == 'products' and 'is_full_day_trip' in data:
             obj.is_full_day_trip = bool(data.get('is_full_day_trip'))
-        # Drivers: optional truck-type category assignment
-        if category == 'drivers' and 'truck_type_id' in data:
-            ttid = data.get('truck_type_id') or None
-            try: obj.truck_type_id = int(ttid) if ttid else None
-            except (TypeError, ValueError): obj.truck_type_id = None
+        # Drivers: optional list of truck-type categories (many-to-many)
+        if category == 'drivers' and 'truck_type_ids' in data:
+            tt_ids = data.get('truck_type_ids') or []
+            if isinstance(tt_ids, list):
+                tts = (TruckTypeDef.query.filter(TruckTypeDef.id.in_(tt_ids)).all()
+                       if tt_ids else [])
+                obj.truck_types = tts
+                # Keep legacy single-category column in sync (use first selection
+                # as the "primary" — or NULL when none selected)
+                obj.truck_type_id = tts[0].id if tts else None
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
@@ -1745,7 +1751,52 @@ def init_db():
         add_col('products', 'is_full_day_trip', 'ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0')
 
         # drivers — truck type category (which type they're trained/assigned to drive)
+        # Legacy single-category column. Source of truth moved to driver_truck_types
+        # association table below; this column is kept and backfilled for compat.
         add_col('drivers', 'truck_type_id', 'ALTER TABLE drivers ADD COLUMN truck_type_id INTEGER')
+
+        # driver_truck_types — many-to-many association so a driver can be qualified
+        # for multiple truck types. Created by db.create_all() above; here we
+        # backfill it from the legacy Driver.truck_type_id column on first run.
+        if has_table('driver_truck_types') and has_table('drivers'):
+            existing_pairs = set()
+            try:
+                with db.engine.connect() as conn:
+                    rows = conn.execute(text(
+                        'SELECT driver_id, truck_type_id FROM driver_truck_types'
+                    )).fetchall()
+                    existing_pairs = {(r[0], r[1]) for r in rows}
+            except Exception:
+                pass
+            try:
+                with db.engine.connect() as conn:
+                    legacy = conn.execute(text(
+                        'SELECT id, truck_type_id FROM drivers '
+                        'WHERE truck_type_id IS NOT NULL'
+                    )).fetchall()
+                    inserted = 0
+                    for drv_id, tt_id in legacy:
+                        if (drv_id, tt_id) in existing_pairs:
+                            continue
+                        try:
+                            conn.execute(text(
+                                'INSERT INTO driver_truck_types (driver_id, truck_type_id) '
+                                'VALUES (:d, :t)'
+                            ), {'d': drv_id, 't': tt_id})
+                            inserted += 1
+                        except Exception:
+                            pass
+                    if inserted:
+                        conn.commit()
+                        msg = f"  Migrated: backfilled {inserted} driver-to-truck-type associations"
+                        print(msg, flush=True)
+                        sys.stderr.write(msg + "\n")
+                        sys.stderr.flush()
+            except Exception as e:
+                err = f"  Migration FAILED for driver_truck_types backfill: {e}"
+                print(err, flush=True)
+                sys.stderr.write(err + "\n")
+                sys.stderr.flush()
 
         # ─────────────────────────────────────────────────────────────────────
         # ORM-based seeding/backfill — safe now that schema is up to date.
