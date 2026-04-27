@@ -8,6 +8,61 @@
   <small class="text-muted">Manage drivers, helpers, products, clients, dispatchers and plate numbers.</small>
 </div>
 
+<!-- ── TRUCK TYPES (full width — fleet utilization scoring) ────────────────── -->
+<div class="master-card mb-3" style="grid-column:1/-1;">
+  <div class="master-card-header">
+    <span class="master-card-title"><i class="bi bi-truck me-1"></i>TRUCK TYPES — FLEET UTILIZATION SCORING</span>
+    <span style="font-size:.72rem;color:var(--muted);">Adjust point per leg & daily target per type</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0" style="font-size:.83rem;">
+      <thead style="background:#f8f9fa;font-size:.72rem;text-transform:uppercase;color:var(--muted);font-weight:700;">
+        <tr>
+          <th style="width:4px;"></th>
+          <th style="width:90px;">Code</th>
+          <th>Name</th>
+          <th style="width:140px;">Pts / Leg</th>
+          <th style="width:160px;">Daily Target</th>
+          <th style="width:120px;text-align:center;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for tt in truck_types %}
+        <tr data-tt-id="{{ tt.id }}">
+          <td style="background:{{ tt.color }};border-left:4px solid {{ tt.color }};"></td>
+          <td><span class="badge" style="background:{{ tt.color }};color:#fff;font-size:.7rem;">{{ tt.code }}</span></td>
+          <td>{{ tt.name }}</td>
+          <td>
+            <input type="number" class="form-control form-control-sm tt-pts-leg"
+                   value="{{ tt.point_per_leg }}" min="0" step="0.1"
+                   data-tt-id="{{ tt.id }}"
+                   onchange="updateTruckType({{ tt.id }}, 'point_per_leg', this.value)">
+          </td>
+          <td>
+            <input type="number" class="form-control form-control-sm tt-target"
+                   value="{{ tt.daily_target_points }}" min="0.1" step="0.1"
+                   data-tt-id="{{ tt.id }}"
+                   onchange="updateTruckType({{ tt.id }}, 'daily_target_points', this.value)">
+          </td>
+          <td class="text-center text-muted" style="font-size:.72rem;">
+            <span class="tt-saved-{{ tt.id }}" style="opacity:0;transition:opacity .25s;">
+              <i class="bi bi-check-circle-fill text-success"></i> Saved
+            </span>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="px-3 py-2" style="background:#fff3cd;border-top:1px solid #ffe69c;font-size:.75rem;color:#856404;">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>Pts / Leg</strong> = points earned per delivered trip leg.
+    <strong>Daily Target</strong> = points needed for 100% utilization in a day.
+    Products marked as <em>Full-day</em> count for the full daily target instead of per-leg.
+    Any product whose name contains <strong>"asphalt"</strong> (case-insensitive) is automatically treated as full-day.
+  </div>
+</div>
+
 <div class="master-grid">
 
   <!-- ── DRIVERS ─────────────────────────────────────────────────────────── -->
@@ -70,10 +125,24 @@
     </div>
     <div class="master-list" id="list-products">
       {% for p in products %}
-      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="products">
-        <div class="master-item-name">{{ p.name }}</div>
+      {% set auto_full_day = false %}
+      {% set lname = (p.name or '')|lower %}
+      {% for kw in full_day_keywords %}{% if kw in lname %}{% set auto_full_day = true %}{% endif %}{% endfor %}
+      {% set effective_full_day = p.is_full_day_trip or auto_full_day %}
+      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="products" data-full-day="{{ '1' if effective_full_day else '0' }}">
+        <div>
+          <div class="master-item-name">
+            {{ p.name }}
+            {% if effective_full_day %}
+            <span class="badge bg-warning text-dark ms-1" style="font-size:.62rem;font-weight:600;"
+                  title="{% if auto_full_day and not p.is_full_day_trip %}Auto-detected from product name (keyword){% else %}Manually flagged{% endif %} — counts as full daily target instead of per-leg">
+              <i class="bi bi-clock-fill"></i> FULL-DAY{% if auto_full_day and not p.is_full_day_trip %} (auto){% endif %}
+            </span>
+            {% endif %}
+          </div>
+        </div>
         <div class="d-flex gap-1">
-          <button class="btn btn-ghost btn-xs" onclick="editItem('products',{{ p.id }},'{{ p.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="editProduct({{ p.id }},'{{ p.name|replace("'","\\'") }}',{{ 'true' if p.is_full_day_trip else 'false' }})"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-xs {% if p.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('products',{{ p.id }},this)">
             <i class="bi bi-{{ 'toggle-on' if p.active else 'toggle-off' }}"></i>
           </button>
@@ -284,6 +353,52 @@ function addPlate() {
   });
 }
 
+// ── UPDATE TRUCK TYPE (utilization scoring) ───────────────────────────────
+let _ttSaveTimers = {};
+function updateTruckType(ttId, field, value) {
+  // Debounce per-truck-type so quick keystrokes don't spam the API
+  if (_ttSaveTimers[ttId]) clearTimeout(_ttSaveTimers[ttId]);
+  _ttSaveTimers[ttId] = setTimeout(() => {
+    fetch(`/api/master/truck-type/${ttId}/update`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({[field]: value})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast(`Save failed: ${d.error}`); return; }
+      // Pulse the "Saved" indicator
+      const flag = document.querySelector(`.tt-saved-${ttId}`);
+      if (flag) {
+        flag.style.opacity = '1';
+        setTimeout(() => { flag.style.opacity = '0'; }, 1500);
+      }
+    })
+    .catch(() => showToast('Save failed'));
+  }, 350);
+}
+
+// ── EDIT PRODUCT (with full-day toggle) ───────────────────────────────────
+function editProduct(id, currentName, isFullDay) {
+  editCat = 'products'; editId = id;
+  document.getElementById('editModalTitle').textContent = 'Edit product';
+  const body = `
+    <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Name</label>
+    <input type="text" id="editValue" class="form-control mt-1" value="${escHtml(currentName)}">
+    <div class="form-check mt-3">
+      <input class="form-check-input" type="checkbox" id="editFullDay" ${isFullDay ? 'checked' : ''}>
+      <label class="form-check-label" for="editFullDay" style="font-size:.85rem;">
+        <strong>Full-day trip</strong>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">
+          Counts as full daily target (e.g., asphalt) instead of per-leg points.
+        </div>
+      </label>
+    </div>`;
+  document.getElementById('editModalBody').innerHTML = body;
+  editModal.show();
+  setTimeout(() => document.getElementById('editValue').focus(), 200);
+}
+
 // ── EDIT ITEM ─────────────────────────────────────────────────────────────
 function editItem(cat, id, currentName) {
   editCat = cat; editId = id;
@@ -329,6 +444,10 @@ function saveEdit() {
     const val = document.getElementById('editValue')?.value.trim();
     if (!val) return;
     payload = {name: val};
+    if (editCat === 'products') {
+      const fullDayEl = document.getElementById('editFullDay');
+      if (fullDayEl) payload.is_full_day_trip = fullDayEl.checked;
+    }
   }
   fetch(`/api/master/${editCat}/${editId}/update`, {
     method:'POST', headers:{'Content-Type':'application/json'},
