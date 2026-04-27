@@ -592,8 +592,8 @@ renderTrendChart();
 
 // ── FLEET UTILIZATION CHART ───────────────────────────────────────────────
 let fleetUtilChart = null;
-let fleetUtilData  = null;        // last fetched payload {days, series}
-let fleetUtilFilter = 'all';      // 'all' or a truck-type code
+let fleetUtilData  = null;             // last fetched payload {days, series}
+let selectedFleetTrucks = new Set();   // empty = "All"
 
 function fetchFleetUtilization() {
   const params = new URLSearchParams(window.location.search);
@@ -608,21 +608,26 @@ function fetchFleetUtilization() {
 
 function buildFleetUtilDatasets() {
   if (!fleetUtilData) return [];
-  return fleetUtilData.series
-    .filter(s => fleetUtilFilter === 'all' || s.code === fleetUtilFilter)
-    .map(s => ({
-      label: `${s.name} (${s.truck_count} trucks · target ${s.daily_target}/truck)`,
-      data: s.util_pct,
-      borderColor: s.color,
-      backgroundColor: hex2rgba(s.color, 0.18),
-      borderWidth: 2,
-      pointRadius: 2.5,
-      pointHoverRadius: 5,
-      tension: 0.35,
-      fill: fleetUtilFilter !== 'all',  // fill area when single type focused
-      _truckCount: s.truck_count,
-      _points: s.points,
-    }));
+  // Empty set = show every truck type ("All" view).
+  // Otherwise show only the explicitly selected ones.
+  const visible = fleetUtilData.series.filter(s =>
+    selectedFleetTrucks.size === 0 || selectedFleetTrucks.has(s.code)
+  );
+  // Only fill the area when exactly one type is focused (like Activity Trend).
+  const fillArea = selectedFleetTrucks.size === 1;
+  return visible.map(s => ({
+    label: `${s.name} (${s.truck_count} trucks · target ${s.daily_target}/truck)`,
+    data: s.util_pct,
+    borderColor: s.color,
+    backgroundColor: hex2rgba(s.color, 0.18),
+    borderWidth: 2,
+    pointRadius: 2.5,
+    pointHoverRadius: 5,
+    tension: 0.35,
+    fill: fillArea,
+    _truckCount: s.truck_count,
+    _points: s.points,
+  }));
 }
 
 function renderFleetUtilChart() {
@@ -695,8 +700,8 @@ function renderFleetUtilChart() {
   // Render compact legend
   const legendEl = document.getElementById('fleetUtilLegend');
   if (legendEl && fleetUtilData) {
-    const visibleSeries = fleetUtilData.series.filter(
-      s => fleetUtilFilter === 'all' || s.code === fleetUtilFilter
+    const visibleSeries = fleetUtilData.series.filter(s =>
+      selectedFleetTrucks.size === 0 || selectedFleetTrucks.has(s.code)
     );
     legendEl.innerHTML = visibleSeries.map(s => {
       const totalPts = s.points.reduce((a, b) => a + b, 0);
@@ -714,10 +719,29 @@ function renderFleetUtilChart() {
   }
 }
 
+// Multi-select filter — same UX as the Activity Trend chart.
+//   - Clicking "All" clears the set and shows every truck type.
+//   - Clicking a single type toggles it in/out of the set.
+//   - When the set becomes empty, "All" reactivates automatically.
 function setFleetUtilFilter(ttCode, btn) {
-  fleetUtilFilter = ttCode;
-  document.querySelectorAll('#fleetUtilFilterBtns .trend-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  const allBtn = document.querySelector('#fleetUtilFilterBtns .trend-btn[data-tt="all"]');
+  if (ttCode === 'all') {
+    selectedFleetTrucks.clear();
+    document.querySelectorAll('#fleetUtilFilterBtns .trend-btn').forEach(b => b.classList.remove('active'));
+    if (allBtn) allBtn.classList.add('active');
+  } else {
+    if (allBtn) allBtn.classList.remove('active');
+    if (selectedFleetTrucks.has(ttCode)) {
+      selectedFleetTrucks.delete(ttCode);
+      btn.classList.remove('active');
+    } else {
+      selectedFleetTrucks.add(ttCode);
+      btn.classList.add('active');
+    }
+    if (selectedFleetTrucks.size === 0 && allBtn) {
+      allBtn.classList.add('active');
+    }
+  }
   renderFleetUtilChart();
 }
 
