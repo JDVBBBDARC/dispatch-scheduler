@@ -214,14 +214,19 @@ def api_trip_save():
         'product_id':('product_id',int),
         'client_id': ('client_id', int),
         'dispatcher_id':('dispatcher_id',int),
-        'trip_type': ('trip_type', str),
-        'rs_no':     ('rs_no',     str),
-        'po_no':     ('po_no',     str),
-        'reference': ('reference', str),
-        'dr_no':     ('dr_no',     str),
-        'volume':    ('volume',    str),
-        'status':    ('status',    str),
-        'notes':     ('notes',     str),
+        'trip_type':       ('trip_type',       str),
+        'rs_no':           ('rs_no',           str),
+        'po_no':           ('po_no',           str),
+        'reference':       ('reference',       str),
+        'dr_no':           ('dr_no',           str),
+        'volume':          ('volume',          str),
+        'status':          ('status',          str),
+        'toll_fee':        ('toll_fee',        float),
+        'toll_expressway': ('toll_expressway', str),
+        'toll_entry':      ('toll_entry',      str),
+        'toll_exit':       ('toll_exit',       str),
+        'toll_class':      ('toll_class',      str),
+        'notes':           ('notes',           str),
     }
     for key, (attr, cast) in field_map.items():
         if key in data:
@@ -260,6 +265,32 @@ def api_trip_delete(tid):
     return jsonify({'ok': True})
 
 
+# ── DASHBOARD KPI REFRESH API ──────────────────────────────────────────────
+@app.route('/api/dashboard/kpis')
+@login_required
+def api_dashboard_kpis():
+    """Lightweight endpoint for live KPI card refresh (called by Firebase listener)."""
+    from_date = request.args.get('trend_start', (ph_today() - timedelta(days=13)).isoformat())
+    to_date   = request.args.get('trend_end',   ph_today().isoformat())
+    truck     = request.args.get('truck',  'all')
+    status    = request.args.get('status', 'all')
+    from_d = parse_date(from_date)
+    to_d   = parse_date(to_date)
+    q = (db.session.query(TripRecord).join(Wave)
+         .filter(Wave.date >= from_d, Wave.date <= to_d))
+    if truck != 'all':
+        tt = TruckTypeDef.query.filter_by(code=truck).first()
+        if tt:
+            q = q.filter(Wave.truck_type_id == tt.id)
+    if status != 'all':
+        q = q.filter(TripRecord.status == status)
+    trips = q.all()
+    return jsonify({
+        'total':          len(trips),
+        'by_status':      {s: sum(1 for t in trips if t.status == s) for s in STATUSES},
+        'total_toll_fee': sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
+    })
+
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 @login_required
@@ -294,7 +325,7 @@ def dashboard():
     # Stats
     total          = len(trips)
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
-    total_toll_fee = sum((t.client.toll_fee or 0) for t in trips if t.client)
+    total_toll_fee = sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled')
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
@@ -428,13 +459,11 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
-    if category == 'clients':
-        obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
-    return jsonify({'id': obj.id, 'name': obj.name, 'toll_fee': getattr(obj, 'toll_fee', 0) or 0})
+    return jsonify({'id': obj.id, 'name': obj.name})
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
@@ -454,8 +483,6 @@ def api_master_update(category, item_id):
         obj.truck_type_id = int(ttid) if ttid else None
     else:
         obj.name = (data.get('name') or obj.name).strip()
-        if category == 'clients' and 'toll_fee' in data:
-            obj.toll_fee = float(data.get('toll_fee') or 0)
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
@@ -860,6 +887,176 @@ def api_breakdown_delete(lid):
     log_change(f"Deleted {info}", 'breakdown')
     db.session.commit()
     return jsonify({'ok': True})
+
+
+# ── TOLL CALCULATOR ───────────────────────────────────────────────────────
+import json as _json_mod
+from collections import deque
+_TOLL_DATA = None
+
+def get_toll_data():
+    global _TOLL_DATA
+    if _TOLL_DATA is None:
+        try:
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'toll_rates.json')
+            with open(p, 'r') as f:
+                _TOLL_DATA = _json_mod.load(f)
+        except Exception as e:
+            print(f'[Toll] Could not load toll_rates.json: {e}')
+            _TOLL_DATA = {}
+    return _TOLL_DATA
+
+# Expressway connection points — where two expressways physically meet.
+# Each pair is bidirectional: (expA, stationA) <-> (expB, stationB)
+_TOLL_CONNECTIONS = [
+    # NLEX south end ↔ Skyway Stage 3 north end (Balintawak) — free transfer, same physical point
+    (('NLEX_SCTEX', 'Balintawak'),        ('Skyway_Stage3', 'Balintawak')),
+    (('NLEX_SCTEX', 'Mindanao Avenue'),   ('Skyway_Stage3', 'Balintawak')),
+    # Skyway Stage 3 south end ↔ Skyway / SLEX north end (Buendia) — free transfer
+    (('Skyway_Stage3', 'Buendia'),        ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
+    # Skyway/SLEX south end ↔ STAR north end
+    (('Skyway_SLEX_MCX', 'Sto. Tomas'),  ('STAR', 'Sto. Tomas')),
+    # NLEX/SCTEX north end ↔ TPLEX south end
+    (('NLEX_SCTEX', 'Tarlac'),            ('TPLEX', 'La Paz')),
+    # Skyway/SLEX ↔ CALAX
+    (('Skyway_SLEX_MCX', 'Mamplasan'),    ('CALAX', 'Laguna Boulevard')),
+]
+
+def _toll_lookup(matrix, a, b):
+    """Symmetric rate lookup in a class matrix."""
+    return matrix.get(a, {}).get(b) or matrix.get(b, {}).get(a)
+
+def find_toll_route(entry, exit_point, toll_class, data):
+    """
+    BFS across expressway connection points to find the cheapest multi-hop route.
+    Returns (total_amount, segments_list) or (None, None).
+    segments_list = [{'expressway': key, 'from': stn, 'to': stn, 'amount': float}, ...]
+    """
+    # Build bidirectional neighbour map for connection stations
+    conn_neighbours = {}   # (exp, stn) -> [(exp, stn), ...]
+    for (e1, s1), (e2, s2) in _TOLL_CONNECTIONS:
+        conn_neighbours.setdefault((e1, s1), []).append((e2, s2))
+        conn_neighbours.setdefault((e2, s2), []).append((e1, s1))
+
+    # BFS state: (exp_key, station, accumulated_cost, segments)
+    # Seed with every expressway that contains the entry station
+    queue = deque()
+    for exp_key, exp_data in data.items():
+        matrix = exp_data.get(toll_class, {})
+        if entry in matrix or any(entry in v for v in matrix.values()):
+            queue.append((exp_key, entry, 0.0, []))
+
+    visited   = set()
+    best_cost = None
+    best_segs = None
+
+    while queue:
+        cur_exp, cur_stn, cost_so_far, segs = queue.popleft()
+
+        state = (cur_exp, cur_stn)
+        if state in visited:
+            continue
+        visited.add(state)
+
+        matrix = data.get(cur_exp, {}).get(toll_class, {})
+
+        # ── Can we reach the exit from current expressway? ──────────────────
+        amt = _toll_lookup(matrix, cur_stn, exit_point)
+        if amt is not None:
+            total = cost_so_far + amt
+            if best_cost is None or total < best_cost:
+                best_cost = total
+                best_segs = segs + [{'expressway': cur_exp,
+                                      'from': cur_stn, 'to': exit_point,
+                                      'amount': amt}]
+            continue   # don't expand further — already reached destination
+
+        # ── Try every connection point reachable from current expressway ────
+        for (c_exp, c_stn), neighbours in conn_neighbours.items():
+            if c_exp != cur_exp:
+                continue
+            conn_amt = _toll_lookup(matrix, cur_stn, c_stn) if cur_stn != c_stn else 0.0
+            if conn_amt is None:
+                continue
+            new_segs = segs + [{'expressway': cur_exp,
+                                 'from': cur_stn, 'to': c_stn,
+                                 'amount': conn_amt}]
+            for next_exp, next_stn in neighbours:
+                if (next_exp, next_stn) not in visited:
+                    queue.append((next_exp, next_stn,
+                                  cost_so_far + conn_amt, new_segs))
+
+    return best_cost, best_segs
+
+@app.route('/api/toll/expressways')
+def api_toll_expressways():
+    data = get_toll_data()
+    result = [{'key': k, 'name': v.get('name', k)} for k, v in data.items()]
+    return jsonify(result)
+
+@app.route('/api/toll/all-stations')
+def api_toll_all_stations():
+    """Return every station across all expressways with which expressway(s) it belongs to."""
+    data = get_toll_data()
+    station_map = {}   # station_name -> set of expressway keys
+    for exp_key, exp_data in data.items():
+        matrix = exp_data.get('Class 3', exp_data.get('Class 1', exp_data.get('Class 2', {})))
+        for stn in matrix.keys():
+            station_map.setdefault(stn, set()).add(exp_key)
+    result = [
+        {'station': s, 'expressways': sorted(exps)}
+        for s, exps in sorted(station_map.items())
+    ]
+    return jsonify(result)
+
+@app.route('/api/toll/stations/<expressway>')
+def api_toll_stations(expressway):
+    data = get_toll_data()
+    exp = data.get(expressway, {})
+    matrix = exp.get('Class 3', exp.get('Class 1', exp.get('Class 2', {})))
+    stations = sorted(matrix.keys())
+    return jsonify(stations)
+
+@app.route('/api/toll/calculate', methods=['POST'])
+def api_toll_calculate():
+    req = request.get_json()
+    expressway  = req.get('expressway', '')   # optional – auto-detected if blank
+    entry       = req.get('entry', '')
+    exit_point  = req.get('exit', '')
+    toll_class  = req.get('toll_class', 'Class 3')
+    data = get_toll_data()
+
+    # Auto-detect expressway: try every expressway until a rate is found
+    if not expressway:
+        for exp_key, exp_data in data.items():
+            matrix = exp_data.get(toll_class, {})
+            amt = (matrix.get(entry, {}).get(exit_point) or
+                   matrix.get(exit_point, {}).get(entry))
+            if amt is not None:
+                expressway = exp_key
+                break
+
+    exp = data.get(expressway, {})
+    matrix = exp.get(toll_class, {})
+    amount = (matrix.get(entry, {}).get(exit_point) or
+              matrix.get(exit_point, {}).get(entry))
+    if amount is None:
+        # ── Fallback: BFS multi-expressway routing ──────────────────────────
+        best_cost, best_segs = find_toll_route(entry, exit_point, toll_class, data)
+        if best_cost is not None:
+            return jsonify({'amount': best_cost, 'segments': best_segs,
+                            'expressway': 'multi', 'entry': entry,
+                            'exit': exit_point, 'toll_class': toll_class})
+        return jsonify({'error': 'Rate not found', 'amount': 0})
+    return jsonify({'amount': amount, 'expressway': expressway,
+                    'segments': [{'expressway': expressway, 'from': entry,
+                                  'to': exit_point, 'amount': amount}],
+                    'entry': entry, 'exit': exit_point, 'toll_class': toll_class})
+
+@app.route('/toll-calculator')
+@login_required
+def toll_calculator():
+    return render_template('toll_calculator.html')
 
 
 # ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────

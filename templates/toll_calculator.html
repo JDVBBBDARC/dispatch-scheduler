@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% block title %}Toll Calculator{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width:620px;">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-cash-coin" style="font-size:2rem;color:var(--maroon);"></i>
+    <div>
+      <h4 class="mb-0 fw-bold">Toll Calculator</h4>
+      <small class="text-muted">Official TRB rates — Effective January 1, 2026</small>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 rounded-4 p-4">
+
+    <!-- Vehicle Class -->
+    <div class="mb-3">
+      <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">Vehicle Class</label>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-secondary class-btn" data-class="Class 1" onclick="setClass(this)">Class 1 <small>(Light)</small></button>
+        <button class="btn btn-sm btn-outline-secondary class-btn" data-class="Class 2" onclick="setClass(this)">Class 2 <small>(Medium)</small></button>
+        <button class="btn btn-sm btn-maroon class-btn active"    data-class="Class 3" onclick="setClass(this)">Class 3 <small>(Heavy)</small></button>
+      </div>
+    </div>
+
+    <!-- Entry / Exit searchable comboboxes -->
+    <div class="row g-3 mb-4">
+      <div class="col-6">
+        <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">
+          <i class="bi bi-geo-alt-fill text-success me-1" style="font-size:.9rem;"></i>Entry Point
+        </label>
+        <div class="tc-combo-wrap">
+          <input type="text" id="tc-entry-input" class="form-control tc-combo-input"
+                 placeholder="Type to search…" autocomplete="off"
+                 oninput="filterStations('entry')"
+                 onfocus="openDrop('entry')"
+                 onblur="closeDrop('entry')">
+          <div id="tc-entry-drop" class="tc-drop shadow" style="display:none;"></div>
+          <input type="hidden" id="tc-entry">
+        </div>
+      </div>
+      <div class="col-6">
+        <label class="form-label fw-bold" style="font-size:.82rem;text-transform:uppercase;color:var(--muted);">
+          <i class="bi bi-geo-alt-fill text-danger me-1" style="font-size:.9rem;"></i>Exit Point
+        </label>
+        <div class="tc-combo-wrap">
+          <input type="text" id="tc-exit-input" class="form-control tc-combo-input"
+                 placeholder="Type to search…" autocomplete="off"
+                 oninput="filterStations('exit')"
+                 onfocus="openDrop('exit')"
+                 onblur="closeDrop('exit')">
+          <div id="tc-exit-drop" class="tc-drop shadow" style="display:none;"></div>
+          <input type="hidden" id="tc-exit">
+        </div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="tc-result" class="rounded-3 p-4 text-center" style="background:#f8f9fa;display:none;">
+      <div style="font-size:.8rem;text-transform:uppercase;color:var(--muted);font-weight:700;">Total Toll Fee</div>
+      <div id="tc-amount" style="font-size:2.8rem;font-weight:800;color:var(--maroon);letter-spacing:-1px;">₱0</div>
+      <div id="tc-route"  style="font-size:.82rem;color:var(--muted);margin-top:.25rem;"></div>
+      <!-- Segment breakdown (multi-expressway routes) -->
+      <div id="tc-segments" style="margin-top:.9rem;display:none;text-align:left;"></div>
+    </div>
+
+    <div id="tc-error" class="alert alert-warning mt-3" style="display:none;"></div>
+
+  </div>
+
+  <div class="mt-3 text-muted" style="font-size:.78rem;">
+    <i class="bi bi-info-circle me-1"></i>
+    Rates are VAT-inclusive. Source: Toll Regulatory Board (TRB), effective Jan 1, 2026.
+  </div>
+</div>
+
+<style>
+.tc-combo-wrap { position: relative; }
+
+.tc-combo-input { border-radius: .5rem; }
+
+.tc-drop {
+  position: fixed;   /* fixed so it escapes card overflow clipping */
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: .5rem;
+  max-height: 230px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+
+.tc-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .42rem .75rem;
+  cursor: pointer;
+  font-size: .87rem;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background .1s;
+}
+.tc-item:last-child { border-bottom: none; }
+.tc-item:hover, .tc-item.selected {
+  background: var(--maroon);
+  color: #fff;
+}
+.tc-item .tc-exp {
+  font-size: .7rem;
+  opacity: .65;
+  white-space: nowrap;
+  margin-left: .5rem;
+  flex-shrink: 0;
+}
+.tc-item:hover .tc-exp,
+.tc-item.selected .tc-exp { opacity: .85; color: #fff; }
+
+.tc-empty {
+  padding: .5rem .75rem;
+  font-size: .85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Segment breakdown ─────────────────────────────────── */
+.tc-seg-header {
+  font-size: .72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: .5rem;
+  letter-spacing: .05em;
+}
+.tc-seg-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff;
+  border-radius: .4rem;
+  padding: .45rem .65rem;
+  margin-bottom: .25rem;
+  font-size: .82rem;
+  border: 1px solid #e9ecef;
+}
+.tc-seg-exp {
+  font-weight: 700;
+  color: var(--maroon);
+  flex-shrink: 0;
+  min-width: 110px;
+}
+.tc-seg-arrow {
+  flex: 1;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tc-seg-amt {
+  font-weight: 700;
+  color: #222;
+  flex-shrink: 0;
+}
+.tc-seg-conn {
+  text-align: center;
+  font-size: .72rem;
+  color: var(--muted);
+  margin: .1rem 0 .25rem;
+  opacity: .75;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedClass = 'Class 3';
+let allStations   = [];   // [{station, expressways:[key,…]}]
+let expNames      = {};   // {key: displayName}
+
+// ── Load data ──────────────────────────────────────────────────────────────
+Promise.all([
+  fetch('/api/toll/expressways').then(r => r.json()),
+  fetch('/api/toll/all-stations').then(r => r.json()),
+]).then(([exps, stns]) => {
+  exps.forEach(e => expNames[e.key] = e.name);
+  allStations = stns;
+});
+
+// ── Vehicle class buttons ──────────────────────────────────────────────────
+function setClass(btn) {
+  document.querySelectorAll('.class-btn').forEach(b => {
+    b.classList.remove('btn-maroon', 'active');
+    b.classList.add('btn-outline-secondary');
+  });
+  btn.classList.add('btn-maroon', 'active');
+  btn.classList.remove('btn-outline-secondary');
+  selectedClass = btn.dataset.class;
+  computeToll();
+}
+
+// ── Combobox helpers ───────────────────────────────────────────────────────
+function openDrop(which) {
+  const query = document.getElementById(`tc-${which}-input`).value.toLowerCase().trim();
+  positionDrop(which);
+  renderDrop(which, query);
+}
+
+function positionDrop(which) {
+  const input = document.getElementById(`tc-${which}-input`);
+  const drop  = document.getElementById(`tc-${which}-drop`);
+  const rect  = input.getBoundingClientRect();
+  drop.style.top   = (rect.bottom + 4) + 'px';
+  drop.style.left  = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
+}
+
+function closeDrop(which) {
+  // small delay so mousedown on an item fires before blur closes the list
+  setTimeout(() => {
+    document.getElementById(`tc-${which}-drop`).style.display = 'none';
+  }, 180);
+}
+
+function filterStations(which) {
+  // clear the hidden value when the user re-types
+  document.getElementById(`tc-${which}`).value = '';
+  const query = document.getElementById(`tc-${which}-input`).value.toLowerCase().trim();
+  positionDrop(which);
+  renderDrop(which, query);
+}
+
+function renderDrop(which, query) {
+  const drop     = document.getElementById(`tc-${which}-drop`);
+  const selected = document.getElementById(`tc-${which}`).value;
+
+  const list = query
+    ? allStations.filter(s => s.station.toLowerCase().includes(query))
+    : allStations;
+
+  if (!list.length) {
+    drop.innerHTML = '<div class="tc-empty">No stations found</div>';
+    drop.style.display = 'block';
+    return;
+  }
+
+  drop.innerHTML = '';
+  list.slice(0, 60).forEach(item => {
+    const div   = document.createElement('div');
+    div.className = 'tc-item' + (item.station === selected ? ' selected' : '');
+    const label = item.expressways.map(k => expNames[k] || k).join(' / ');
+    div.innerHTML = `<span>${item.station}</span><span class="tc-exp">${label}</span>`;
+    div.addEventListener('mousedown', () => pickStation(which, item.station));
+    drop.appendChild(div);
+  });
+  drop.style.display = 'block';
+}
+
+function pickStation(which, name) {
+  document.getElementById(`tc-${which}-input`).value = name;
+  document.getElementById(`tc-${which}`).value       = name;
+  document.getElementById(`tc-${which}-drop`).style.display = 'none';
+  computeToll();
+}
+
+// ── Compute toll (no expressway param — backend auto-detects) ──────────────
+function computeToll() {
+  const entry = document.getElementById('tc-entry').value;
+  const exit  = document.getElementById('tc-exit').value;
+  const resEl = document.getElementById('tc-result');
+  const errEl = document.getElementById('tc-error');
+  resEl.style.display = 'none';
+  errEl.style.display = 'none';
+
+  if (!entry || !exit) return;
+  if (entry === exit) {
+    errEl.style.display = 'block';
+    errEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Entry and exit cannot be the same.';
+    return;
+  }
+
+  fetch('/api/toll/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entry, exit, toll_class: selectedClass })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error || !data.amount) {
+      errEl.style.display = 'block';
+      errEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>No rate found for this route combination.';
+    } else {
+      document.getElementById('tc-amount').textContent =
+        '₱' + data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+      document.getElementById('tc-route').textContent =
+        `${entry}  →  ${exit}  |  ${selectedClass}`;
+
+      // ── Segment breakdown ──────────────────────────────────────────────
+      const segEl  = document.getElementById('tc-segments');
+      const segs   = data.segments || [];
+      const isMulti = data.expressway === 'multi' || segs.length > 1;
+
+      if (isMulti && segs.length > 1) {
+        let html = `<div class="tc-seg-header">Route Breakdown</div>`;
+        segs.forEach((s, i) => {
+          const expLabel = expNames[s.expressway] || s.expressway;
+          const amt = '₱' + s.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+          html += `
+            <div class="tc-seg-row">
+              <span class="tc-seg-exp">${expLabel}</span>
+              <span class="tc-seg-arrow">${s.from} → ${s.to}</span>
+              <span class="tc-seg-amt">${amt}</span>
+            </div>`;
+          if (i < segs.length - 1) {
+            html += `<div class="tc-seg-conn"><i class="bi bi-arrow-down"></i> transfer</div>`;
+          }
+        });
+        segEl.innerHTML = html;
+        segEl.style.display = 'block';
+      } else {
+        // Single-expressway: show expressway name only
+        segEl.style.display = 'none';
+        segEl.innerHTML = '';
+        const expLabel = segs[0] ? (expNames[segs[0].expressway] || segs[0].expressway) : '';
+        document.getElementById('tc-route').textContent =
+          `${entry}  →  ${exit}  |  ${selectedClass}  |  ${expLabel}`;
+      }
+
+      resEl.style.display = 'block';
+    }
+  });
+}
+</script>
+{% endblock %}

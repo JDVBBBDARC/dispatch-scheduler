@@ -238,6 +238,12 @@
         <i class="bi bi-tools"></i><span>Breakdown</span>
       </a>
     </li>
+    <li>
+      <a href="{{ url_for('toll_calculator') }}"
+         class="sidebar-link {% if request.endpoint == 'toll_calculator' %}active{% endif %}">
+        <i class="bi bi-cash-coin"></i><span>Toll Calculator</span>
+      </a>
+    </li>
 
     <li class="nav-section">DATA</li>
     <li>

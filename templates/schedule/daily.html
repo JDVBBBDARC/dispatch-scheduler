@@ -110,6 +110,7 @@
                 <th style="min-width:80px;">DR No.</th>
                 <th style="min-width:70px;">Volume</th>
                 <th style="min-width:110px;">Status</th>
+                <th style="min-width:85px;">Toll (₱)</th>
                 <th style="min-width:120px;">Notes</th>
                 <th class="center" style="width:38px;"></th>
               </tr>
@@ -160,6 +161,7 @@
                           data-status="{{ trip.status or 'Pending' }}"
                           data-trip-id="{{ trip.id }}"
                           onclick="cycleStatus(this)">{{ trip.status or 'Pending' }}</span></td>
+                <td><input class="ti ti-num" type="number" data-field="toll_fee" value="{{ trip.toll_fee if trip.toll_fee else '' }}" onchange="updateTrip({{ trip.id }},'toll_fee',this.value)" placeholder="0" min="0" step="1"></td>
                 <td><input class="ti ti-md" type="text" data-field="notes" value="{{ trip.notes or '' }}" onchange="updateTrip({{ trip.id }},'notes',this.value)" placeholder="Notes…"></td>
                 <td class="center">
                   <button class="btn btn-danger btn-xs" onclick="deleteTrip({{ trip.id }}, this)" title="Delete row">
@@ -169,7 +171,7 @@
               </tr>
               {% else %}
               <tr class="empty-trip-row">
-                <td colspan="17" class="empty-state py-3">
+                <td colspan="18" class="empty-state py-3">
                   <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
                 </td>
               </tr>
@@ -280,16 +282,28 @@ function buildWavePanelHTML(wid, label) {
     <div class="trip-table-wrap">
       <table class="trip-table" id="trip-table-${wid}">
         <thead><tr>
+          <th style="width:28px;"></th>
           <th class="center" style="width:36px;">#</th>
-          <th>Trip Type</th><th>Driver</th><th>Helper</th><th>Plate No.</th>
-          <th>Product</th><th>Client</th><th>Dispatcher</th>
-          <th>RS No.</th><th>PO No.</th><th>Reference</th>
-          <th>DR No.</th><th>Volume</th><th>Status</th><th>Notes</th>
+          <th style="min-width:120px;">Trip Type</th>
+          <th style="min-width:120px;">Driver</th>
+          <th style="min-width:120px;">Helper</th>
+          <th style="min-width:120px;">Plate No.</th>
+          <th style="min-width:130px;">Product</th>
+          <th style="min-width:130px;">Client</th>
+          <th style="min-width:100px;">Dispatcher</th>
+          <th style="min-width:80px;">RS No.</th>
+          <th style="min-width:80px;">PO No.</th>
+          <th style="min-width:80px;">Reference</th>
+          <th style="min-width:80px;">DR No.</th>
+          <th style="min-width:70px;">Volume</th>
+          <th style="min-width:110px;">Status</th>
+          <th style="min-width:85px;">Toll (₱)</th>
+          <th style="min-width:120px;">Notes</th>
           <th class="center" style="width:38px;"></th>
         </tr></thead>
         <tbody id="wave-body-${wid}">
           <tr class="empty-trip-row">
-            <td colspan="16" class="empty-state py-3">
+            <td colspan="18" class="empty-state py-3">
               <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
             </td>
           </tr>
@@ -465,7 +479,8 @@ function addTrip(waveId) {
     <td><input class="ti ti-sm"  type="text" data-field="dr_no"     placeholder="DR No."  onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-num" type="text" data-field="volume"    placeholder="Vol."    onchange="saveNewTrip(${waveId},this)"></td>
     <td><span class="s-badge s-Pending" data-status="Pending" onclick="cycleStatusNew(this)">Pending</span></td>
-    <td><input class="ti ti-md"  type="text" data-field="notes"     placeholder="Notes…"  onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-num" type="number" data-field="toll_fee" placeholder="0" min="0" step="1" onchange="saveNewTrip(${waveId},this)"></td>
+    <td><input class="ti ti-md"  type="text"   data-field="notes"    placeholder="Notes…" onchange="saveNewTrip(${waveId},this)"></td>
     <td class="center">
       <button class="btn btn-danger btn-xs" onclick="this.closest('tr').remove()" title="Remove">
         <i class="bi bi-trash"></i>
@@ -539,7 +554,7 @@ function deleteTrip(tripId, btn) {
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
-      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="17" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="18" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
     }
     updateWaveCount(waveId);
     showToast('Row deleted');
@@ -593,7 +608,8 @@ function duplicateTrip(tripId, waveId, btn) {
       <td><input class="ti ti-sm"  type="text" data-field="dr_no"     value="${escAtt(payload.dr_no||'')}"     onchange="updateTrip(${data.id},'dr_no',this.value)"     placeholder="DR No."></td>
       <td><input class="ti ti-num" type="text" data-field="volume"    value="${escAtt(payload.volume||'')}"    onchange="updateTrip(${data.id},'volume',this.value)"    placeholder="Vol."></td>
       <td><span class="s-badge s-${status.replace(/ /g,'-')}" data-status="${status}" data-trip-id="${data.id}" onclick="cycleStatus(this)">${status}</span></td>
-      <td><input class="ti ti-md"  type="text" data-field="notes"     value="${escAtt(payload.notes||'')}"     onchange="updateTrip(${data.id},'notes',this.value)"     placeholder="Notes…"></td>
+      <td><input class="ti ti-num" type="number" data-field="toll_fee" value="${escAtt(payload.toll_fee||'')}" onchange="updateTrip(${data.id},'toll_fee',this.value)" placeholder="0" min="0" step="1"></td>
+      <td><input class="ti ti-md"  type="text"   data-field="notes"    value="${escAtt(payload.notes||'')}"    onchange="updateTrip(${data.id},'notes',this.value)"    placeholder="Notes…"></td>
       <td class="center">
         <button class="btn btn-danger btn-xs" onclick="deleteTrip(${data.id},this)" title="Delete row"><i class="bi bi-trash"></i></button>
       </td>`;
