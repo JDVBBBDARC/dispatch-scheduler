@@ -75,10 +75,19 @@
       {% for d in drivers %}
       <div class="master-item {% if not d.active %}inactive-item{% endif %}" data-id="{{ d.id }}" data-cat="drivers">
         <div>
-          <div class="master-item-name">{{ d.name }}</div>
+          <div class="master-item-name">
+            {% if d.truck_type %}
+            <span class="truck-type-dot" style="background:{{ d.truck_type.color }};"></span>
+            {% endif %}
+            {{ d.name }}
+          </div>
+          <div class="master-item-sub">{{ d.truck_type.name if d.truck_type else 'Unassigned' }}</div>
         </div>
         <div class="d-flex gap-1">
-          <button class="btn btn-ghost btn-xs" onclick="editItem('drivers',{{ d.id }},'{{ d.name|replace("'","\\'") }}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-ghost btn-xs"
+                  onclick="editDriver({{ d.id }},'{{ d.name|replace("'","\\'") }}',{{ d.truck_type_id or 'null' }})">
+            <i class="bi bi-pencil"></i>
+          </button>
           <button class="btn btn-xs {% if d.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('drivers',{{ d.id }},this)" title="{{ 'Deactivate' if d.active else 'Activate' }}">
             <i class="bi bi-{{ 'toggle-on' if d.active else 'toggle-off' }}"></i>
           </button>
@@ -86,9 +95,15 @@
       </div>
       {% else %}<div class="master-empty">No drivers yet.</div>{% endfor %}
     </div>
-    <div class="master-add-row">
-      <input type="text" id="new-drivers" placeholder="Full name…" onkeydown="if(event.key==='Enter')addItem('drivers')">
-      <button class="btn btn-maroon btn-sm" onclick="addItem('drivers')"><i class="bi bi-plus-lg"></i></button>
+    <div class="master-add-row" style="flex-wrap:wrap;">
+      <select id="new-driver-truck" style="max-width:140px;">
+        <option value="">— Truck Type —</option>
+        {% for tt in truck_types %}
+        <option value="{{ tt.id }}">{{ tt.code }} — {{ tt.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="new-drivers" placeholder="Full name…" style="flex:1;min-width:160px;" onkeydown="if(event.key==='Enter')addDriver()">
+      <button class="btn btn-maroon btn-sm" onclick="addDriver()"><i class="bi bi-plus-lg"></i></button>
     </div>
   </div>
 
@@ -353,6 +368,65 @@ function addPlate() {
   });
 }
 
+// ── ADD / EDIT DRIVER (with truck-type category) ──────────────────────────
+function addDriver() {
+  const nameInput = document.getElementById('new-drivers');
+  const ttSel     = document.getElementById('new-driver-truck');
+  const name      = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  const ttId = ttSel.value || null;
+
+  fetch('/api/master/drivers/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, truck_type_id: ttId})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { alert(data.error); return; }
+    const list = document.getElementById('list-drivers');
+    list.querySelector('.master-empty')?.remove();
+    const div = document.createElement('div');
+    div.className = 'master-item';
+    div.dataset.id = data.id; div.dataset.cat = 'drivers';
+    const dot = data.truck_type_color ? `<span class="truck-type-dot" style="background:${data.truck_type_color};"></span>` : '';
+    div.innerHTML = `
+      <div>
+        <div class="master-item-name">${dot}${escHtml(data.name)}</div>
+        <div class="master-item-sub">${escHtml(data.truck_type_name || 'Unassigned')}</div>
+      </div>
+      <div class="d-flex gap-1">
+        <button class="btn btn-ghost btn-xs" onclick="editDriver(${data.id},'${data.name.replace(/'/g,"\\'")}',${data.truck_type_id || 'null'})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleItem('drivers',${data.id},this)"><i class="bi bi-toggle-on"></i></button>
+      </div>`;
+    list.appendChild(div);
+    nameInput.value = '';
+    ttSel.value = '';
+    updateCount('drivers', list);
+    showToast(`${data.name} added`);
+  });
+}
+
+function editDriver(id, currentName, ttId) {
+  editCat = 'drivers'; editId = id;
+  document.getElementById('editModalTitle').textContent = 'Edit driver';
+  const ttOpts = document.getElementById('new-driver-truck').innerHTML;
+  document.getElementById('editModalBody').innerHTML = `
+    <div class="mb-2">
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Name</label>
+      <input type="text" id="editValue" class="form-control mt-1" value="${escHtml(currentName)}">
+    </div>
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Truck Type Category</label>
+      <select id="editDriverTruck" class="form-select mt-1">${ttOpts}</select>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">
+        The truck type this driver is qualified to drive. Used for the Driver/Truck Ratio chart.
+      </div>
+    </div>`;
+  if (ttId) document.getElementById('editDriverTruck').value = ttId;
+  editModal.show();
+  setTimeout(() => document.getElementById('editValue').focus(), 200);
+}
+
 // ── UPDATE TRUCK TYPE (utilization scoring) ───────────────────────────────
 let _ttSaveTimers = {};
 function updateTruckType(ttId, field, value) {
@@ -447,6 +521,10 @@ function saveEdit() {
     if (editCat === 'products') {
       const fullDayEl = document.getElementById('editFullDay');
       if (fullDayEl) payload.is_full_day_trip = fullDayEl.checked;
+    }
+    if (editCat === 'drivers') {
+      const ttSel = document.getElementById('editDriverTruck');
+      payload.truck_type_id = ttSel?.value || null;
     }
   }
   fetch(`/api/master/${editCat}/${editId}/update`, {

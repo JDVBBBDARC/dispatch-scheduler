@@ -980,9 +980,9 @@ function renderDriverTruckRatioChart() {
   const hintEl = document.getElementById('dtRatioSourceHint');
   if (hintEl && dtRatioData.driver_source) {
     if (dtRatioData.driver_source === 'attendance') {
-      hintEl.textContent = 'Drivers from attendance (system-wide)';
+      hintEl.textContent = 'Drivers: all categories (attendance)';
     } else {
-      hintEl.textContent = 'Drivers from trips of selected truck type(s)';
+      hintEl.textContent = 'Drivers: only those categorized to selected type(s)';
     }
   }
 }

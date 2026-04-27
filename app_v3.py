@@ -409,9 +409,10 @@ def api_dashboard_driver_truck_ratio():
                       (resolved_date IS NULL OR resolved_date > D)).
     Present Drivers = WHEN no truck-type filter: distinct drivers with
                       attendance.status='Present' that day (system-wide).
-                      WHEN filtered: distinct drivers who DROVE a truck of any
-                      selected type that day (from TripRecord, regardless of
-                      trip status).
+                      WHEN filtered: distinct drivers categorized to one of the
+                      selected truck types (Driver.truck_type_id) AND with
+                      attendance.status='Present' that day. Uncategorized
+                      drivers are excluded from filtered views.
     Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
     Driver Shortage = max(0, Working Trucks - Present Drivers).
 
@@ -464,7 +465,7 @@ def api_dashboard_driver_truck_ratio():
 
     # Drivers present per day:
     # If no filter: system-wide attendance count.
-    # If filtered: distinct drivers who drove a selected truck-type on that day.
+    # If filtered: drivers categorized to a selected truck type AND marked Present.
     drivers_per_day = {}
     if not selected_tt_ids:
         attn_rows = (db.session.query(Attendance.date,
@@ -475,15 +476,16 @@ def api_dashboard_driver_truck_ratio():
                      .group_by(Attendance.date).all())
         drivers_per_day = {row[0]: row[1] for row in attn_rows}
     else:
-        # distinct drivers from TripRecords on each date with matching truck type
-        trip_rows = (db.session.query(Wave.date,
-                                      db.func.count(db.distinct(TripRecord.driver_id)))
-                     .join(TripRecord, TripRecord.wave_id == Wave.id)
-                     .filter(Wave.date >= from_d, Wave.date <= to_d,
-                             Wave.truck_type_id.in_(selected_tt_ids),
-                             TripRecord.driver_id.isnot(None))
-                     .group_by(Wave.date).all())
-        drivers_per_day = {row[0]: row[1] for row in trip_rows}
+        # Filter by Driver.truck_type_id — only drivers categorized to selected types
+        attn_rows = (db.session.query(Attendance.date,
+                                      db.func.count(db.distinct(Attendance.driver_id)))
+                     .join(Driver, Driver.id == Attendance.driver_id)
+                     .filter(Attendance.status == 'Present',
+                             Attendance.date >= from_d,
+                             Attendance.date <= to_d,
+                             Driver.truck_type_id.in_(selected_tt_ids))
+                     .group_by(Attendance.date).all())
+        drivers_per_day = {row[0]: row[1] for row in attn_rows}
 
     working = []
     present = []
@@ -513,7 +515,7 @@ def api_dashboard_driver_truck_ratio():
         'driver_shortage': shortages,
         'total_plates':    total_active_plates,
         'selected_codes':  selected_codes,
-        'driver_source':   'attendance' if not selected_tt_ids else 'trips',
+        'driver_source':   'attendance' if not selected_tt_ids else 'category',
     })
 
 
@@ -686,11 +688,24 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
+    # Drivers can be assigned a truck type category at creation time
+    if category == 'drivers':
+        ttid = data.get('truck_type_id') or None
+        if ttid:
+            try: obj.truck_type_id = int(ttid)
+            except (TypeError, ValueError): pass
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
-    return jsonify({'id': obj.id, 'name': obj.name})
+    resp = {'id': obj.id, 'name': obj.name}
+    if category == 'drivers' and obj.truck_type_id:
+        tt = TruckTypeDef.query.get(obj.truck_type_id)
+        if tt:
+            resp['truck_type_id']    = tt.id
+            resp['truck_type_name']  = tt.name
+            resp['truck_type_color'] = tt.color
+    return jsonify(resp)
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
@@ -713,6 +728,11 @@ def api_master_update(category, item_id):
         # Products: optional is_full_day_trip toggle
         if category == 'products' and 'is_full_day_trip' in data:
             obj.is_full_day_trip = bool(data.get('is_full_day_trip'))
+        # Drivers: optional truck-type category assignment
+        if category == 'drivers' and 'truck_type_id' in data:
+            ttid = data.get('truck_type_id') or None
+            try: obj.truck_type_id = int(ttid) if ttid else None
+            except (TypeError, ValueError): obj.truck_type_id = None
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
@@ -1723,6 +1743,9 @@ def init_db():
 
         # products — full-day trip flag
         add_col('products', 'is_full_day_trip', 'ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0')
+
+        # drivers — truck type category (which type they're trained/assigned to drive)
+        add_col('drivers', 'truck_type_id', 'ALTER TABLE drivers ADD COLUMN truck_type_id INTEGER')
 
         # ─────────────────────────────────────────────────────────────────────
         # ORM-based seeding/backfill — safe now that schema is up to date.

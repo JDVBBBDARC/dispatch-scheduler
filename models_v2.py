@@ -78,10 +78,14 @@ class TruckTypeDef(db.Model):
 
 class Driver(db.Model):
     __tablename__ = 'drivers'
-    id     = db.Column(db.Integer, primary_key=True)
-    name   = db.Column(db.String(80), nullable=False)
-    active = db.Column(db.Boolean, default=True)
+    id            = db.Column(db.Integer, primary_key=True)
+    name          = db.Column(db.String(80), nullable=False)
+    active        = db.Column(db.Boolean, default=True)
+    # Category — drivers are typically assigned to a specific truck type.
+    # NULL = uncategorized (counted only in system-wide views).
+    truck_type_id = db.Column(db.Integer, db.ForeignKey('truck_type_defs.id'), nullable=True)
 
+    truck_type         = db.relationship('TruckTypeDef')
     trips_driven       = db.relationship('TripRecord', foreign_keys='TripRecord.driver_id', back_populates='driver')
     attendance_records = db.relationship('Attendance', back_populates='driver', cascade='all, delete-orphan')
 
