@@ -1540,6 +1540,69 @@ def api_set_user():
 def init_db():
     with app.app_context():
         db.create_all()
+
+        # ─────────────────────────────────────────────────────────────────────
+        # SCHEMA MIGRATIONS — must run FIRST, before any ORM .query.all() calls.
+        # SQLAlchemy generates SELECTs that include EVERY model column, so a
+        # query against an unmigrated table will crash with "no such column".
+        # All migrations are idempotent (column-existence checks).
+        # ─────────────────────────────────────────────────────────────────────
+        from sqlalchemy import inspect, text
+        import sys
+        inspector = inspect(db.engine)
+
+        def has_table(name):
+            try:
+                return name in inspector.get_table_names()
+            except Exception:
+                return False
+
+        def cols_of(table):
+            try:
+                return {c['name'] for c in inspector.get_columns(table)}
+            except Exception:
+                return set()
+
+        def add_col(table, col, ddl):
+            if not has_table(table):
+                return
+            if col in cols_of(table):
+                return
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                msg = f"  Migrated: added {col} column to {table}"
+                print(msg, flush=True)
+                sys.stderr.write(msg + "\n")   # also write to error log so it's visible
+                sys.stderr.flush()
+            except Exception as e:
+                err = f"  Migration FAILED for {table}.{col}: {e}"
+                print(err, flush=True)
+                sys.stderr.write(err + "\n")
+                sys.stderr.flush()
+
+        # trip_records — toll calculator + trip_type
+        add_col('trip_records', 'trip_type',       'ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)')
+        add_col('trip_records', 'toll_fee',        'ALTER TABLE trip_records ADD COLUMN toll_fee FLOAT')
+        add_col('trip_records', 'toll_expressway', 'ALTER TABLE trip_records ADD COLUMN toll_expressway VARCHAR(50)')
+        add_col('trip_records', 'toll_entry',      'ALTER TABLE trip_records ADD COLUMN toll_entry VARCHAR(80)')
+        add_col('trip_records', 'toll_exit',       'ALTER TABLE trip_records ADD COLUMN toll_exit VARCHAR(80)')
+        add_col('trip_records', 'toll_class',      'ALTER TABLE trip_records ADD COLUMN toll_class VARCHAR(10)')
+
+        # clients — legacy toll fee column
+        add_col('clients', 'toll_fee', 'ALTER TABLE clients ADD COLUMN toll_fee FLOAT DEFAULT 0')
+
+        # truck_type_defs — fleet utilization scoring
+        add_col('truck_type_defs', 'point_per_leg',       'ALTER TABLE truck_type_defs ADD COLUMN point_per_leg FLOAT DEFAULT 1.0')
+        add_col('truck_type_defs', 'daily_target_points', 'ALTER TABLE truck_type_defs ADD COLUMN daily_target_points FLOAT DEFAULT 1.5')
+
+        # products — full-day trip flag
+        add_col('products', 'is_full_day_trip', 'ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0')
+
+        # ─────────────────────────────────────────────────────────────────────
+        # ORM-based seeding/backfill — safe now that schema is up to date.
+        # ─────────────────────────────────────────────────────────────────────
         # Add any missing truck types (works for fresh AND existing databases)
         existing_codes = {t.code for t in TruckTypeDef.query.all()}
         added = []
@@ -1558,67 +1621,15 @@ def init_db():
         if not AppSetting.query.filter_by(key=SHEETS_WEBHOOK_KEY).first():
             db.session.add(AppSetting(key=SHEETS_WEBHOOK_KEY, value=SHEETS_WEBHOOK_DEFAULT))
         db.session.commit()
-        # Migrate: add trip_type column if it doesn't exist yet (for existing databases)
-        from sqlalchemy import inspect, text
-        inspector = inspect(db.engine)
-        cols = [c['name'] for c in inspector.get_columns('trip_records')]
-        if 'trip_type' not in cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
-                conn.commit()
-            print("  Migrated: added trip_type column to trip_records")
 
-        # Migrate: add toll calculator columns to trip_records (was missing on older DBs)
-        trip_col_migrations = [
-            ('toll_fee',        'ALTER TABLE trip_records ADD COLUMN toll_fee FLOAT'),
-            ('toll_expressway', 'ALTER TABLE trip_records ADD COLUMN toll_expressway VARCHAR(50)'),
-            ('toll_entry',      'ALTER TABLE trip_records ADD COLUMN toll_entry VARCHAR(80)'),
-            ('toll_exit',       'ALTER TABLE trip_records ADD COLUMN toll_exit VARCHAR(80)'),
-            ('toll_class',      'ALTER TABLE trip_records ADD COLUMN toll_class VARCHAR(10)'),
-        ]
-        # Refresh column list (in case trip_type was just added above)
-        cols = [c['name'] for c in inspector.get_columns('trip_records')]
-        for col_name, ddl in trip_col_migrations:
-            if col_name not in cols:
-                with db.engine.connect() as conn:
-                    conn.execute(text(ddl))
-                    conn.commit()
-                print(f"  Migrated: added {col_name} column to trip_records")
-
-        # Migrate: add toll_fee column to clients (legacy column kept for backward compat)
-        client_cols = [c['name'] for c in inspector.get_columns('clients')]
-        if 'toll_fee' not in client_cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE clients ADD COLUMN toll_fee FLOAT DEFAULT 0'))
-                conn.commit()
-            print("  Migrated: added toll_fee column to clients")
-        # Migrate: add fleet-utilization columns to truck_type_defs
-        tt_cols = [c['name'] for c in inspector.get_columns('truck_type_defs')]
-        if 'point_per_leg' not in tt_cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE truck_type_defs ADD COLUMN point_per_leg FLOAT DEFAULT 1.0'))
-                conn.commit()
-            print("  Migrated: added point_per_leg column to truck_type_defs")
-        if 'daily_target_points' not in tt_cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE truck_type_defs ADD COLUMN daily_target_points FLOAT DEFAULT 1.5'))
-                conn.commit()
-            print("  Migrated: added daily_target_points column to truck_type_defs")
         # Backfill defaults for existing truck types based on code (10W gets 0.5/4.0)
         for tt in TruckTypeDef.query.all():
             seed = next((s for s in TRUCK_TYPES_SEED if s['code'] == tt.code), None)
             if seed:
-                if tt.point_per_leg is None or tt.point_per_leg == 1.0 and tt.code == '10W':
+                if tt.point_per_leg is None or (tt.point_per_leg == 1.0 and tt.code == '10W'):
                     tt.point_per_leg = seed['point_per_leg']
                 if tt.daily_target_points is None or (tt.daily_target_points == 1.5 and tt.code == '10W'):
                     tt.daily_target_points = seed['daily_target_points']
-        # Migrate: add is_full_day_trip column to products
-        prod_cols = [c['name'] for c in inspector.get_columns('products')]
-        if 'is_full_day_trip' not in prod_cols:
-            with db.engine.connect() as conn:
-                conn.execute(text('ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0'))
-                conn.commit()
-            print("  Migrated: added is_full_day_trip column to products")
         # Auto-flag known full-day products (case-insensitive name match)
         for prod_name in FULL_DAY_PRODUCTS_SEED:
             prod = Product.query.filter(db.func.upper(Product.name) == prod_name.upper()).first()
