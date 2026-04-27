@@ -889,6 +889,11 @@ function renderDriverTruckRatioChart() {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const idx = els[0].index;
+        showDtRatioDetails(idx);
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -897,7 +902,23 @@ function renderDriverTruckRatioChart() {
               const i = items[0]?.dataIndex;
               if (i == null) return '';
               const sh = dtRatioData.driver_shortage[i];
-              return sh > 0 ? `Shortage: ${sh} driver${sh === 1 ? '' : 's'}` : 'Fully covered ✓';
+              const lines = [
+                sh > 0 ? `Shortage: ${sh} driver${sh === 1 ? '' : 's'}` : 'Fully covered ✓'
+              ];
+              // Show actual driver→truck pairs if filtered & data available
+              const isoDate = dtRatioData.days_iso?.[i];
+              const assigns = dtRatioData.assignments?.[isoDate];
+              if (assigns && assigns.length) {
+                lines.push('');
+                lines.push(`Drivers using ${assigns.length === 1 ? 'this type' : 'selected types'}:`);
+                assigns.slice(0, 6).forEach(a => {
+                  lines.push(`  • ${a.driver} → ${a.plate} (${a.type_code})`);
+                });
+                if (assigns.length > 6) {
+                  lines.push(`  …and ${assigns.length - 6} more (click bar)`);
+                }
+              }
+              return lines;
             },
           },
         },
@@ -980,14 +1001,59 @@ function renderDriverTruckRatioChart() {
   const hintEl = document.getElementById('dtRatioSourceHint');
   if (hintEl && dtRatioData.driver_source) {
     if (dtRatioData.driver_source === 'attendance') {
-      hintEl.textContent = 'Drivers: all categories (attendance)';
+      hintEl.textContent = 'Drivers: all (from attendance) · Click a bar for details';
     } else {
-      hintEl.textContent = 'Drivers: qualified for selected type(s)';
+      hintEl.textContent = 'Drivers: actually using selected type(s) · Click a bar for details';
     }
   }
 }
 
 fetchDriverTruckRatio();
+
+// Show details modal: who drove what truck on the clicked day.
+function showDtRatioDetails(idx) {
+  if (!dtRatioData) return;
+  const isoDate = dtRatioData.days_iso?.[idx];
+  const dayLabel = dtRatioData.days?.[idx];
+  if (!isoDate) return;
+  const assigns = dtRatioData.assignments?.[isoDate] || [];
+  if (!assigns.length) {
+    showToast('No driver assignments for ' + dayLabel +
+              (selectedDtRatioTrucks.size === 0 ? ' (filter by truck type to see)' : ''));
+    return;
+  }
+  // Group by truck type
+  const byType = {};
+  assigns.forEach(a => {
+    if (!byType[a.type_code]) byType[a.type_code] = { name: a.type_name, color: a.type_color, rows: [] };
+    byType[a.type_code].rows.push(a);
+  });
+  const html = Object.entries(byType).map(([code, info]) => `
+    <div class="mb-3">
+      <div style="font-weight:600;color:${info.color};margin-bottom:6px;">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${info.color};margin-right:6px;"></span>
+        ${escHtml(info.name)} (${code}) · ${info.rows.length} driver${info.rows.length === 1 ? '' : 's'}
+      </div>
+      <table class="tbl" style="font-size:.82rem;width:100%;">
+        <thead><tr><th>Driver</th><th>Truck Unit</th></tr></thead>
+        <tbody>
+          ${info.rows.map(a => `
+            <tr><td>${escHtml(a.driver)}</td><td>${escHtml(a.plate)}</td></tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+
+  // Reuse the KPI modal scaffolding
+  document.getElementById('kpiModalHeader').style.background = '#16A34A';
+  document.getElementById('kpiModalHeader').style.color = '#fff';
+  document.getElementById('kpiModalTitle').innerHTML =
+    `<i class="bi bi-people-fill me-2"></i>Driver Assignments — ${escHtml(dayLabel)}`;
+  document.getElementById('kpiTruckFilter').style.display = 'none';
+  document.getElementById('kpiModalBody').innerHTML = `<div class="p-3">${html}</div>`;
+  new bootstrap.Modal(document.getElementById('kpiModal')).show();
+}
 
 // ── PIE CHART (status mix) ────────────────────────────────────────────────
 {% if total > 0 %}

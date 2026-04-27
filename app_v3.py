@@ -409,11 +409,13 @@ def api_dashboard_driver_truck_ratio():
                       (resolved_date IS NULL OR resolved_date > D)).
     Present Drivers = WHEN no truck-type filter: distinct drivers with
                       attendance.status='Present' that day (system-wide).
-                      WHEN filtered: distinct drivers QUALIFIED for one of the
-                      selected truck types (via Driver.truck_types many-to-many)
-                      AND with attendance.status='Present' that day. Drivers
-                      qualified for multiple selected types are counted once.
-                      Uncategorized drivers are excluded from filtered views.
+                      WHEN filtered: distinct drivers who ACTUALLY drove a truck
+                      of one of the selected types that day (from TripRecord,
+                      excluding 'Canceled' trips). This works even if a driver
+                      is qualified for multiple types — they're counted under
+                      the type they actually used that day. The API also returns
+                      per-day driver→truck assignments so the UI can show which
+                      driver drove which unit.
     Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
     Driver Shortage = max(0, Working Trucks - Present Drivers).
 
@@ -466,8 +468,10 @@ def api_dashboard_driver_truck_ratio():
 
     # Drivers present per day:
     # If no filter: system-wide attendance count.
-    # If filtered: drivers categorized to a selected truck type AND marked Present.
+    # If filtered: drivers who actually drove a truck of selected type(s) that day.
     drivers_per_day = {}
+    assignments_per_day = {}   # date -> [{driver, plate, body, type_code, type_color}, ...]
+
     if not selected_tt_ids:
         attn_rows = (db.session.query(Attendance.date,
                                       db.func.count(db.distinct(Attendance.driver_id)))
@@ -477,20 +481,39 @@ def api_dashboard_driver_truck_ratio():
                      .group_by(Attendance.date).all())
         drivers_per_day = {row[0]: row[1] for row in attn_rows}
     else:
-        # Filter via M2M: drivers qualified for ANY of the selected truck types.
-        # Use the driver_truck_types association table so a single driver who
-        # is qualified for multiple selected types is still counted once per day.
-        from models_v2 import driver_truck_types
-        attn_rows = (db.session.query(Attendance.date,
-                                      db.func.count(db.distinct(Attendance.driver_id)))
-                     .join(driver_truck_types,
-                           driver_truck_types.c.driver_id == Attendance.driver_id)
-                     .filter(Attendance.status == 'Present',
-                             Attendance.date >= from_d,
-                             Attendance.date <= to_d,
-                             driver_truck_types.c.truck_type_id.in_(selected_tt_ids))
-                     .group_by(Attendance.date).all())
-        drivers_per_day = {row[0]: row[1] for row in attn_rows}
+        # Detect ACTUAL usage from TripRecords. A driver who is qualified for
+        # both 10W and 12W but drove a 12W truck that day counts under 12W,
+        # not 10W (we look at what they actually used).
+        trip_rows = (db.session.query(
+                        Wave.date,
+                        TripRecord.driver_id,
+                        Driver.name,
+                        Plate.id, Plate.plate_no, Plate.body_no,
+                        TruckTypeDef.code, TruckTypeDef.color, TruckTypeDef.name,
+                    )
+                     .join(TripRecord, TripRecord.wave_id == Wave.id)
+                     .join(Driver,    Driver.id    == TripRecord.driver_id)
+                     .outerjoin(Plate, Plate.id    == TripRecord.plate_id)
+                     .join(TruckTypeDef, TruckTypeDef.id == Wave.truck_type_id)
+                     .filter(Wave.date >= from_d, Wave.date <= to_d,
+                             Wave.truck_type_id.in_(selected_tt_ids),
+                             TripRecord.driver_id.isnot(None),
+                             TripRecord.status != 'Canceled')
+                     .distinct()
+                     .all())
+        # Build per-day distinct-driver count + assignment list
+        per_day_drivers = {}
+        for d_date, drv_id, drv_name, plate_id, plate_no, body_no, tt_code, tt_color, tt_name in trip_rows:
+            per_day_drivers.setdefault(d_date, set()).add(drv_id)
+            display = (f"{body_no} / {plate_no}" if body_no else plate_no) if plate_no else '—'
+            assignments_per_day.setdefault(d_date, []).append({
+                'driver':    drv_name,
+                'plate':     display,
+                'type_code': tt_code,
+                'type_name': tt_name,
+                'type_color': tt_color,
+            })
+        drivers_per_day = {d: len(s) for d, s in per_day_drivers.items()}
 
     working = []
     present = []
@@ -520,8 +543,27 @@ def api_dashboard_driver_truck_ratio():
         'driver_shortage': shortages,
         'total_plates':    total_active_plates,
         'selected_codes':  selected_codes,
-        'driver_source':   'attendance' if not selected_tt_ids else 'category',
+        'driver_source':   'attendance' if not selected_tt_ids else 'trips',
+        # Per-day driver→truck assignments (only when filtered).
+        # Deduped: a driver who did multiple trips on the same truck shows once.
+        'assignments':     {
+            d.isoformat(): _dedupe_assignments(rows)
+            for d, rows in assignments_per_day.items()
+        },
     })
+
+
+def _dedupe_assignments(rows):
+    """Collapse identical (driver, plate) pairs that come from multiple trips."""
+    seen = set()
+    out = []
+    for r in rows:
+        key = (r['driver'], r['plate'], r['type_code'])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
 
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
