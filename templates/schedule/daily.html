@@ -282,16 +282,28 @@ function buildWavePanelHTML(wid, label) {
     <div class="trip-table-wrap">
       <table class="trip-table" id="trip-table-${wid}">
         <thead><tr>
+          <th style="width:28px;"></th>
           <th class="center" style="width:36px;">#</th>
-          <th>Trip Type</th><th>Driver</th><th>Helper</th><th>Plate No.</th>
-          <th>Product</th><th>Client</th><th>Dispatcher</th>
-          <th>RS No.</th><th>PO No.</th><th>Reference</th>
-          <th>DR No.</th><th>Volume</th><th>Status</th><th>Toll (₱)</th><th>Notes</th>
+          <th style="min-width:120px;">Trip Type</th>
+          <th style="min-width:120px;">Driver</th>
+          <th style="min-width:120px;">Helper</th>
+          <th style="min-width:120px;">Plate No.</th>
+          <th style="min-width:130px;">Product</th>
+          <th style="min-width:130px;">Client</th>
+          <th style="min-width:100px;">Dispatcher</th>
+          <th style="min-width:80px;">RS No.</th>
+          <th style="min-width:80px;">PO No.</th>
+          <th style="min-width:80px;">Reference</th>
+          <th style="min-width:80px;">DR No.</th>
+          <th style="min-width:70px;">Volume</th>
+          <th style="min-width:110px;">Status</th>
+          <th style="min-width:85px;">Toll (₱)</th>
+          <th style="min-width:120px;">Notes</th>
           <th class="center" style="width:38px;"></th>
         </tr></thead>
         <tbody id="wave-body-${wid}">
           <tr class="empty-trip-row">
-            <td colspan="17" class="empty-state py-3">
+            <td colspan="18" class="empty-state py-3">
               <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
             </td>
           </tr>

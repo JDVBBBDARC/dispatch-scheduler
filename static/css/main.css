@@ -264,7 +264,13 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
   font-size:.7rem; font-weight:700; letter-spacing:.7px; color:var(--maroon);
   text-transform:uppercase; border-bottom:2px solid var(--maroon);
   white-space:nowrap;
+  box-sizing:border-box;
 }
+/* Body cells inherit the same horizontal sizing rules so columns line up
+   regardless of input/select content width on different machines/zoom levels */
+.trip-table td { box-sizing:border-box; }
+.trip-table tbody td > .ac,
+.trip-table tbody td > .ti { width:100%; }
 .trip-table th.center, .trip-table td.center { text-align:center; }
 .trip-table td { padding:5px 6px; border-bottom:1px solid var(--border); vertical-align:middle; }
 .trip-table tbody tr:hover td { background:var(--maroon-pale); }
