@@ -1567,6 +1567,31 @@ def init_db():
                 conn.execute(text('ALTER TABLE trip_records ADD COLUMN trip_type VARCHAR(30)'))
                 conn.commit()
             print("  Migrated: added trip_type column to trip_records")
+
+        # Migrate: add toll calculator columns to trip_records (was missing on older DBs)
+        trip_col_migrations = [
+            ('toll_fee',        'ALTER TABLE trip_records ADD COLUMN toll_fee FLOAT'),
+            ('toll_expressway', 'ALTER TABLE trip_records ADD COLUMN toll_expressway VARCHAR(50)'),
+            ('toll_entry',      'ALTER TABLE trip_records ADD COLUMN toll_entry VARCHAR(80)'),
+            ('toll_exit',       'ALTER TABLE trip_records ADD COLUMN toll_exit VARCHAR(80)'),
+            ('toll_class',      'ALTER TABLE trip_records ADD COLUMN toll_class VARCHAR(10)'),
+        ]
+        # Refresh column list (in case trip_type was just added above)
+        cols = [c['name'] for c in inspector.get_columns('trip_records')]
+        for col_name, ddl in trip_col_migrations:
+            if col_name not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                print(f"  Migrated: added {col_name} column to trip_records")
+
+        # Migrate: add toll_fee column to clients (legacy column kept for backward compat)
+        client_cols = [c['name'] for c in inspector.get_columns('clients')]
+        if 'toll_fee' not in client_cols:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE clients ADD COLUMN toll_fee FLOAT DEFAULT 0'))
+                conn.commit()
+            print("  Migrated: added toll_fee column to clients")
         # Migrate: add fleet-utilization columns to truck_type_defs
         tt_cols = [c['name'] for c in inspector.get_columns('truck_type_defs')]
         if 'point_per_leg' not in tt_cols:
