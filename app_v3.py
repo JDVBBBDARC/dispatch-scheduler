@@ -47,7 +47,7 @@ from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        TRUCK_TYPES_SEED, STATUSES,
                        ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
                        DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT,
-                       FULL_DAY_PRODUCTS_SEED)
+                       FULL_DAY_PRODUCTS_SEED, FULL_DAY_KEYWORDS, is_product_full_day)
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
@@ -334,15 +334,17 @@ def api_dashboard_fleet_utilization():
                      TripRecord.status == 'Delivered')
              .all())
 
-    # Build product → is_full_day map (only for products that appear in the trips)
+    # Build product → is_full_day map (only for products that appear in the trips).
+    # A product is "full-day" if EITHER:
+    #   - its is_full_day_trip flag is True, OR
+    #   - its name contains a FULL_DAY_KEYWORDS substring (e.g., "asphalt",
+    #     case-insensitive — covers "ASPHALT", "Asphalt Plant", "Asphalt Mix"...).
     product_ids = {t.product_id for (t, _w) in trips if t.product_id}
     full_day_products = set()
     if product_ids:
-        full_day_products = {
-            pid for (pid,) in db.session.query(Product.id)
-                                        .filter(Product.id.in_(product_ids),
-                                                Product.is_full_day_trip == True).all()
-        }
+        for prod in Product.query.filter(Product.id.in_(product_ids)).all():
+            if is_product_full_day(prod):
+                full_day_products.add(prod.id)
 
     # Build day list
     days = []
@@ -531,7 +533,8 @@ def master():
     return render_template('master/index.html',
         truck_types=truck_types,
         drivers=drivers, helpers=helpers, products=products,
-        clients=clients, dispatchers=dispatchers, plates=plates)
+        clients=clients, dispatchers=dispatchers, plates=plates,
+        full_day_keywords=FULL_DAY_KEYWORDS)
 
 
 @app.route('/api/master/<category>/add', methods=['POST'])

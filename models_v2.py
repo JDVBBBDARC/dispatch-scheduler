@@ -21,6 +21,27 @@ TRUCK_TYPES_SEED = [
 # Products that are inherently full-day commitments (auto-flagged on first init).
 FULL_DAY_PRODUCTS_SEED = ['ASPHALT']
 
+# Case-insensitive substring keywords. ANY product whose name contains one of
+# these strings is treated as a full-day trip (counts as the truck type's
+# full daily_target_points instead of point_per_leg) — even if its
+# is_full_day_trip flag wasn't manually ticked. e.g., "Asphalt Plant",
+# "ASPHALT MIX", "asphalt-cold" all match the 'asphalt' keyword.
+FULL_DAY_KEYWORDS = ['asphalt']
+
+def is_product_full_day(product):
+    """Return True if a product should count as a full-day trip in fleet utilization.
+
+    Two ways a product qualifies:
+      1. Its is_full_day_trip flag is set (manual override in master data).
+      2. Its name contains any FULL_DAY_KEYWORDS substring (case-insensitive).
+    """
+    if product is None:
+        return False
+    if getattr(product, 'is_full_day_trip', False):
+        return True
+    name = (getattr(product, 'name', '') or '').lower()
+    return any(kw in name for kw in FULL_DAY_KEYWORDS)
+
 TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load']
 
 DOC_HEADER_DEFAULTS = {

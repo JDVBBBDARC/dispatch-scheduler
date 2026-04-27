@@ -59,6 +59,7 @@
     <strong>Pts / Leg</strong> = points earned per delivered trip leg.
     <strong>Daily Target</strong> = points needed for 100% utilization in a day.
     Products marked as <em>Full-day</em> count for the full daily target instead of per-leg.
+    Any product whose name contains <strong>"asphalt"</strong> (case-insensitive) is automatically treated as full-day.
   </div>
 </div>
 
@@ -124,13 +125,18 @@
     </div>
     <div class="master-list" id="list-products">
       {% for p in products %}
-      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="products" data-full-day="{{ '1' if p.is_full_day_trip else '0' }}">
+      {% set auto_full_day = false %}
+      {% set lname = (p.name or '')|lower %}
+      {% for kw in full_day_keywords %}{% if kw in lname %}{% set auto_full_day = true %}{% endif %}{% endfor %}
+      {% set effective_full_day = p.is_full_day_trip or auto_full_day %}
+      <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="products" data-full-day="{{ '1' if effective_full_day else '0' }}">
         <div>
           <div class="master-item-name">
             {{ p.name }}
-            {% if p.is_full_day_trip %}
-            <span class="badge bg-warning text-dark ms-1" style="font-size:.62rem;font-weight:600;" title="Counts as a full daily target instead of per-leg">
-              <i class="bi bi-clock-fill"></i> FULL-DAY
+            {% if effective_full_day %}
+            <span class="badge bg-warning text-dark ms-1" style="font-size:.62rem;font-weight:600;"
+                  title="{% if auto_full_day and not p.is_full_day_trip %}Auto-detected from product name (keyword){% else %}Manually flagged{% endif %} — counts as full daily target instead of per-leg">
+              <i class="bi bi-clock-fill"></i> FULL-DAY{% if auto_full_day and not p.is_full_day_trip %} (auto){% endif %}
             </span>
             {% endif %}
           </div>
