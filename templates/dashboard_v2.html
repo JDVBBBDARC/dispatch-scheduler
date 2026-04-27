@@ -225,6 +225,34 @@
   </div>
 </div>
 
+<!-- ── ROW 2.6: DRIVER / TRUCK RATIO ────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="card-title">
+          <i class="bi bi-people-fill me-2" style="color:#16A34A;"></i>
+          Driver / Truck Ratio
+          &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">
+            {{ trend_start_str }} → {{ trend_end_str }} · ratio 1.0 = ideal coverage
+          </small>
+        </span>
+        <div class="d-flex gap-3 align-items-center flex-wrap" style="font-size:.72rem;">
+          <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#6B7280;margin-right:4px;"></span>Working Trucks</span>
+          <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#16A34A;margin-right:4px;"></span>Present Drivers</span>
+          <span><span style="display:inline-block;width:14px;height:3px;background:#0891B2;margin-right:4px;vertical-align:middle;"></span>Coverage Ratio</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="position:relative;height:300px;width:100%;">
+          <canvas id="dtRatioChart"></canvas>
+        </div>
+        <div id="dtRatioSummary" class="mt-3 d-flex flex-wrap gap-3" style="font-size:.75rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── ROW 3: TRUCK BREAKDOWN + RECENT ACTIVITY ─────────────────────────── -->
 <div class="row g-4 mb-4">
 
@@ -747,6 +775,172 @@ function setFleetUtilFilter(ttCode, btn) {
 
 fetchFleetUtilization();
 
+// ── DRIVER / TRUCK RATIO CHART ────────────────────────────────────────────
+let dtRatioChart = null;
+let dtRatioData  = null;
+
+function fetchDriverTruckRatio() {
+  const params = new URLSearchParams(window.location.search);
+  fetch('/api/dashboard/driver-truck-ratio?' + params.toString())
+    .then(r => r.json())
+    .then(d => {
+      dtRatioData = d;
+      renderDriverTruckRatioChart();
+    })
+    .catch(() => {});
+}
+
+function renderDriverTruckRatioChart() {
+  if (!dtRatioData) return;
+  if (dtRatioChart) dtRatioChart.destroy();
+  const ctx = document.getElementById('dtRatioChart');
+  if (!ctx) return;
+
+  // Color the "Present Drivers" bar red on shortage days, green when adequate.
+  const driverBarColors = dtRatioData.present_drivers.map((p, i) => {
+    const trucks = dtRatioData.working_trucks[i] || 0;
+    return (trucks > 0 && p < trucks) ? '#DC2626' : '#16A34A';
+  });
+
+  dtRatioChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dtRatioData.days,
+      datasets: [
+        {
+          label: 'Working Trucks',
+          data: dtRatioData.working_trucks,
+          backgroundColor: 'rgba(107, 114, 128, 0.85)',
+          borderColor: '#6B7280',
+          borderWidth: 1,
+          borderRadius: 4,
+          barPercentage: 0.85,
+          categoryPercentage: 0.78,
+          yAxisID: 'y',
+          order: 2,
+        },
+        {
+          label: 'Present Drivers',
+          data: dtRatioData.present_drivers,
+          backgroundColor: driverBarColors,
+          borderColor: driverBarColors,
+          borderWidth: 1,
+          borderRadius: 4,
+          barPercentage: 0.85,
+          categoryPercentage: 0.78,
+          yAxisID: 'y',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Coverage Ratio',
+          data: dtRatioData.coverage_ratio,
+          borderColor: '#0891B2',
+          backgroundColor: 'rgba(8, 145, 178, 0.12)',
+          borderWidth: 2.5,
+          pointRadius: 3.5,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#0891B2',
+          tension: 0.35,
+          yAxisID: 'y2',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const i = items[0]?.dataIndex;
+              if (i == null) return '';
+              const sh = dtRatioData.driver_shortage[i];
+              return sh > 0 ? `Shortage: ${sh} driver${sh === 1 ? '' : 's'}` : 'Fully covered ✓';
+            },
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 10 } },
+          title: { display: true, text: 'Count', font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,.05)' },
+          position: 'left',
+        },
+        y2: {
+          beginAtZero: true,
+          suggestedMax: 1.5,
+          ticks: {
+            callback: (v) => v.toFixed(1),
+            font: { size: 10 },
+            color: '#0891B2',
+          },
+          title: { display: true, text: 'Ratio', font: { size: 11 }, color: '#0891B2' },
+          grid: { display: false },
+          position: 'right',
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      },
+    },
+    plugins: [{
+      id: 'idealRatioLine',
+      afterDraw: (chart) => {
+        const y2 = chart.scales.y2;
+        const x  = chart.scales.x;
+        if (!y2 || !x) return;
+        const y = y2.getPixelForValue(1.0);
+        const c = chart.ctx;
+        c.save();
+        c.strokeStyle = 'rgba(220, 38, 38, 0.55)';
+        c.setLineDash([4, 4]);
+        c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(x.left, y);
+        c.lineTo(x.right, y);
+        c.stroke();
+        c.fillStyle = 'rgba(220, 38, 38, 0.85)';
+        c.font = '10px Barlow, sans-serif';
+        c.fillText('1.0 ideal', x.right - 50, y - 4);
+        c.restore();
+      },
+    }],
+  });
+
+  // Summary chips below chart
+  const sumEl = document.getElementById('dtRatioSummary');
+  if (sumEl && dtRatioData.coverage_ratio.length) {
+    const ratios = dtRatioData.coverage_ratio;
+    const avgRatio = (ratios.reduce((a,b) => a+b, 0) / ratios.length).toFixed(2);
+    const totalShortage = dtRatioData.driver_shortage.reduce((a,b) => a+b, 0);
+    const shortageDays = dtRatioData.driver_shortage.filter(s => s > 0).length;
+    const adequateDays = dtRatioData.driver_shortage.filter(s => s === 0).length;
+    const totalDays = ratios.length;
+
+    sumEl.innerHTML = `
+      <div class="d-flex align-items-center gap-2" style="padding:.3rem .65rem;background:#f8f9fa;border-radius:6px;">
+        <strong style="color:#0891B2;">Avg ratio: ${avgRatio}</strong>
+      </div>
+      <div class="d-flex align-items-center gap-2" style="padding:.3rem .65rem;background:#dcfce7;border-radius:6px;">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <strong>Adequate: ${adequateDays}/${totalDays} days</strong>
+      </div>
+      <div class="d-flex align-items-center gap-2" style="padding:.3rem .65rem;background:#fee2e2;border-radius:6px;">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <strong>Shortage: ${shortageDays} day${shortageDays === 1 ? '' : 's'} (${totalShortage} driver-day${totalShortage === 1 ? '' : 's'} missing)</strong>
+      </div>
+      <div class="d-flex align-items-center gap-2" style="padding:.3rem .65rem;background:#f8f9fa;border-radius:6px;color:var(--muted);">
+        Total active fleet: ${dtRatioData.total_plates} trucks
+      </div>`;
+  }
+}
+
+fetchDriverTruckRatio();
+
 // ── PIE CHART (status mix) ────────────────────────────────────────────────
 {% if total > 0 %}
 new Chart(document.getElementById('statusChart'), {
@@ -911,6 +1105,7 @@ function refreshKpis() {
 function loadDashActivity() {
   refreshKpis();              // refresh KPI card numbers
   fetchFleetUtilization();    // refresh fleet utilization chart
+  fetchDriverTruckRatio();    // refresh driver/truck ratio chart
   fetch('/api/activity')
     .then(r => r.json())
     .then(d => {

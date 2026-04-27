@@ -396,6 +396,84 @@ def api_dashboard_fleet_utilization():
     })
 
 
+# ── DRIVER / TRUCK RATIO API ───────────────────────────────────────────────
+@app.route('/api/dashboard/driver-truck-ratio')
+@login_required
+def api_dashboard_driver_truck_ratio():
+    """
+    Daily breakdown of working trucks vs present drivers.
+
+    Working Trucks  = active plates - plates currently under repair on that day
+                      (BreakdownLog with status='Under Repair' covering the date,
+                      i.e., date <= D AND (resolved_date IS NULL OR resolved_date > D)).
+    Present Drivers = distinct drivers with attendance.status = 'Present' on that date.
+    Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
+    Driver Shortage = max(0, Working Trucks - Present Drivers).
+    """
+    from_date = request.args.get('trend_start',
+                                 (ph_today() - timedelta(days=13)).isoformat())
+    to_date   = request.args.get('trend_end', ph_today().isoformat())
+    from_d = parse_date(from_date)
+    to_d   = parse_date(to_date)
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+
+    # Day list
+    days = []
+    cur = from_d
+    while cur <= to_d:
+        days.append(cur)
+        cur += timedelta(days=1)
+
+    # Total active plates (capacity baseline)
+    total_active_plates = Plate.query.filter_by(active=True).count()
+
+    # Pre-fetch all relevant breakdowns (status = 'Under Repair') once
+    breakdowns = (db.session.query(BreakdownLog.plate_id, BreakdownLog.date,
+                                   BreakdownLog.resolved_date)
+                  .filter(BreakdownLog.status == 'Under Repair',
+                          BreakdownLog.date <= to_d)
+                  .all())
+
+    # Pre-fetch attendance counts per day in range
+    attn_rows = (db.session.query(Attendance.date,
+                                  db.func.count(db.distinct(Attendance.driver_id)))
+                 .filter(Attendance.status == 'Present',
+                         Attendance.date >= from_d,
+                         Attendance.date <= to_d)
+                 .group_by(Attendance.date).all())
+    attn_map = {row[0]: row[1] for row in attn_rows}
+
+    working = []
+    present = []
+    ratios  = []
+    shortages = []
+    for d in days:
+        # A breakdown is "active on D" if start_date <= D AND (resolved_date IS NULL OR resolved_date > D)
+        broken_plate_ids = {
+            b.plate_id for b in breakdowns
+            if b.date <= d and (b.resolved_date is None or b.resolved_date > d)
+        }
+        wt = max(0, total_active_plates - len(broken_plate_ids))
+        pd = attn_map.get(d, 0)
+        rt = round((pd / wt), 3) if wt > 0 else 0
+        sh = max(0, wt - pd)
+        working.append(wt)
+        present.append(pd)
+        ratios.append(rt)
+        shortages.append(sh)
+
+    return jsonify({
+        'days':            [d.strftime('%b %d') for d in days],
+        'days_iso':        [d.isoformat() for d in days],
+        'working_trucks':  working,
+        'present_drivers': present,
+        'coverage_ratio':  ratios,
+        'driver_shortage': shortages,
+        'total_plates':    total_active_plates,
+    })
+
+
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
 @app.route('/dashboard')
 @login_required
