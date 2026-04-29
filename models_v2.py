@@ -270,12 +270,23 @@ class BreakdownLog(db.Model):
     description   = db.Column(db.Text)
     status        = db.Column(db.String(30), default='Under Repair')
     resolved_date = db.Column(db.Date)
+    # Precise timestamps — when the unit broke down and when the repair finished.
+    # Used for the "Total Breakdown Hours" KPI on the dashboard.
+    started_at    = db.Column(db.DateTime, nullable=True)
+    ended_at      = db.Column(db.DateTime, nullable=True)
     remarks       = db.Column(db.String(300))
     updated_by    = db.Column(db.String(64))
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     plate = db.relationship('Plate', back_populates='breakdowns')
+
+    @property
+    def duration_hours(self):
+        """Hours between started_at and ended_at (0 if still ongoing)."""
+        if self.started_at and self.ended_at:
+            return max(0.0, (self.ended_at - self.started_at).total_seconds() / 3600.0)
+        return 0.0
 
     def to_dict(self):
         return {
@@ -286,6 +297,9 @@ class BreakdownLog(db.Model):
             'description':   self.description or '',
             'status':        self.status or 'Under Repair',
             'resolved_date': self.resolved_date.isoformat() if self.resolved_date else '',
+            'started_at':    self.started_at.strftime('%Y-%m-%dT%H:%M') if self.started_at else '',
+            'ended_at':      self.ended_at.strftime('%Y-%m-%dT%H:%M') if self.ended_at else '',
+            'duration_hours': round(self.duration_hours, 2),
             'remarks':       self.remarks or '',
             'updated_by':    self.updated_by or '',
         }

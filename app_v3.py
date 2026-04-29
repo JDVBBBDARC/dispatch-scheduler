@@ -286,10 +286,21 @@ def api_dashboard_kpis():
     if status != 'all':
         q = q.filter(TripRecord.status == status)
     trips = q.all()
+    # Total breakdown hours within range (uses started_at)
+    bd_from_dt = datetime.combine(from_d, datetime.min.time())
+    bd_to_dt   = datetime.combine(to_d,   datetime.max.time())
+    bd_logs = (db.session.query(BreakdownLog)
+               .filter(BreakdownLog.started_at.isnot(None),
+                       BreakdownLog.ended_at.isnot(None),
+                       BreakdownLog.started_at >= bd_from_dt,
+                       BreakdownLog.started_at <= bd_to_dt)
+               .all())
+    total_breakdown_hours = round(sum(b.duration_hours for b in bd_logs), 1)
     return jsonify({
-        'total':          len(trips),
-        'by_status':      {s: sum(1 for t in trips if t.status == s) for s in STATUSES},
-        'total_toll_fee': sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
+        'total':                 len(trips),
+        'by_status':             {s: sum(1 for t in trips if t.status == s) for s in STATUSES},
+        'total_toll_fee':        sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
+        'total_breakdown_hours': total_breakdown_hours,
     })
 
 
@@ -393,6 +404,83 @@ def api_dashboard_fleet_utilization():
         'days':        [d.strftime('%b %d') for d in days],
         'days_iso':    [d.isoformat() for d in days],
         'series':      series,
+    })
+
+
+# ── BREAKDOWN HOURS KPI API ────────────────────────────────────────────────
+@app.route('/api/dashboard/breakdown-hours')
+@login_required
+def api_dashboard_breakdown_hours():
+    """
+    Total accumulated breakdown hours within the date range, grouped by plate.
+
+    Inclusion rule: a BreakdownLog counts toward the KPI if it has BOTH
+    started_at and ended_at populated, and started_at falls within the range.
+    Older records without timestamps are excluded (you can't compute hours).
+    """
+    from_date = request.args.get('trend_start',
+                                 (ph_today() - timedelta(days=13)).isoformat())
+    to_date   = request.args.get('trend_end', ph_today().isoformat())
+    from_d = parse_date(from_date)
+    to_d   = parse_date(to_date)
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+
+    from_dt = datetime.combine(from_d, datetime.min.time())
+    to_dt   = datetime.combine(to_d,   datetime.max.time())
+
+    rows = (db.session.query(BreakdownLog)
+            .filter(BreakdownLog.started_at.isnot(None),
+                    BreakdownLog.ended_at.isnot(None),
+                    BreakdownLog.started_at >= from_dt,
+                    BreakdownLog.started_at <= to_dt)
+            .all())
+
+    by_plate = {}
+    for log in rows:
+        if not log.plate_id:
+            continue
+        hrs = log.duration_hours
+        if hrs <= 0:
+            continue
+        plate = log.plate
+        key = log.plate_id
+        if key not in by_plate:
+            by_plate[key] = {
+                'plate_id':       log.plate_id,
+                'plate_display':  plate.display if plate else 'Unknown',
+                'truck_type':     plate.truck_type.name if (plate and plate.truck_type) else 'Unassigned',
+                'truck_color':    plate.truck_type.color if (plate and plate.truck_type) else '#999',
+                'total_hours':    0.0,
+                'job_orders':     [],
+            }
+        by_plate[key]['total_hours'] += hrs
+        by_plate[key]['job_orders'].append({
+            'id':            log.id,
+            'started_at':    log.started_at.strftime('%Y-%m-%d %H:%M'),
+            'ended_at':      log.ended_at.strftime('%Y-%m-%d %H:%M') if log.ended_at else '',
+            'hours':         round(hrs, 2),
+            'description':   log.description or '',
+            'status':        log.status or '',
+            'remarks':       log.remarks or '',
+        })
+
+    # Sort plates by total_hours desc
+    plates_list = sorted(by_plate.values(),
+                         key=lambda p: p['total_hours'], reverse=True)
+    for p in plates_list:
+        p['total_hours'] = round(p['total_hours'], 2)
+        # Sort each plate's job orders by start time desc (most recent first)
+        p['job_orders'].sort(key=lambda jo: jo['started_at'], reverse=True)
+
+    total_hours = round(sum(p['total_hours'] for p in plates_list), 2)
+    total_jobs  = sum(len(p['job_orders']) for p in plates_list)
+
+    return jsonify({
+        'total_hours':    total_hours,
+        'total_jobs':     total_jobs,
+        'plate_count':    len(plates_list),
+        'by_plate':       plates_list,
     })
 
 
@@ -509,6 +597,16 @@ def dashboard():
     total          = len(trips)
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
     total_toll_fee = sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled')
+    # Breakdown hours within the trend range (accumulate completed J.O.s)
+    _bd_from_dt = datetime.combine(trend_start_d, datetime.min.time())
+    _bd_to_dt   = datetime.combine(trend_end_d,   datetime.max.time())
+    _bd_logs = (db.session.query(BreakdownLog)
+                .filter(BreakdownLog.started_at.isnot(None),
+                        BreakdownLog.ended_at.isnot(None),
+                        BreakdownLog.started_at >= _bd_from_dt,
+                        BreakdownLog.started_at <= _bd_to_dt)
+                .all())
+    total_breakdown_hours = round(sum(b.duration_hours for b in _bd_logs), 1)
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
@@ -590,6 +688,7 @@ def dashboard():
         trend_start_str=trend_start_str, trend_end_str=trend_end_str,
         truck_types=truck_types, trips=trips,
         total=total, by_status=by_status, by_truck=by_truck, total_toll_fee=total_toll_fee,
+        total_breakdown_hours=total_breakdown_hours,
         trend_days=trend_days, trend_counts=trend_counts,
         trend_by_truck=trend_by_truck,
         recent_changes=recent_changes,
@@ -1029,6 +1128,17 @@ def breakdown():
         bd_statuses=BREAKDOWN_STATUSES, summary=summary)
 
 
+def _parse_dt(s):
+    """Accept 'YYYY-MM-DDTHH:MM' (HTML5 datetime-local) or 'YYYY-MM-DD HH:MM[:SS]'."""
+    if not s:
+        return None
+    s = str(s).strip()
+    for fmt in ('%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%d %H:%M',  '%Y-%m-%d %H:%M:%S'):
+        try:    return datetime.strptime(s, fmt)
+        except: continue
+    return None
+
 @app.route('/api/breakdown/add', methods=['POST'])
 def api_breakdown_add():
     data = request.get_json()
@@ -1037,6 +1147,8 @@ def api_breakdown_add():
     description = (data.get('description') or '').strip()
     status      = data.get('status', 'Under Repair')
     remarks     = (data.get('remarks') or '').strip()
+    started_at  = _parse_dt(data.get('started_at'))
+    ended_at    = _parse_dt(data.get('ended_at'))
 
     if plate_id: plate_id = int(plate_id)
 
@@ -1046,6 +1158,8 @@ def api_breakdown_add():
         description = description or None,
         status      = status,
         remarks     = remarks or None,
+        started_at  = started_at,
+        ended_at    = ended_at,
         updated_by  = get_user(),
     )
     db.session.add(log)
@@ -1074,6 +1188,10 @@ def api_breakdown_update(lid):
     if 'resolved_date' in data:
         rd = data['resolved_date']
         log.resolved_date = parse_date(rd) if rd else None
+    if 'started_at' in data:
+        log.started_at = _parse_dt(data['started_at'])
+    if 'ended_at' in data:
+        log.ended_at = _parse_dt(data['ended_at'])
     if 'remarks' in data:
         log.remarks = data['remarks'] or None
 
@@ -1680,6 +1798,10 @@ def init_db():
 
         # products — full-day trip flag
         add_col('products', 'is_full_day_trip', 'ALTER TABLE products ADD COLUMN is_full_day_trip BOOLEAN DEFAULT 0')
+
+        # breakdown_log — precise start/end timestamps for hours calculation
+        add_col('breakdown_log', 'started_at', 'ALTER TABLE breakdown_log ADD COLUMN started_at DATETIME')
+        add_col('breakdown_log', 'ended_at',   'ALTER TABLE breakdown_log ADD COLUMN ended_at DATETIME')
 
         # ─────────────────────────────────────────────────────────────────────
         # ORM-based seeding/backfill — safe now that schema is up to date.
