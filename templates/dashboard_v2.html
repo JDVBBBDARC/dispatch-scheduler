@@ -773,7 +773,8 @@ function setFleetUtilFilter(ttCode, btn) {
   renderFleetUtilChart();
 }
 
-fetchFleetUtilization();
+// Initial fetch is handled by loadDashActivity() in DOMContentLoaded.
+// Removed duplicate standalone call to avoid double-fetching on page load.
 
 // ── DRIVER / TRUCK RATIO CHART ────────────────────────────────────────────
 let dtRatioChart = null;
@@ -939,7 +940,7 @@ function renderDriverTruckRatioChart() {
   }
 }
 
-fetchDriverTruckRatio();
+// Initial fetch is handled by loadDashActivity() in DOMContentLoaded.
 
 // ── PIE CHART (status mix) ────────────────────────────────────────────────
 {% if total > 0 %}
@@ -1102,7 +1103,20 @@ function refreshKpis() {
 }
 
 // ── DASHBOARD LIVE ACTIVITY ───────────────────────────────────────────────
+// Coalesce frequent calls so we don't hammer the server. Even if Firebase fires
+// 5 times in 2 seconds AND the polling interval ticks at the same time, we
+// only do one full refresh per LOAD_DASH_MIN_GAP_MS window.
+const LOAD_DASH_MIN_GAP_MS = 5000;     // minimum 5s between full refreshes
+const POLL_INTERVAL_MS     = 60000;    // 60s polling (was 30s)
+let _lastDashRefreshAt = 0;
+
 function loadDashActivity() {
+  const now = Date.now();
+  if (now - _lastDashRefreshAt < LOAD_DASH_MIN_GAP_MS) {
+    return;   // skip — refreshed too recently
+  }
+  _lastDashRefreshAt = now;
+
   refreshKpis();              // refresh KPI card numbers
   fetchFleetUtilization();    // refresh fleet utilization chart
   fetchDriverTruckRatio();    // refresh driver/truck ratio chart
@@ -1126,7 +1140,7 @@ function loadDashActivity() {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDashActivity();
-  setInterval(() => { if (!document.hidden) loadDashActivity(); }, 30000);
+  setInterval(() => { if (!document.hidden) loadDashActivity(); }, POLL_INTERVAL_MS);
 });
 </script>
 {% endblock %}
