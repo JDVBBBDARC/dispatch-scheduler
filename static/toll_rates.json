@@ -5039,26 +5039,26 @@
   "CAVITEX": {
     "name": "CAVITEX",
     "Class 1": {
-      "Parañaque": {
+      "Para\u00f1aque": {
         "Bacoor/Zapote": 88,
         "Kawit": 126,
         "Sucat Rd./Dr. A. Santos Ave.": 39,
         "C5 Rd. Ext./C.P. Garcia": 77
       },
       "Bacoor/Zapote": {
-        "Parañaque": 88,
+        "Para\u00f1aque": 88,
         "Kawit": 38,
         "C5 Rd. Ext./C.P. Garcia": 38,
         "Sucat Rd./Dr. A. Santos Ave.": 88
       },
       "Kawit": {
-        "Parañaque": 126,
+        "Para\u00f1aque": 126,
         "Bacoor/Zapote": 38,
         "C5 Rd. Ext./C.P. Garcia": 126,
         "Sucat Rd./Dr. A. Santos Ave.": 126
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Parañaque": 39,
+        "Para\u00f1aque": 39,
         "Bacoor/Zapote": 88,
         "Kawit": 126,
         "C5 Rd. Ext./C.P. Garcia": 77
@@ -5066,31 +5066,31 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 38,
         "Kawit": 126,
-        "Parañaque": 77,
+        "Para\u00f1aque": 77,
         "Sucat Rd./Dr. A. Santos Ave.": 77
       }
     },
     "Class 2": {
-      "Parañaque": {
+      "Para\u00f1aque": {
         "Bacoor/Zapote": 176,
         "Kawit": 252,
         "Sucat Rd./Dr. A. Santos Ave.": 78,
         "C5 Rd. Ext./C.P. Garcia": 154
       },
       "Bacoor/Zapote": {
-        "Parañaque": 176,
+        "Para\u00f1aque": 176,
         "Kawit": 76,
         "C5 Rd. Ext./C.P. Garcia": 76,
         "Sucat Rd./Dr. A. Santos Ave.": 176
       },
       "Kawit": {
-        "Parañaque": 252,
+        "Para\u00f1aque": 252,
         "Bacoor/Zapote": 76,
         "C5 Rd. Ext./C.P. Garcia": 252,
         "Sucat Rd./Dr. A. Santos Ave.": 252
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Parañaque": 78,
+        "Para\u00f1aque": 78,
         "Bacoor/Zapote": 176,
         "Kawit": 252,
         "C5 Rd. Ext./C.P. Garcia": 154
@@ -5098,31 +5098,31 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 76,
         "Kawit": 252,
-        "Parañaque": 154,
+        "Para\u00f1aque": 154,
         "Sucat Rd./Dr. A. Santos Ave.": 154
       }
     },
     "Class 3": {
-      "Parañaque": {
+      "Para\u00f1aque": {
         "Bacoor/Zapote": 264,
         "Kawit": 378,
         "Sucat Rd./Dr. A. Santos Ave.": 117,
         "C5 Rd. Ext./C.P. Garcia": 231
       },
       "Bacoor/Zapote": {
-        "Parañaque": 264,
+        "Para\u00f1aque": 264,
         "Kawit": 114,
         "C5 Rd. Ext./C.P. Garcia": 114,
         "Sucat Rd./Dr. A. Santos Ave.": 264
       },
       "Kawit": {
-        "Parañaque": 378,
+        "Para\u00f1aque": 378,
         "Bacoor/Zapote": 114,
         "C5 Rd. Ext./C.P. Garcia": 378,
         "Sucat Rd./Dr. A. Santos Ave.": 378
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Parañaque": 117,
+        "Para\u00f1aque": 117,
         "Bacoor/Zapote": 264,
         "Kawit": 378,
         "C5 Rd. Ext./C.P. Garcia": 231
@@ -5130,7 +5130,7 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 114,
         "Kawit": 378,
-        "Parañaque": 231,
+        "Para\u00f1aque": 231,
         "Sucat Rd./Dr. A. Santos Ave.": 231
       }
     }
