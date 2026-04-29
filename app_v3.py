@@ -1109,10 +1109,16 @@ def get_toll_data():
     if _TOLL_DATA is None:
         try:
             p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'toll_rates.json')
-            with open(p, 'r') as f:
+            # Force UTF-8 — file contains special chars like ñ (Parañaque, etc.)
+            # Default encoding on some Linux locales is ASCII, which would fail.
+            with open(p, 'r', encoding='utf-8') as f:
                 _TOLL_DATA = _json_mod.load(f)
         except Exception as e:
-            print(f'[Toll] Could not load toll_rates.json: {e}')
+            import sys
+            err = f'[Toll] Could not load toll_rates.json: {e}'
+            print(err, flush=True)
+            sys.stderr.write(err + '\n')
+            sys.stderr.flush()
             _TOLL_DATA = {}
     return _TOLL_DATA
 
