@@ -491,20 +491,45 @@ def api_dashboard_driver_truck_ratio():
     """
     Daily breakdown of working trucks vs present drivers.
 
-    Working Trucks  = active plates - plates currently under repair on that day
-                      (BreakdownLog with status='Under Repair' covering the date,
-                      i.e., date <= D AND (resolved_date IS NULL OR resolved_date > D)).
-    Present Drivers = distinct drivers with attendance.status = 'Present' on that date.
+    Working Trucks  = active plates of selected truck type(s) - plates currently
+                      under repair on that day (BreakdownLog with status='Under
+                      Repair' covering the date, i.e., date <= D AND
+                      (resolved_date IS NULL OR resolved_date > D)).
+    Present Drivers = WHEN no truck-type filter: distinct drivers with
+                      attendance.status='Present' that day (system-wide).
+                      WHEN filtered: distinct drivers who ACTUALLY drove a truck
+                      of one of the selected types that day (from TripRecord,
+                      excluding 'Canceled' trips). This works even if a driver
+                      is qualified for multiple types — they're counted under
+                      the type they actually used that day. The API also returns
+                      per-day driver→truck assignments so the UI can show which
+                      driver drove which unit.
     Coverage Ratio  = Present Drivers / Working Trucks (0 if no working trucks).
     Driver Shortage = max(0, Working Trucks - Present Drivers).
+
+    Query params:
+        trend_start, trend_end – date range (defaults to last 14 days)
+        truck_types – comma-separated list of truck-type codes, e.g., '10W,12W'
+                      (omit or empty = all)
     """
     from_date = request.args.get('trend_start',
                                  (ph_today() - timedelta(days=13)).isoformat())
     to_date   = request.args.get('trend_end', ph_today().isoformat())
+    raw_codes = request.args.get('truck_types', '').strip()
+    selected_codes = [c.strip() for c in raw_codes.split(',') if c.strip()]
+
     from_d = parse_date(from_date)
     to_d   = parse_date(to_date)
     if from_d > to_d:
         from_d, to_d = to_d, from_d
+
+    # Resolve truck-type codes -> ids (skip unknown codes silently)
+    selected_tt_ids = set()
+    if selected_codes:
+        selected_tt_ids = {
+            tt.id for tt in TruckTypeDef.query.filter(
+                TruckTypeDef.code.in_(selected_codes)).all()
+        }
 
     # Day list
     days = []
@@ -513,24 +538,70 @@ def api_dashboard_driver_truck_ratio():
         days.append(cur)
         cur += timedelta(days=1)
 
-    # Total active plates (capacity baseline)
-    total_active_plates = Plate.query.filter_by(active=True).count()
+    # Active plates (filtered by truck type if requested)
+    plates_q = Plate.query.filter_by(active=True)
+    if selected_tt_ids:
+        plates_q = plates_q.filter(Plate.truck_type_id.in_(selected_tt_ids))
+    active_plate_ids = {p.id for p in plates_q.all()}
+    total_active_plates = len(active_plate_ids)
 
-    # Pre-fetch all relevant breakdowns (status = 'Under Repair') once
-    breakdowns = (db.session.query(BreakdownLog.plate_id, BreakdownLog.date,
-                                   BreakdownLog.resolved_date)
-                  .filter(BreakdownLog.status == 'Under Repair',
-                          BreakdownLog.date <= to_d)
-                  .all())
+    # Pre-fetch breakdowns for ONLY plates we care about
+    breakdown_q = db.session.query(
+            BreakdownLog.plate_id, BreakdownLog.date, BreakdownLog.resolved_date
+        ).filter(BreakdownLog.status == 'Under Repair',
+                 BreakdownLog.date <= to_d)
+    if active_plate_ids:
+        breakdown_q = breakdown_q.filter(BreakdownLog.plate_id.in_(active_plate_ids))
+    breakdowns = breakdown_q.all()
 
-    # Pre-fetch attendance counts per day in range
-    attn_rows = (db.session.query(Attendance.date,
-                                  db.func.count(db.distinct(Attendance.driver_id)))
-                 .filter(Attendance.status == 'Present',
-                         Attendance.date >= from_d,
-                         Attendance.date <= to_d)
-                 .group_by(Attendance.date).all())
-    attn_map = {row[0]: row[1] for row in attn_rows}
+    # Drivers present per day:
+    # If no filter: system-wide attendance count.
+    # If filtered: drivers who actually drove a truck of selected type(s) that day.
+    drivers_per_day = {}
+    assignments_per_day = {}   # date -> [{driver, plate, body, type_code, type_color}, ...]
+
+    if not selected_tt_ids:
+        attn_rows = (db.session.query(Attendance.date,
+                                      db.func.count(db.distinct(Attendance.driver_id)))
+                     .filter(Attendance.status == 'Present',
+                             Attendance.date >= from_d,
+                             Attendance.date <= to_d)
+                     .group_by(Attendance.date).all())
+        drivers_per_day = {row[0]: row[1] for row in attn_rows}
+    else:
+        # Detect ACTUAL usage from TripRecords. A driver who is qualified for
+        # both 10W and 12W but drove a 12W truck that day counts under 12W,
+        # not 10W (we look at what they actually used).
+        trip_rows = (db.session.query(
+                        Wave.date,
+                        TripRecord.driver_id,
+                        Driver.name,
+                        Plate.id, Plate.plate_no, Plate.body_no,
+                        TruckTypeDef.code, TruckTypeDef.color, TruckTypeDef.name,
+                    )
+                     .join(TripRecord, TripRecord.wave_id == Wave.id)
+                     .join(Driver,    Driver.id    == TripRecord.driver_id)
+                     .outerjoin(Plate, Plate.id    == TripRecord.plate_id)
+                     .join(TruckTypeDef, TruckTypeDef.id == Wave.truck_type_id)
+                     .filter(Wave.date >= from_d, Wave.date <= to_d,
+                             Wave.truck_type_id.in_(selected_tt_ids),
+                             TripRecord.driver_id.isnot(None),
+                             TripRecord.status != 'Canceled')
+                     .distinct()
+                     .all())
+        # Build per-day distinct-driver count + assignment list
+        per_day_drivers = {}
+        for d_date, drv_id, drv_name, plate_id, plate_no, body_no, tt_code, tt_color, tt_name in trip_rows:
+            per_day_drivers.setdefault(d_date, set()).add(drv_id)
+            display = (f"{body_no} / {plate_no}" if body_no else plate_no) if plate_no else '—'
+            assignments_per_day.setdefault(d_date, []).append({
+                'driver':    drv_name,
+                'plate':     display,
+                'type_code': tt_code,
+                'type_name': tt_name,
+                'type_color': tt_color,
+            })
+        drivers_per_day = {d: len(s) for d, s in per_day_drivers.items()}
 
     working = []
     present = []
@@ -543,7 +614,7 @@ def api_dashboard_driver_truck_ratio():
             if b.date <= d and (b.resolved_date is None or b.resolved_date > d)
         }
         wt = max(0, total_active_plates - len(broken_plate_ids))
-        pd = attn_map.get(d, 0)
+        pd = drivers_per_day.get(d, 0)
         rt = round((pd / wt), 3) if wt > 0 else 0
         sh = max(0, wt - pd)
         working.append(wt)
@@ -559,7 +630,28 @@ def api_dashboard_driver_truck_ratio():
         'coverage_ratio':  ratios,
         'driver_shortage': shortages,
         'total_plates':    total_active_plates,
+        'selected_codes':  selected_codes,
+        'driver_source':   'attendance' if not selected_tt_ids else 'trips',
+        # Per-day driver→truck assignments (only when filtered).
+        # Deduped: a driver who did multiple trips on the same truck shows once.
+        'assignments':     {
+            d.isoformat(): _dedupe_assignments(rows)
+            for d, rows in assignments_per_day.items()
+        },
     })
+
+
+def _dedupe_assignments(rows):
+    """Collapse identical (driver, plate) pairs that come from multiple trips."""
+    seen = set()
+    out = []
+    for r in rows:
+        key = (r['driver'], r['plate'], r['type_code'])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
 
 
 # ── DASHBOARD ──────────────────────────────────────────────────────────────
@@ -742,11 +834,20 @@ def api_master_add(category):
     if not Model:
         return jsonify({'error': 'Unknown category'}), 400
     obj = Model(name=name)
+    # Drivers can be qualified for multiple truck types
+    if category == 'drivers':
+        tt_ids = data.get('truck_type_ids') or []
+        if isinstance(tt_ids, list) and tt_ids:
+            tts = TruckTypeDef.query.filter(TruckTypeDef.id.in_(tt_ids)).all()
+            obj.truck_types = tts
     db.session.add(obj)
     db.session.commit()
     log_change(f"Added {category[:-1]} '{name}'", 'master')
     db.session.commit()
-    return jsonify({'id': obj.id, 'name': obj.name})
+    resp = {'id': obj.id, 'name': obj.name}
+    if category == 'drivers':
+        resp['truck_type_ids'] = [t.id for t in obj.truck_types]
+    return jsonify(resp)
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
@@ -769,6 +870,16 @@ def api_master_update(category, item_id):
         # Products: optional is_full_day_trip toggle
         if category == 'products' and 'is_full_day_trip' in data:
             obj.is_full_day_trip = bool(data.get('is_full_day_trip'))
+        # Drivers: optional list of truck-type categories (many-to-many)
+        if category == 'drivers' and 'truck_type_ids' in data:
+            tt_ids = data.get('truck_type_ids') or []
+            if isinstance(tt_ids, list):
+                tts = (TruckTypeDef.query.filter(TruckTypeDef.id.in_(tt_ids)).all()
+                       if tt_ids else [])
+                obj.truck_types = tts
+                # Keep legacy single-category column in sync (use first selection
+                # as the "primary" — or NULL when none selected)
+                obj.truck_type_id = tts[0].id if tts else None
     db.session.commit()
     log_change(f"Updated {category[:-1]} id={item_id}", 'master')
     db.session.commit()
@@ -1817,6 +1928,54 @@ def init_db():
         # breakdown_log — precise start/end timestamps for hours calculation
         add_col('breakdown_log', 'started_at', 'ALTER TABLE breakdown_log ADD COLUMN started_at DATETIME')
         add_col('breakdown_log', 'ended_at',   'ALTER TABLE breakdown_log ADD COLUMN ended_at DATETIME')
+
+        # drivers — truck type category (which type they're trained/assigned to drive)
+        # Legacy single-category column. Source of truth moved to driver_truck_types
+        # association table below; this column is kept and backfilled for compat.
+        add_col('drivers', 'truck_type_id', 'ALTER TABLE drivers ADD COLUMN truck_type_id INTEGER')
+
+        # driver_truck_types — many-to-many association so a driver can be qualified
+        # for multiple truck types. Created by db.create_all() above; here we
+        # backfill it from the legacy Driver.truck_type_id column on first run.
+        if has_table('driver_truck_types') and has_table('drivers'):
+            existing_pairs = set()
+            try:
+                with db.engine.connect() as conn:
+                    rows = conn.execute(text(
+                        'SELECT driver_id, truck_type_id FROM driver_truck_types'
+                    )).fetchall()
+                    existing_pairs = {(r[0], r[1]) for r in rows}
+            except Exception:
+                pass
+            try:
+                with db.engine.connect() as conn:
+                    legacy = conn.execute(text(
+                        'SELECT id, truck_type_id FROM drivers '
+                        'WHERE truck_type_id IS NOT NULL'
+                    )).fetchall()
+                    inserted = 0
+                    for drv_id, tt_id in legacy:
+                        if (drv_id, tt_id) in existing_pairs:
+                            continue
+                        try:
+                            conn.execute(text(
+                                'INSERT INTO driver_truck_types (driver_id, truck_type_id) '
+                                'VALUES (:d, :t)'
+                            ), {'d': drv_id, 't': tt_id})
+                            inserted += 1
+                        except Exception:
+                            pass
+                    if inserted:
+                        conn.commit()
+                        msg = f"  Migrated: backfilled {inserted} driver-to-truck-type associations"
+                        print(msg, flush=True)
+                        sys.stderr.write(msg + "\n")
+                        sys.stderr.flush()
+            except Exception as e:
+                err = f"  Migration FAILED for driver_truck_types backfill: {e}"
+                print(err, flush=True)
+                sys.stderr.write(err + "\n")
+                sys.stderr.flush()
 
         # ─────────────────────────────────────────────────────────────────────
         # ORM-based seeding/backfill — safe now that schema is up to date.

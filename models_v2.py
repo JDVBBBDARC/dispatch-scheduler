@@ -76,11 +76,28 @@ class TruckTypeDef(db.Model):
     plates = db.relationship('Plate', back_populates='truck_type')
 
 
+# Association table: drivers can be qualified to drive multiple truck types
+driver_truck_types = db.Table(
+    'driver_truck_types',
+    db.Column('driver_id',     db.Integer, db.ForeignKey('drivers.id'),         primary_key=True),
+    db.Column('truck_type_id', db.Integer, db.ForeignKey('truck_type_defs.id'), primary_key=True),
+)
+
+
 class Driver(db.Model):
     __tablename__ = 'drivers'
     id     = db.Column(db.Integer, primary_key=True)
     name   = db.Column(db.String(80), nullable=False)
     active = db.Column(db.Boolean, default=True)
+    # Legacy single-category column (kept for backward compat).
+    # Source of truth is now the many-to-many `truck_types` relationship below.
+    truck_type_id = db.Column(db.Integer, db.ForeignKey('truck_type_defs.id'), nullable=True)
+
+    # Multi-category: a driver can be qualified for several truck types.
+    # Used by the Driver/Truck Ratio chart per-type filter.
+    truck_types = db.relationship('TruckTypeDef', secondary=driver_truck_types,
+                                  lazy='selectin')
+    truck_type  = db.relationship('TruckTypeDef', foreign_keys=[truck_type_id])
 
     trips_driven       = db.relationship('TripRecord', foreign_keys='TripRecord.driver_id', back_populates='driver')
     attendance_records = db.relationship('Attendance', back_populates='driver', cascade='all, delete-orphan')
