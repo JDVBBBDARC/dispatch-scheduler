@@ -30,8 +30,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Balintawak": {
         "Mindanao Avenue": 85.0,
@@ -61,8 +61,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Karuhatan": {
         "Balintawak": 85.0,
@@ -92,8 +92,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Valenzuela": {
         "Balintawak": 85.0,
@@ -123,8 +123,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Meycauayan": {
         "Balintawak": 85.0,
@@ -154,8 +154,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Marilao": {
         "Balintawak": 85.0,
@@ -185,8 +185,8 @@
         "Dolores": 477.0,
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
-        "San Miguel": 638.0,
-        "Tarlac": 670.0
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 96.0,
@@ -216,8 +216,8 @@
         "Dolores": 381.0,
         "Bamban (New Clark City)": 425.0,
         "Concepcion": 449.0,
-        "San Miguel": 542.0,
-        "Tarlac": 574.0
+        "Tarlac": 574.0,
+        "Hacienda Luisita": 542.0
       },
       "Bocaue": {
         "Balintawak": 105.0,
@@ -247,8 +247,8 @@
         "Dolores": 371.0,
         "Bamban (New Clark City)": 415.0,
         "Concepcion": 439.0,
-        "San Miguel": 532.0,
-        "Tarlac": 564.0
+        "Tarlac": 564.0,
+        "Hacienda Luisita": 532.0
       },
       "Tambubong": {
         "Balintawak": 110.0,
@@ -278,8 +278,8 @@
         "Dolores": 366.0,
         "Bamban (New Clark City)": 410.0,
         "Concepcion": 434.0,
-        "San Miguel": 527.0,
-        "Tarlac": 559.0
+        "Tarlac": 559.0,
+        "Hacienda Luisita": 527.0
       },
       "Balagtas": {
         "Balintawak": 136.0,
@@ -309,8 +309,8 @@
         "Dolores": 341.0,
         "Bamban (New Clark City)": 385.0,
         "Concepcion": 409.0,
-        "San Miguel": 502.0,
-        "Tarlac": 534.0
+        "Tarlac": 534.0,
+        "Hacienda Luisita": 502.0
       },
       "Tabang": {
         "Balintawak": 157.0,
@@ -351,8 +351,8 @@
         "Dolores": 312.0,
         "Bamban (New Clark City)": 356.0,
         "Concepcion": 380.0,
-        "San Miguel": 473.0,
-        "Tarlac": 505.0
+        "Tarlac": 505.0,
+        "Hacienda Luisita": 473.0
       },
       "Pulilan": {
         "Balintawak": 202.0,
@@ -381,8 +381,8 @@
         "Dolores": 275.0,
         "Bamban (New Clark City)": 319.0,
         "Concepcion": 343.0,
-        "San Miguel": 436.0,
-        "Tarlac": 468.0
+        "Tarlac": 468.0,
+        "Hacienda Luisita": 436.0
       },
       "San Simon": {
         "Balintawak": 266.0,
@@ -411,8 +411,8 @@
         "Dolores": 211.0,
         "Bamban (New Clark City)": 255.0,
         "Concepcion": 279.0,
-        "San Miguel": 372.0,
-        "Tarlac": 404.0
+        "Tarlac": 404.0,
+        "Hacienda Luisita": 372.0
       },
       "San Fernando": {
         "Balintawak": 314.0,
@@ -441,8 +441,8 @@
         "Dolores": 162.0,
         "Bamban (New Clark City)": 206.0,
         "Concepcion": 230.0,
-        "San Miguel": 323.0,
-        "Tarlac": 355.0
+        "Tarlac": 355.0,
+        "Hacienda Luisita": 323.0
       },
       "Mexico": {
         "Balintawak": 353.0,
@@ -471,8 +471,8 @@
         "Dolores": 123.0,
         "Bamban (New Clark City)": 167.0,
         "Concepcion": 191.0,
-        "San Miguel": 284.0,
-        "Tarlac": 316.0
+        "Tarlac": 316.0,
+        "Hacienda Luisita": 284.0
       },
       "Angeles": {
         "Balintawak": 399.0,
@@ -501,8 +501,8 @@
         "Dolores": 77.0,
         "Bamban (New Clark City)": 121.0,
         "Concepcion": 145.0,
-        "San Miguel": 238.0,
-        "Tarlac": 270.0
+        "Tarlac": 270.0,
+        "Hacienda Luisita": 238.0
       },
       "Dau": {
         "Balintawak": 411.0,
@@ -531,8 +531,9 @@
         "Dolores": 66.0,
         "Bamban (New Clark City)": 110.0,
         "Concepcion": 134.0,
-        "San Miguel": 227.0,
-        "Tarlac": 259.0
+        "Tarlac": 259.0,
+        "Hacienda Luisita": 227.0,
+        "Sta. Ines": 40
       },
       "Tipo/SFEX": {
         "Balintawak": 857.0,
@@ -562,8 +563,9 @@
         "Dolores": 454.0,
         "Bamban (New Clark City)": 498.0,
         "Concepcion": 523.0,
-        "San Miguel": 615.0,
-        "Tarlac": 647.0
+        "Tarlac": 647.0,
+        "Hacienda Luisita": 615.0,
+        "Sta. Ines": 47
       },
       "Dinalupihan": {
         "Balintawak": 731.0,
@@ -592,8 +594,9 @@
         "Dolores": 328.0,
         "Bamban (New Clark City)": 372.0,
         "Concepcion": 397.0,
-        "San Miguel": 489.0,
-        "Tarlac": 521.0
+        "Tarlac": 521.0,
+        "Hacienda Luisita": 489.0,
+        "Sta. Ines": 126
       },
       "Floridablanca": {
         "Balintawak": 608.0,
@@ -622,8 +625,9 @@
         "Dolores": 206.0,
         "Bamban (New Clark City)": 249.0,
         "Concepcion": 274.0,
-        "San Miguel": 366.0,
-        "Tarlac": 398.0
+        "Tarlac": 398.0,
+        "Hacienda Luisita": 366.0,
+        "Sta. Ines": 249
       },
       "Porac": {
         "Balintawak": 519.0,
@@ -652,8 +656,9 @@
         "Dolores": 116.0,
         "Bamban (New Clark City)": 159.0,
         "Concepcion": 184.0,
-        "San Miguel": 276.0,
-        "Tarlac": 308.0
+        "Tarlac": 308.0,
+        "Hacienda Luisita": 276.0,
+        "Sta. Ines": 339
       },
       "Clark South": {
         "Balintawak": 451.0,
@@ -682,8 +687,9 @@
         "Dolores": 48.0,
         "Bamban (New Clark City)": 92.0,
         "Concepcion": 116.0,
-        "San Miguel": 209.0,
-        "Tarlac": 241.0
+        "Tarlac": 241.0,
+        "Hacienda Luisita": 209.0,
+        "Sta. Ines": 406
       },
       "Mabalacat": {
         "Balintawak": 440.0,
@@ -712,8 +718,9 @@
         "Dolores": 37.0,
         "Bamban (New Clark City)": 81.0,
         "Concepcion": 105.0,
-        "San Miguel": 198.0,
-        "Tarlac": 230.0
+        "Tarlac": 230.0,
+        "Hacienda Luisita": 198.0,
+        "Sta. Ines": 417
       },
       "Clark North": {
         "Balintawak": 467.0,
@@ -742,8 +749,9 @@
         "Dolores": 10.0,
         "Bamban (New Clark City)": 54.0,
         "Concepcion": 78.0,
-        "San Miguel": 171.0,
-        "Tarlac": 203.0
+        "Tarlac": 203.0,
+        "Hacienda Luisita": 171.0,
+        "Sta. Ines": 444
       },
       "Dolores": {
         "Balintawak": 477.0,
@@ -772,8 +780,9 @@
         "Clark North": 10.0,
         "Bamban (New Clark City)": 44.0,
         "Concepcion": 68.0,
-        "San Miguel": 160.0,
-        "Tarlac": 193.0
+        "Tarlac": 193.0,
+        "Hacienda Luisita": 160.0,
+        "Sta. Ines": 454
       },
       "Bamban (New Clark City)": {
         "Balintawak": 521.0,
@@ -802,8 +811,9 @@
         "Clark North": 54.0,
         "Dolores": 44.0,
         "Concepcion": 25.0,
-        "San Miguel": 117.0,
-        "Tarlac": 149.0
+        "Tarlac": 149.0,
+        "Hacienda Luisita": 117.0,
+        "Sta. Ines": 498
       },
       "Concepcion": {
         "Balintawak": 545.0,
@@ -832,38 +842,9 @@
         "Clark North": 78.0,
         "Dolores": 68.0,
         "Bamban (New Clark City)": 25.0,
-        "San Miguel": 92.0,
-        "Tarlac": 124.0
-      },
-      "San Miguel": {
-        "Balintawak": 638.0,
-        "Mindanao Avenue": 638.0,
-        "Karuhatan": 638.0,
-        "Valenzuela": 638.0,
-        "Meycauayan": 638.0,
-        "Marilao": 638.0,
-        "Ciudad de Victoria": 542.0,
-        "Bocaue": 532.0,
-        "Tambubong": 527.0,
-        "Balagtas": 502.0,
-        "Sta. Rita": 473.0,
-        "Pulilan": 436.0,
-        "San Simon": 372.0,
-        "San Fernando": 323.0,
-        "Mexico": 284.0,
-        "Angeles": 238.0,
-        "Dau": 227.0,
-        "Tipo/SFEX": 615.0,
-        "Dinalupihan": 489.0,
-        "Floridablanca": 366.0,
-        "Porac": 276.0,
-        "Clark South": 209.0,
-        "Mabalacat": 198.0,
-        "Clark North": 171.0,
-        "Dolores": 160.0,
-        "Bamban (New Clark City)": 117.0,
-        "Concepcion": 92.0,
-        "Tarlac": 32.0
+        "Tarlac": 124.0,
+        "Hacienda Luisita": 92.0,
+        "Sta. Ines": 523
       },
       "Tarlac": {
         "Balintawak": 670.0,
@@ -893,7 +874,54 @@
         "Dolores": 193.0,
         "Bamban (New Clark City)": 149.0,
         "Concepcion": 124.0,
-        "San Miguel": 32.0
+        "Hacienda Luisita": 32.0,
+        "Sta. Ines": 647
+      },
+      "Hacienda Luisita": {
+        "Balintawak": 638.0,
+        "Mindanao Avenue": 638.0,
+        "Karuhatan": 638.0,
+        "Valenzuela": 638.0,
+        "Meycauayan": 638.0,
+        "Marilao": 638.0,
+        "Ciudad de Victoria": 542.0,
+        "Bocaue": 532.0,
+        "Tambubong": 527.0,
+        "Balagtas": 502.0,
+        "Sta. Rita": 473.0,
+        "Pulilan": 436.0,
+        "San Simon": 372.0,
+        "San Fernando": 323.0,
+        "Mexico": 284.0,
+        "Angeles": 238.0,
+        "Dau": 227.0,
+        "Tipo/SFEX": 615.0,
+        "Dinalupihan": 489.0,
+        "Floridablanca": 366.0,
+        "Porac": 276.0,
+        "Clark South": 209.0,
+        "Mabalacat": 198.0,
+        "Clark North": 171.0,
+        "Dolores": 160.0,
+        "Bamban (New Clark City)": 117.0,
+        "Concepcion": 92.0,
+        "Tarlac": 32.0,
+        "Sta. Ines": 615
+      },
+      "Sta. Ines": {
+        "Tipo/SFEX": 47,
+        "Dinalupihan": 126,
+        "Floridablanca": 249,
+        "Porac": 339,
+        "Clark South": 406,
+        "Mabalacat": 417,
+        "Clark North": 444,
+        "Dolores": 454,
+        "Bamban (New Clark City)": 498,
+        "Concepcion": 523,
+        "Hacienda Luisita": 615,
+        "Tarlac": 647,
+        "Dau": 40
       }
     },
     "Class 2": {
@@ -925,8 +953,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Balintawak": {
         "Mindanao Avenue": 211.0,
@@ -956,8 +984,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Karuhatan": {
         "Balintawak": 211.0,
@@ -987,8 +1015,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Valenzuela": {
         "Balintawak": 211.0,
@@ -1018,8 +1046,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Meycauayan": {
         "Balintawak": 211.0,
@@ -1049,8 +1077,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Marilao": {
         "Balintawak": 211.0,
@@ -1080,8 +1108,8 @@
         "Dolores": 1173.0,
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
-        "San Miguel": 1494.0,
-        "Tarlac": 1559.0
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 240.0,
@@ -1111,8 +1139,8 @@
         "Dolores": 933.0,
         "Bamban (New Clark City)": 1021.0,
         "Concepcion": 1070.0,
-        "San Miguel": 1254.0,
-        "Tarlac": 1319.0
+        "Tarlac": 1319.0,
+        "Hacienda Luisita": 1254.0
       },
       "Bocaue": {
         "Balintawak": 263.0,
@@ -1142,8 +1170,8 @@
         "Dolores": 910.0,
         "Bamban (New Clark City)": 998.0,
         "Concepcion": 1047.0,
-        "San Miguel": 1231.0,
-        "Tarlac": 1296.0
+        "Tarlac": 1296.0,
+        "Hacienda Luisita": 1231.0
       },
       "Tambubong": {
         "Balintawak": 275.0,
@@ -1173,8 +1201,8 @@
         "Dolores": 898.0,
         "Bamban (New Clark City)": 986.0,
         "Concepcion": 1035.0,
-        "San Miguel": 1219.0,
-        "Tarlac": 1284.0
+        "Tarlac": 1284.0,
+        "Hacienda Luisita": 1219.0
       },
       "Balagtas": {
         "Balintawak": 340.0,
@@ -1204,8 +1232,8 @@
         "Dolores": 833.0,
         "Bamban (New Clark City)": 921.0,
         "Concepcion": 970.0,
-        "San Miguel": 1154.0,
-        "Tarlac": 1219.0
+        "Tarlac": 1219.0,
+        "Hacienda Luisita": 1154.0
       },
       "Tabang": {
         "Balintawak": 392.0,
@@ -1246,8 +1274,8 @@
         "Dolores": 762.0,
         "Bamban (New Clark City)": 850.0,
         "Concepcion": 899.0,
-        "San Miguel": 1083.0,
-        "Tarlac": 1148.0
+        "Tarlac": 1148.0,
+        "Hacienda Luisita": 1083.0
       },
       "Pulilan": {
         "Balintawak": 504.0,
@@ -1276,8 +1304,8 @@
         "Dolores": 669.0,
         "Bamban (New Clark City)": 757.0,
         "Concepcion": 806.0,
-        "San Miguel": 990.0,
-        "Tarlac": 1055.0
+        "Tarlac": 1055.0,
+        "Hacienda Luisita": 990.0
       },
       "San Simon": {
         "Balintawak": 664.0,
@@ -1306,8 +1334,8 @@
         "Dolores": 509.0,
         "Bamban (New Clark City)": 597.0,
         "Concepcion": 646.0,
-        "San Miguel": 830.0,
-        "Tarlac": 895.0
+        "Tarlac": 895.0,
+        "Hacienda Luisita": 830.0
       },
       "San Fernando": {
         "Balintawak": 786.0,
@@ -1336,8 +1364,8 @@
         "Dolores": 387.0,
         "Bamban (New Clark City)": 475.0,
         "Concepcion": 524.0,
-        "San Miguel": 708.0,
-        "Tarlac": 773.0
+        "Tarlac": 773.0,
+        "Hacienda Luisita": 708.0
       },
       "Mexico": {
         "Balintawak": 883.0,
@@ -1366,8 +1394,8 @@
         "Dolores": 290.0,
         "Bamban (New Clark City)": 378.0,
         "Concepcion": 427.0,
-        "San Miguel": 611.0,
-        "Tarlac": 676.0
+        "Tarlac": 676.0,
+        "Hacienda Luisita": 611.0
       },
       "Angeles": {
         "Balintawak": 998.0,
@@ -1396,8 +1424,8 @@
         "Dolores": 175.0,
         "Bamban (New Clark City)": 263.0,
         "Concepcion": 312.0,
-        "San Miguel": 496.0,
-        "Tarlac": 561.0
+        "Tarlac": 561.0,
+        "Hacienda Luisita": 496.0
       },
       "Dau": {
         "Balintawak": 1026.0,
@@ -1426,8 +1454,9 @@
         "Dolores": 146.0,
         "Bamban (New Clark City)": 234.0,
         "Concepcion": 283.0,
-        "San Miguel": 467.0,
-        "Tarlac": 532.0
+        "Tarlac": 532.0,
+        "Hacienda Luisita": 467.0,
+        "Sta. Ines": 80
       },
       "Tipo/SFEX": {
         "Balintawak": 1956.0,
@@ -1457,8 +1486,9 @@
         "Dolores": 932.0,
         "Bamban (New Clark City)": 1019.0,
         "Concepcion": 1068.0,
-        "San Miguel": 1253.0,
-        "Tarlac": 1317.0
+        "Tarlac": 1317.0,
+        "Hacienda Luisita": 1253.0,
+        "Sta. Ines": 94
       },
       "Dinalupihan": {
         "Balintawak": 1682.0,
@@ -1487,8 +1517,9 @@
         "Dolores": 657.0,
         "Bamban (New Clark City)": 744.0,
         "Concepcion": 793.0,
-        "San Miguel": 978.0,
-        "Tarlac": 1042.0
+        "Tarlac": 1042.0,
+        "Hacienda Luisita": 978.0,
+        "Sta. Ines": 252
       },
       "Floridablanca": {
         "Balintawak": 1436.0,
@@ -1517,8 +1548,9 @@
         "Dolores": 411.0,
         "Bamban (New Clark City)": 498.0,
         "Concepcion": 548.0,
-        "San Miguel": 732.0,
-        "Tarlac": 796.0
+        "Tarlac": 796.0,
+        "Hacienda Luisita": 732.0,
+        "Sta. Ines": 498
       },
       "Porac": {
         "Balintawak": 1256.0,
@@ -1547,8 +1579,9 @@
         "Dolores": 231.0,
         "Bamban (New Clark City)": 319.0,
         "Concepcion": 368.0,
-        "San Miguel": 552.0,
-        "Tarlac": 617.0
+        "Tarlac": 617.0,
+        "Hacienda Luisita": 552.0,
+        "Sta. Ines": 678
       },
       "Clark South": {
         "Balintawak": 1121.0,
@@ -1577,8 +1610,9 @@
         "Dolores": 96.0,
         "Bamban (New Clark City)": 184.0,
         "Concepcion": 233.0,
-        "San Miguel": 417.0,
-        "Tarlac": 482.0
+        "Tarlac": 482.0,
+        "Hacienda Luisita": 417.0,
+        "Sta. Ines": 812
       },
       "Mabalacat": {
         "Balintawak": 1099.0,
@@ -1607,8 +1641,9 @@
         "Dolores": 74.0,
         "Bamban (New Clark City)": 162.0,
         "Concepcion": 211.0,
-        "San Miguel": 395.0,
-        "Tarlac": 460.0
+        "Tarlac": 460.0,
+        "Hacienda Luisita": 395.0,
+        "Sta. Ines": 834
       },
       "Clark North": {
         "Balintawak": 1153.0,
@@ -1637,8 +1672,9 @@
         "Dolores": 20.0,
         "Bamban (New Clark City)": 107.0,
         "Concepcion": 157.0,
-        "San Miguel": 341.0,
-        "Tarlac": 405.0
+        "Tarlac": 405.0,
+        "Hacienda Luisita": 341.0,
+        "Sta. Ines": 888
       },
       "Dolores": {
         "Balintawak": 1173.0,
@@ -1667,8 +1703,9 @@
         "Clark North": 20.0,
         "Bamban (New Clark City)": 87.0,
         "Concepcion": 137.0,
-        "San Miguel": 321.0,
-        "Tarlac": 385.0
+        "Tarlac": 385.0,
+        "Hacienda Luisita": 321.0,
+        "Sta. Ines": 908
       },
       "Bamban (New Clark City)": {
         "Balintawak": 1261.0,
@@ -1697,8 +1734,9 @@
         "Clark North": 107.0,
         "Dolores": 87.0,
         "Concepcion": 49.0,
-        "San Miguel": 234.0,
-        "Tarlac": 298.0
+        "Tarlac": 298.0,
+        "Hacienda Luisita": 234.0,
+        "Sta. Ines": 996
       },
       "Concepcion": {
         "Balintawak": 1310.0,
@@ -1727,38 +1765,9 @@
         "Clark North": 157.0,
         "Dolores": 137.0,
         "Bamban (New Clark City)": 49.0,
-        "San Miguel": 184.0,
-        "Tarlac": 249.0
-      },
-      "San Miguel": {
-        "Balintawak": 1494.0,
-        "Mindanao Avenue": 1494.0,
-        "Karuhatan": 1494.0,
-        "Valenzuela": 1494.0,
-        "Meycauayan": 1494.0,
-        "Marilao": 1494.0,
-        "Ciudad de Victoria": 1254.0,
-        "Bocaue": 1231.0,
-        "Tambubong": 1219.0,
-        "Balagtas": 1154.0,
-        "Sta. Rita": 1083.0,
-        "Pulilan": 990.0,
-        "San Simon": 830.0,
-        "San Fernando": 708.0,
-        "Mexico": 611.0,
-        "Angeles": 496.0,
-        "Dau": 467.0,
-        "Tipo/SFEX": 1253.0,
-        "Dinalupihan": 978.0,
-        "Floridablanca": 732.0,
-        "Porac": 552.0,
-        "Clark South": 417.0,
-        "Mabalacat": 395.0,
-        "Clark North": 341.0,
-        "Dolores": 321.0,
-        "Bamban (New Clark City)": 234.0,
-        "Concepcion": 184.0,
-        "Tarlac": 64.0
+        "Tarlac": 249.0,
+        "Hacienda Luisita": 184.0,
+        "Sta. Ines": 1046
       },
       "Tarlac": {
         "Balintawak": 1559.0,
@@ -1788,7 +1797,54 @@
         "Dolores": 385.0,
         "Bamban (New Clark City)": 298.0,
         "Concepcion": 249.0,
-        "San Miguel": 64.0
+        "Hacienda Luisita": 64.0,
+        "Sta. Ines": 1294
+      },
+      "Hacienda Luisita": {
+        "Balintawak": 1494.0,
+        "Mindanao Avenue": 1494.0,
+        "Karuhatan": 1494.0,
+        "Valenzuela": 1494.0,
+        "Meycauayan": 1494.0,
+        "Marilao": 1494.0,
+        "Ciudad de Victoria": 1254.0,
+        "Bocaue": 1231.0,
+        "Tambubong": 1219.0,
+        "Balagtas": 1154.0,
+        "Sta. Rita": 1083.0,
+        "Pulilan": 990.0,
+        "San Simon": 830.0,
+        "San Fernando": 708.0,
+        "Mexico": 611.0,
+        "Angeles": 496.0,
+        "Dau": 467.0,
+        "Tipo/SFEX": 1253.0,
+        "Dinalupihan": 978.0,
+        "Floridablanca": 732.0,
+        "Porac": 552.0,
+        "Clark South": 417.0,
+        "Mabalacat": 395.0,
+        "Clark North": 341.0,
+        "Dolores": 321.0,
+        "Bamban (New Clark City)": 234.0,
+        "Concepcion": 184.0,
+        "Tarlac": 64.0,
+        "Sta. Ines": 1230
+      },
+      "Sta. Ines": {
+        "Tipo/SFEX": 94,
+        "Dinalupihan": 252,
+        "Floridablanca": 498,
+        "Porac": 678,
+        "Clark South": 812,
+        "Mabalacat": 834,
+        "Clark North": 888,
+        "Dolores": 908,
+        "Bamban (New Clark City)": 996,
+        "Concepcion": 1046,
+        "Hacienda Luisita": 1230,
+        "Tarlac": 1294,
+        "Dau": 80
       }
     },
     "Class 3": {
@@ -1820,8 +1876,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Balintawak": {
         "Mindanao Avenue": 254.0,
@@ -1851,8 +1907,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Karuhatan": {
         "Balintawak": 254.0,
@@ -1882,8 +1938,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Valenzuela": {
         "Balintawak": 254.0,
@@ -1913,8 +1969,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Meycauayan": {
         "Balintawak": 254.0,
@@ -1944,8 +2000,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Marilao": {
         "Balintawak": 254.0,
@@ -1975,8 +2031,8 @@
         "Dolores": 1430.0,
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
-        "San Miguel": 1912.0,
-        "Tarlac": 2008.0
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 288.0,
@@ -2006,8 +2062,8 @@
         "Dolores": 1142.0,
         "Bamban (New Clark City)": 1273.0,
         "Concepcion": 1347.0,
-        "San Miguel": 1624.0,
-        "Tarlac": 1720.0
+        "Tarlac": 1720.0,
+        "Hacienda Luisita": 1624.0
       },
       "Bocaue": {
         "Balintawak": 315.0,
@@ -2037,8 +2093,8 @@
         "Dolores": 1114.0,
         "Bamban (New Clark City)": 1245.0,
         "Concepcion": 1319.0,
-        "San Miguel": 1596.0,
-        "Tarlac": 1692.0
+        "Tarlac": 1692.0,
+        "Hacienda Luisita": 1596.0
       },
       "Tambubong": {
         "Balintawak": 330.0,
@@ -2068,8 +2124,8 @@
         "Dolores": 1099.0,
         "Bamban (New Clark City)": 1230.0,
         "Concepcion": 1304.0,
-        "San Miguel": 1581.0,
-        "Tarlac": 1677.0
+        "Tarlac": 1677.0,
+        "Hacienda Luisita": 1581.0
       },
       "Balagtas": {
         "Balintawak": 408.0,
@@ -2099,8 +2155,8 @@
         "Dolores": 1022.0,
         "Bamban (New Clark City)": 1153.0,
         "Concepcion": 1227.0,
-        "San Miguel": 1504.0,
-        "Tarlac": 1600.0
+        "Tarlac": 1600.0,
+        "Hacienda Luisita": 1504.0
       },
       "Tabang": {
         "Balintawak": 471.0,
@@ -2141,8 +2197,8 @@
         "Dolores": 937.0,
         "Bamban (New Clark City)": 1068.0,
         "Concepcion": 1142.0,
-        "San Miguel": 1419.0,
-        "Tarlac": 1515.0
+        "Tarlac": 1515.0,
+        "Hacienda Luisita": 1419.0
       },
       "Pulilan": {
         "Balintawak": 605.0,
@@ -2171,8 +2227,8 @@
         "Dolores": 824.0,
         "Bamban (New Clark City)": 955.0,
         "Concepcion": 1029.0,
-        "San Miguel": 1306.0,
-        "Tarlac": 1402.0
+        "Tarlac": 1402.0,
+        "Hacienda Luisita": 1306.0
       },
       "San Simon": {
         "Balintawak": 797.0,
@@ -2201,8 +2257,8 @@
         "Dolores": 633.0,
         "Bamban (New Clark City)": 764.0,
         "Concepcion": 838.0,
-        "San Miguel": 1115.0,
-        "Tarlac": 1211.0
+        "Tarlac": 1211.0,
+        "Hacienda Luisita": 1115.0
       },
       "San Fernando": {
         "Balintawak": 943.0,
@@ -2231,8 +2287,8 @@
         "Dolores": 487.0,
         "Bamban (New Clark City)": 618.0,
         "Concepcion": 692.0,
-        "San Miguel": 969.0,
-        "Tarlac": 1065.0
+        "Tarlac": 1065.0,
+        "Hacienda Luisita": 969.0
       },
       "Mexico": {
         "Balintawak": 1059.0,
@@ -2261,8 +2317,8 @@
         "Dolores": 370.0,
         "Bamban (New Clark City)": 501.0,
         "Concepcion": 575.0,
-        "San Miguel": 852.0,
-        "Tarlac": 948.0
+        "Tarlac": 948.0,
+        "Hacienda Luisita": 852.0
       },
       "Angeles": {
         "Balintawak": 1198.0,
@@ -2291,8 +2347,8 @@
         "Dolores": 232.0,
         "Bamban (New Clark City)": 363.0,
         "Concepcion": 437.0,
-        "San Miguel": 714.0,
-        "Tarlac": 810.0
+        "Tarlac": 810.0,
+        "Hacienda Luisita": 714.0
       },
       "Dau": {
         "Balintawak": 1232.0,
@@ -2321,8 +2377,9 @@
         "Dolores": 198.0,
         "Bamban (New Clark City)": 329.0,
         "Concepcion": 403.0,
-        "San Miguel": 680.0,
-        "Tarlac": 776.0
+        "Tarlac": 776.0,
+        "Hacienda Luisita": 680.0,
+        "Sta. Ines": 120
       },
       "Tipo/SFEX": {
         "Balintawak": 2569.0,
@@ -2352,8 +2409,9 @@
         "Dolores": 1362.0,
         "Bamban (New Clark City)": 1493.0,
         "Concepcion": 1567.0,
-        "San Miguel": 1843.0,
-        "Tarlac": 1940.0
+        "Tarlac": 1940.0,
+        "Hacienda Luisita": 1843.0,
+        "Sta. Ines": 141
       },
       "Dinalupihan": {
         "Balintawak": 2193.0,
@@ -2382,8 +2440,9 @@
         "Dolores": 985.0,
         "Bamban (New Clark City)": 1116.0,
         "Concepcion": 1190.0,
-        "San Miguel": 1467.0,
-        "Tarlac": 1563.0
+        "Tarlac": 1563.0,
+        "Hacienda Luisita": 1467.0,
+        "Sta. Ines": 378
       },
       "Floridablanca": {
         "Balintawak": 1824.0,
@@ -2412,8 +2471,9 @@
         "Dolores": 617.0,
         "Bamban (New Clark City)": 748.0,
         "Concepcion": 821.0,
-        "San Miguel": 1098.0,
-        "Tarlac": 1195.0
+        "Tarlac": 1195.0,
+        "Hacienda Luisita": 1098.0,
+        "Sta. Ines": 747
       },
       "Porac": {
         "Balintawak": 1555.0,
@@ -2442,8 +2502,9 @@
         "Dolores": 347.0,
         "Bamban (New Clark City)": 478.0,
         "Concepcion": 552.0,
-        "San Miguel": 829.0,
-        "Tarlac": 925.0
+        "Tarlac": 925.0,
+        "Hacienda Luisita": 829.0,
+        "Sta. Ines": 1017
       },
       "Clark South": {
         "Balintawak": 1352.0,
@@ -2472,8 +2533,9 @@
         "Dolores": 144.0,
         "Bamban (New Clark City)": 275.0,
         "Concepcion": 349.0,
-        "San Miguel": 626.0,
-        "Tarlac": 722.0
+        "Tarlac": 722.0,
+        "Hacienda Luisita": 626.0,
+        "Sta. Ines": 1218
       },
       "Mabalacat": {
         "Balintawak": 1319.0,
@@ -2502,8 +2564,9 @@
         "Dolores": 111.0,
         "Bamban (New Clark City)": 242.0,
         "Concepcion": 316.0,
-        "San Miguel": 593.0,
-        "Tarlac": 689.0
+        "Tarlac": 689.0,
+        "Hacienda Luisita": 593.0,
+        "Sta. Ines": 1251
       },
       "Clark North": {
         "Balintawak": 1400.0,
@@ -2532,8 +2595,9 @@
         "Dolores": 30.0,
         "Bamban (New Clark City)": 161.0,
         "Concepcion": 235.0,
-        "San Miguel": 512.0,
-        "Tarlac": 608.0
+        "Tarlac": 608.0,
+        "Hacienda Luisita": 512.0,
+        "Sta. Ines": 1332
       },
       "Dolores": {
         "Balintawak": 1430.0,
@@ -2562,8 +2626,9 @@
         "Clark North": 30.0,
         "Bamban (New Clark City)": 131.0,
         "Concepcion": 205.0,
-        "San Miguel": 481.0,
-        "Tarlac": 578.0
+        "Tarlac": 578.0,
+        "Hacienda Luisita": 481.0,
+        "Sta. Ines": 1362
       },
       "Bamban (New Clark City)": {
         "Balintawak": 1561.0,
@@ -2592,8 +2657,9 @@
         "Clark North": 161.0,
         "Dolores": 131.0,
         "Concepcion": 74.0,
-        "San Miguel": 350.0,
-        "Tarlac": 447.0
+        "Tarlac": 447.0,
+        "Hacienda Luisita": 350.0,
+        "Sta. Ines": 1494
       },
       "Concepcion": {
         "Balintawak": 1635.0,
@@ -2622,38 +2688,9 @@
         "Clark North": 235.0,
         "Dolores": 205.0,
         "Bamban (New Clark City)": 74.0,
-        "San Miguel": 277.0,
-        "Tarlac": 373.0
-      },
-      "San Miguel": {
-        "Balintawak": 1912.0,
-        "Mindanao Avenue": 1912.0,
-        "Karuhatan": 1912.0,
-        "Valenzuela": 1912.0,
-        "Meycauayan": 1912.0,
-        "Marilao": 1912.0,
-        "Ciudad de Victoria": 1624.0,
-        "Bocaue": 1596.0,
-        "Tambubong": 1581.0,
-        "Balagtas": 1504.0,
-        "Sta. Rita": 1419.0,
-        "Pulilan": 1306.0,
-        "San Simon": 1115.0,
-        "San Fernando": 969.0,
-        "Mexico": 852.0,
-        "Angeles": 714.0,
-        "Dau": 680.0,
-        "Tipo/SFEX": 1843.0,
-        "Dinalupihan": 1467.0,
-        "Floridablanca": 1098.0,
-        "Porac": 829.0,
-        "Clark South": 626.0,
-        "Mabalacat": 593.0,
-        "Clark North": 512.0,
-        "Dolores": 481.0,
-        "Bamban (New Clark City)": 350.0,
-        "Concepcion": 277.0,
-        "Tarlac": 96.0
+        "Tarlac": 373.0,
+        "Hacienda Luisita": 277.0,
+        "Sta. Ines": 1569
       },
       "Tarlac": {
         "Balintawak": 2008.0,
@@ -2683,7 +2720,54 @@
         "Dolores": 578.0,
         "Bamban (New Clark City)": 447.0,
         "Concepcion": 373.0,
-        "San Miguel": 96.0
+        "Hacienda Luisita": 96.0,
+        "Sta. Ines": 1941
+      },
+      "Hacienda Luisita": {
+        "Balintawak": 1912.0,
+        "Mindanao Avenue": 1912.0,
+        "Karuhatan": 1912.0,
+        "Valenzuela": 1912.0,
+        "Meycauayan": 1912.0,
+        "Marilao": 1912.0,
+        "Ciudad de Victoria": 1624.0,
+        "Bocaue": 1596.0,
+        "Tambubong": 1581.0,
+        "Balagtas": 1504.0,
+        "Sta. Rita": 1419.0,
+        "Pulilan": 1306.0,
+        "San Simon": 1115.0,
+        "San Fernando": 969.0,
+        "Mexico": 852.0,
+        "Angeles": 714.0,
+        "Dau": 680.0,
+        "Tipo/SFEX": 1843.0,
+        "Dinalupihan": 1467.0,
+        "Floridablanca": 1098.0,
+        "Porac": 829.0,
+        "Clark South": 626.0,
+        "Mabalacat": 593.0,
+        "Clark North": 512.0,
+        "Dolores": 481.0,
+        "Bamban (New Clark City)": 350.0,
+        "Concepcion": 277.0,
+        "Tarlac": 96.0,
+        "Sta. Ines": 1845
+      },
+      "Sta. Ines": {
+        "Tipo/SFEX": 141,
+        "Dinalupihan": 378,
+        "Floridablanca": 747,
+        "Porac": 1017,
+        "Clark South": 1218,
+        "Mabalacat": 1251,
+        "Clark North": 1332,
+        "Dolores": 1362,
+        "Bamban (New Clark City)": 1494,
+        "Concepcion": 1569,
+        "Hacienda Luisita": 1845,
+        "Tarlac": 1941,
+        "Dau": 120
       }
     }
   },
@@ -2749,7 +2833,8 @@
         "Silangan": 174.0,
         "Calamba": 195.0,
         "Sto. Tomas": 229.0,
-        "C-5": 49.0
+        "C-5": 49.0,
+        "Amorsolo": 72
       },
       "Skyway / Buendia": {
         "Bicutan": 72.0,
@@ -2767,7 +2852,8 @@
         "Cabuyao": 263.0,
         "Silangan": 269.0,
         "Calamba": 290.0,
-        "Sto. Tomas": 324.0
+        "Sto. Tomas": 324.0,
+        "Amorsolo": 0
       },
       "Sucat": {
         "Skyway / Buendia": 118.0,
@@ -2788,7 +2874,8 @@
         "Silangan": 139.0,
         "Calamba": 160.0,
         "Sto. Tomas": 194.0,
-        "C-5": 84.0
+        "C-5": 84.0,
+        "Amorsolo": 118.0
       },
       "Alabang": {
         "Skyway / Buendia": 164.0,
@@ -2809,7 +2896,8 @@
         "Silangan": 105.0,
         "Calamba": 126.0,
         "Sto. Tomas": 160.0,
-        "C-5": 118.0
+        "C-5": 118.0,
+        "Amorsolo": 164.0
       },
       "Filinvest": {
         "Skyway / Buendia": 170.0,
@@ -2830,7 +2918,8 @@
         "Silangan": 100.0,
         "Calamba": 121.0,
         "Sto. Tomas": 155.0,
-        "C-5": 124.0
+        "C-5": 124.0,
+        "Amorsolo": 170.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 208.0,
@@ -2851,7 +2940,8 @@
         "Silangan": 107.0,
         "Calamba": 128.0,
         "Sto. Tomas": 162.0,
-        "C-5": 162.0
+        "C-5": 162.0,
+        "Amorsolo": 208.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 185.0,
@@ -2872,7 +2962,8 @@
         "Silangan": 84.0,
         "Calamba": 105.0,
         "Sto. Tomas": 139.0,
-        "C-5": 139.0
+        "C-5": 139.0,
+        "Amorsolo": 185.0
       },
       "San Pedro": {
         "Skyway / Buendia": 192.0,
@@ -2893,7 +2984,8 @@
         "Silangan": 77.0,
         "Calamba": 98.0,
         "Sto. Tomas": 132.0,
-        "C-5": 146.0
+        "C-5": 146.0,
+        "Amorsolo": 192.0
       },
       "Southwoods": {
         "Skyway / Buendia": 210.0,
@@ -2914,7 +3006,8 @@
         "Silangan": 60.0,
         "Calamba": 81.0,
         "Sto. Tomas": 115.0,
-        "C-5": 164.0
+        "C-5": 164.0,
+        "Amorsolo": 210.0
       },
       "Carmona": {
         "Skyway / Buendia": 216.0,
@@ -2935,7 +3028,8 @@
         "Silangan": 53.0,
         "Calamba": 74.0,
         "Sto. Tomas": 108.0,
-        "C-5": 170.0
+        "C-5": 170.0,
+        "Amorsolo": 216.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 228.0,
@@ -2956,7 +3050,8 @@
         "Silangan": 41.0,
         "Calamba": 62.0,
         "Sto. Tomas": 96.0,
-        "C-5": 182.0
+        "C-5": 182.0,
+        "Amorsolo": 228.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 239.0,
@@ -2977,7 +3072,8 @@
         "Silangan": 31.0,
         "Calamba": 52.0,
         "Sto. Tomas": 86.0,
-        "C-5": 193.0
+        "C-5": 193.0,
+        "Amorsolo": 239.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 253.0,
@@ -2998,7 +3094,8 @@
         "Silangan": 16.0,
         "Calamba": 37.0,
         "Sto. Tomas": 71.0,
-        "C-5": 207.0
+        "C-5": 207.0,
+        "Amorsolo": 253.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 263.0,
@@ -3019,7 +3116,8 @@
         "Silangan": 7.0,
         "Calamba": 27.0,
         "Sto. Tomas": 61.0,
-        "C-5": 217.0
+        "C-5": 217.0,
+        "Amorsolo": 263.0
       },
       "Silangan": {
         "Skyway / Buendia": 269.0,
@@ -3040,7 +3138,8 @@
         "Cabuyao": 7.0,
         "Calamba": 21.0,
         "Sto. Tomas": 55.0,
-        "C-5": 223.0
+        "C-5": 223.0,
+        "Amorsolo": 269.0
       },
       "Calamba": {
         "Skyway / Buendia": 290.0,
@@ -3061,7 +3160,8 @@
         "Cabuyao": 27.0,
         "Silangan": 21.0,
         "Sto. Tomas": 34.0,
-        "C-5": 244.0
+        "C-5": 244.0,
+        "Amorsolo": 290.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 324.0,
@@ -3082,7 +3182,8 @@
         "Cabuyao": 61.0,
         "Silangan": 55.0,
         "Calamba": 34.0,
-        "C-5": 278.0
+        "C-5": 278.0,
+        "Amorsolo": 324.0
       },
       "C-5": {
         "Merville": 49.0,
@@ -3103,6 +3204,25 @@
         "Calamba": 244.0,
         "Sto. Tomas": 278.0,
         "Magallanes": 0
+      },
+      "Amorsolo": {
+        "Bicutan": 72,
+        "Sucat": 118.0,
+        "Alabang": 164.0,
+        "Filinvest": 170.0,
+        "Muntinlupa-Cavite X'way": 208.0,
+        "Susana Heights": 185.0,
+        "San Pedro": 192.0,
+        "Southwoods": 210.0,
+        "Carmona": 216.0,
+        "Mamplasan": 228.0,
+        "Sta. Rosa": 239.0,
+        "ABI/Greenfield": 253.0,
+        "Cabuyao": 263.0,
+        "Silangan": 269.0,
+        "Calamba": 290.0,
+        "Sto. Tomas": 324.0,
+        "Skyway / Buendia": 0
       }
     },
     "Class 2": {
@@ -3165,7 +3285,8 @@
         "Silangan": 349.0,
         "Calamba": 391.0,
         "Sto. Tomas": 459.0,
-        "C-5": 98.0
+        "C-5": 98.0,
+        "Amorsolo": 144
       },
       "Skyway / Buendia": {
         "Bicutan": 145.0,
@@ -3183,7 +3304,8 @@
         "Cabuyao": 527.0,
         "Silangan": 540.0,
         "Calamba": 582.0,
-        "Sto. Tomas": 650.0
+        "Sto. Tomas": 650.0,
+        "Amorsolo": 0
       },
       "Sucat": {
         "Skyway / Buendia": 237.0,
@@ -3204,7 +3326,8 @@
         "Silangan": 280.0,
         "Calamba": 322.0,
         "Sto. Tomas": 390.0,
-        "C-5": 168.0
+        "C-5": 168.0,
+        "Amorsolo": 237.0
       },
       "Alabang": {
         "Skyway / Buendia": 329.0,
@@ -3225,7 +3348,8 @@
         "Silangan": 211.0,
         "Calamba": 253.0,
         "Sto. Tomas": 321.0,
-        "C-5": 237.0
+        "C-5": 237.0,
+        "Amorsolo": 329.0
       },
       "Filinvest": {
         "Skyway / Buendia": 340.0,
@@ -3246,7 +3370,8 @@
         "Silangan": 200.0,
         "Calamba": 242.0,
         "Sto. Tomas": 310.0,
-        "C-5": 248.0
+        "C-5": 248.0,
+        "Amorsolo": 340.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 418.0,
@@ -3267,7 +3392,8 @@
         "Silangan": 216.0,
         "Calamba": 258.0,
         "Sto. Tomas": 326.0,
-        "C-5": 326.0
+        "C-5": 326.0,
+        "Amorsolo": 418.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 371.0,
@@ -3288,7 +3414,8 @@
         "Silangan": 169.0,
         "Calamba": 211.0,
         "Sto. Tomas": 279.0,
-        "C-5": 279.0
+        "C-5": 279.0,
+        "Amorsolo": 371.0
       },
       "San Pedro": {
         "Skyway / Buendia": 385.0,
@@ -3309,7 +3436,8 @@
         "Silangan": 155.0,
         "Calamba": 197.0,
         "Sto. Tomas": 265.0,
-        "C-5": 293.0
+        "C-5": 293.0,
+        "Amorsolo": 385.0
       },
       "Southwoods": {
         "Skyway / Buendia": 420.0,
@@ -3330,7 +3458,8 @@
         "Silangan": 120.0,
         "Calamba": 162.0,
         "Sto. Tomas": 230.0,
-        "C-5": 328.0
+        "C-5": 328.0,
+        "Amorsolo": 420.0
       },
       "Carmona": {
         "Skyway / Buendia": 434.0,
@@ -3351,7 +3480,8 @@
         "Silangan": 106.0,
         "Calamba": 148.0,
         "Sto. Tomas": 216.0,
-        "C-5": 342.0
+        "C-5": 342.0,
+        "Amorsolo": 434.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 457.0,
@@ -3372,7 +3502,8 @@
         "Silangan": 83.0,
         "Calamba": 124.0,
         "Sto. Tomas": 192.0,
-        "C-5": 365.0
+        "C-5": 365.0,
+        "Amorsolo": 457.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 478.0,
@@ -3393,7 +3524,8 @@
         "Silangan": 62.0,
         "Calamba": 104.0,
         "Sto. Tomas": 172.0,
-        "C-5": 386.0
+        "C-5": 386.0,
+        "Amorsolo": 478.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 508.0,
@@ -3414,7 +3546,8 @@
         "Silangan": 32.0,
         "Calamba": 74.0,
         "Sto. Tomas": 142.0,
-        "C-5": 416.0
+        "C-5": 416.0,
+        "Amorsolo": 508.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 527.0,
@@ -3435,7 +3568,8 @@
         "Silangan": 13.0,
         "Calamba": 55.0,
         "Sto. Tomas": 123.0,
-        "C-5": 435.0
+        "C-5": 435.0,
+        "Amorsolo": 527.0
       },
       "Silangan": {
         "Skyway / Buendia": 540.0,
@@ -3456,7 +3590,8 @@
         "Cabuyao": 13.0,
         "Calamba": 42.0,
         "Sto. Tomas": 110.0,
-        "C-5": 448.0
+        "C-5": 448.0,
+        "Amorsolo": 540.0
       },
       "Calamba": {
         "Skyway / Buendia": 582.0,
@@ -3477,7 +3612,8 @@
         "Cabuyao": 55.0,
         "Silangan": 42.0,
         "Sto. Tomas": 68.0,
-        "C-5": 490.0
+        "C-5": 490.0,
+        "Amorsolo": 582.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 650.0,
@@ -3498,7 +3634,8 @@
         "Cabuyao": 123.0,
         "Silangan": 110.0,
         "Calamba": 68.0,
-        "C-5": 558.0
+        "C-5": 558.0,
+        "Amorsolo": 650.0
       },
       "C-5": {
         "Merville": 98.0,
@@ -3519,6 +3656,25 @@
         "Calamba": 490.0,
         "Sto. Tomas": 558.0,
         "Magallanes": 0
+      },
+      "Amorsolo": {
+        "Bicutan": 144,
+        "Sucat": 237.0,
+        "Alabang": 329.0,
+        "Filinvest": 340.0,
+        "Muntinlupa-Cavite X'way": 418.0,
+        "Susana Heights": 371.0,
+        "San Pedro": 385.0,
+        "Southwoods": 420.0,
+        "Carmona": 434.0,
+        "Mamplasan": 457.0,
+        "Sta. Rosa": 478.0,
+        "ABI/Greenfield": 508.0,
+        "Cabuyao": 527.0,
+        "Silangan": 540.0,
+        "Calamba": 582.0,
+        "Sto. Tomas": 650.0,
+        "Skyway / Buendia": 0
       }
     },
     "Class 3": {
@@ -3581,7 +3737,8 @@
         "Silangan": 524.0,
         "Calamba": 587.0,
         "Sto. Tomas": 689.0,
-        "C-5": 147.0
+        "C-5": 147.0,
+        "Amorsolo": 216
       },
       "Skyway / Buendia": {
         "Bicutan": 218.0,
@@ -3599,7 +3756,8 @@
         "Cabuyao": 790.0,
         "Silangan": 809.0,
         "Calamba": 872.0,
-        "Sto. Tomas": 974.0
+        "Sto. Tomas": 974.0,
+        "Amorsolo": 0
       },
       "Sucat": {
         "Skyway / Buendia": 356.0,
@@ -3620,7 +3778,8 @@
         "Silangan": 420.0,
         "Calamba": 483.0,
         "Sto. Tomas": 585.0,
-        "C-5": 252.0
+        "C-5": 252.0,
+        "Amorsolo": 356.0
       },
       "Alabang": {
         "Skyway / Buendia": 493.0,
@@ -3641,7 +3800,8 @@
         "Silangan": 316.0,
         "Calamba": 379.0,
         "Sto. Tomas": 481.0,
-        "C-5": 356.0
+        "C-5": 356.0,
+        "Amorsolo": 493.0
       },
       "Filinvest": {
         "Skyway / Buendia": 510.0,
@@ -3662,7 +3822,8 @@
         "Silangan": 300.0,
         "Calamba": 362.0,
         "Sto. Tomas": 464.0,
-        "C-5": 373.0
+        "C-5": 373.0,
+        "Amorsolo": 510.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 626.0,
@@ -3683,7 +3844,8 @@
         "Silangan": 323.0,
         "Calamba": 386.0,
         "Sto. Tomas": 488.0,
-        "C-5": 489.0
+        "C-5": 489.0,
+        "Amorsolo": 626.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 556.0,
@@ -3704,7 +3866,8 @@
         "Silangan": 253.0,
         "Calamba": 316.0,
         "Sto. Tomas": 418.0,
-        "C-5": 419.0
+        "C-5": 419.0,
+        "Amorsolo": 556.0
       },
       "San Pedro": {
         "Skyway / Buendia": 577.0,
@@ -3725,7 +3888,8 @@
         "Silangan": 232.0,
         "Calamba": 295.0,
         "Sto. Tomas": 397.0,
-        "C-5": 440.0
+        "C-5": 440.0,
+        "Amorsolo": 577.0
       },
       "Southwoods": {
         "Skyway / Buendia": 630.0,
@@ -3746,7 +3910,8 @@
         "Silangan": 180.0,
         "Calamba": 242.0,
         "Sto. Tomas": 344.0,
-        "C-5": 493.0
+        "C-5": 493.0,
+        "Amorsolo": 630.0
       },
       "Carmona": {
         "Skyway / Buendia": 650.0,
@@ -3767,7 +3932,8 @@
         "Silangan": 159.0,
         "Calamba": 222.0,
         "Sto. Tomas": 324.0,
-        "C-5": 513.0
+        "C-5": 513.0,
+        "Amorsolo": 650.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 685.0,
@@ -3788,7 +3954,8 @@
         "Silangan": 124.0,
         "Calamba": 187.0,
         "Sto. Tomas": 289.0,
-        "C-5": 548.0
+        "C-5": 548.0,
+        "Amorsolo": 685.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 717.0,
@@ -3809,7 +3976,8 @@
         "Silangan": 93.0,
         "Calamba": 155.0,
         "Sto. Tomas": 257.0,
-        "C-5": 580.0
+        "C-5": 580.0,
+        "Amorsolo": 717.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 761.0,
@@ -3830,7 +3998,8 @@
         "Silangan": 48.0,
         "Calamba": 111.0,
         "Sto. Tomas": 213.0,
-        "C-5": 624.0
+        "C-5": 624.0,
+        "Amorsolo": 761.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 790.0,
@@ -3851,7 +4020,8 @@
         "Silangan": 20.0,
         "Calamba": 82.0,
         "Sto. Tomas": 184.0,
-        "C-5": 653.0
+        "C-5": 653.0,
+        "Amorsolo": 790.0
       },
       "Silangan": {
         "Skyway / Buendia": 809.0,
@@ -3872,7 +4042,8 @@
         "Cabuyao": 20.0,
         "Calamba": 63.0,
         "Sto. Tomas": 165.0,
-        "C-5": 672.0
+        "C-5": 672.0,
+        "Amorsolo": 809.0
       },
       "Calamba": {
         "Skyway / Buendia": 872.0,
@@ -3893,7 +4064,8 @@
         "Cabuyao": 82.0,
         "Silangan": 63.0,
         "Sto. Tomas": 102.0,
-        "C-5": 735.0
+        "C-5": 735.0,
+        "Amorsolo": 872.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 974.0,
@@ -3914,7 +4086,8 @@
         "Cabuyao": 184.0,
         "Silangan": 165.0,
         "Calamba": 102.0,
-        "C-5": 837.0
+        "C-5": 837.0,
+        "Amorsolo": 974.0
       },
       "C-5": {
         "Merville": 147.0,
@@ -3935,6 +4108,25 @@
         "Calamba": 735.0,
         "Sto. Tomas": 837.0,
         "Magallanes": 0
+      },
+      "Amorsolo": {
+        "Bicutan": 216,
+        "Sucat": 356.0,
+        "Alabang": 493.0,
+        "Filinvest": 510.0,
+        "Muntinlupa-Cavite X'way": 626.0,
+        "Susana Heights": 556.0,
+        "San Pedro": 577.0,
+        "Southwoods": 630.0,
+        "Carmona": 650.0,
+        "Mamplasan": 685.0,
+        "Sta. Rosa": 717.0,
+        "ABI/Greenfield": 761.0,
+        "Cabuyao": 790.0,
+        "Silangan": 809.0,
+        "Calamba": 872.0,
+        "Sto. Tomas": 974.0,
+        "Skyway / Buendia": 0
       }
     }
   },
@@ -4076,7 +4268,8 @@
         "Sto. Toribio": 49,
         "Lipa": 60,
         "Ibaan": 90,
-        "Batangas": 113
+        "Batangas": 113,
+        "Calamba": 34
       },
       "Tanauan": {
         "Sto. Tomas": 13,
@@ -4084,7 +4277,8 @@
         "Sto. Toribio": 35,
         "Lipa": 47,
         "Ibaan": 77,
-        "Batangas": 99
+        "Batangas": 99,
+        "Calamba": 43
       },
       "Malvar": {
         "Sto. Tomas": 29,
@@ -4092,7 +4286,8 @@
         "Sto. Toribio": 20,
         "Lipa": 30,
         "Ibaan": 61,
-        "Batangas": 83
+        "Batangas": 83,
+        "Calamba": 58
       },
       "Sto. Toribio": {
         "Sto. Tomas": 49,
@@ -4100,7 +4295,8 @@
         "Malvar": 20,
         "Lipa": 11,
         "Ibaan": 41,
-        "Batangas": 64
+        "Batangas": 64,
+        "Calamba": 72
       },
       "Lipa": {
         "Sto. Tomas": 60,
@@ -4108,7 +4304,8 @@
         "Malvar": 30,
         "Sto. Toribio": 11,
         "Ibaan": 30,
-        "Batangas": 53
+        "Batangas": 53,
+        "Calamba": 86
       },
       "Ibaan": {
         "Sto. Tomas": 90,
@@ -4116,7 +4313,8 @@
         "Malvar": 61,
         "Sto. Toribio": 41,
         "Lipa": 30,
-        "Batangas": 23
+        "Batangas": 23,
+        "Calamba": 110
       },
       "Batangas": {
         "Sto. Tomas": 113,
@@ -4124,7 +4322,17 @@
         "Malvar": 83,
         "Sto. Toribio": 64,
         "Lipa": 53,
-        "Ibaan": 23
+        "Ibaan": 23,
+        "Calamba": 135
+      },
+      "Calamba": {
+        "Sto. Tomas": 34,
+        "Tanauan": 43,
+        "Malvar": 58,
+        "Sto. Toribio": 72,
+        "Lipa": 86,
+        "Ibaan": 110,
+        "Batangas": 135
       }
     },
     "Class 2": {
@@ -4134,7 +4342,8 @@
         "Sto. Toribio": 96,
         "Lipa": 119,
         "Ibaan": 180,
-        "Batangas": 225
+        "Batangas": 225,
+        "Calamba": 68
       },
       "Tanauan": {
         "Sto. Tomas": 27,
@@ -4142,7 +4351,8 @@
         "Sto. Toribio": 70,
         "Lipa": 92,
         "Ibaan": 154,
-        "Batangas": 198
+        "Batangas": 198,
+        "Calamba": 86
       },
       "Malvar": {
         "Sto. Tomas": 57,
@@ -4150,7 +4360,8 @@
         "Sto. Toribio": 39,
         "Lipa": 62,
         "Ibaan": 122,
-        "Batangas": 167
+        "Batangas": 167,
+        "Calamba": 116
       },
       "Sto. Toribio": {
         "Sto. Tomas": 96,
@@ -4158,7 +4369,8 @@
         "Malvar": 39,
         "Lipa": 23,
         "Ibaan": 83,
-        "Batangas": 128
+        "Batangas": 128,
+        "Calamba": 144
       },
       "Lipa": {
         "Sto. Tomas": 119,
@@ -4166,7 +4378,8 @@
         "Malvar": 62,
         "Sto. Toribio": 23,
         "Ibaan": 61,
-        "Batangas": 106
+        "Batangas": 106,
+        "Calamba": 172
       },
       "Ibaan": {
         "Sto. Tomas": 180,
@@ -4174,7 +4387,8 @@
         "Malvar": 122,
         "Sto. Toribio": 83,
         "Lipa": 61,
-        "Batangas": 44
+        "Batangas": 44,
+        "Calamba": 220
       },
       "Batangas": {
         "Sto. Tomas": 225,
@@ -4182,7 +4396,17 @@
         "Malvar": 167,
         "Sto. Toribio": 128,
         "Lipa": 106,
-        "Ibaan": 44
+        "Ibaan": 44,
+        "Calamba": 270
+      },
+      "Calamba": {
+        "Sto. Tomas": 68,
+        "Tanauan": 86,
+        "Malvar": 116,
+        "Sto. Toribio": 144,
+        "Lipa": 172,
+        "Ibaan": 220,
+        "Batangas": 270
       }
     },
     "Class 3": {
@@ -4192,7 +4416,8 @@
         "Sto. Toribio": 145,
         "Lipa": 179,
         "Ibaan": 270,
-        "Batangas": 337
+        "Batangas": 337,
+        "Calamba": 102
       },
       "Tanauan": {
         "Sto. Tomas": 40,
@@ -4200,7 +4425,8 @@
         "Sto. Toribio": 105,
         "Lipa": 139,
         "Ibaan": 230,
-        "Batangas": 297
+        "Batangas": 297,
+        "Calamba": 129
       },
       "Malvar": {
         "Sto. Tomas": 87,
@@ -4208,7 +4434,8 @@
         "Sto. Toribio": 59,
         "Lipa": 92,
         "Ibaan": 183,
-        "Batangas": 251
+        "Batangas": 251,
+        "Calamba": 174
       },
       "Sto. Toribio": {
         "Sto. Tomas": 145,
@@ -4216,7 +4443,8 @@
         "Malvar": 59,
         "Lipa": 34,
         "Ibaan": 125,
-        "Batangas": 193
+        "Batangas": 193,
+        "Calamba": 216
       },
       "Lipa": {
         "Sto. Tomas": 179,
@@ -4224,7 +4452,8 @@
         "Malvar": 92,
         "Sto. Toribio": 34,
         "Ibaan": 92,
-        "Batangas": 159
+        "Batangas": 159,
+        "Calamba": 258
       },
       "Ibaan": {
         "Sto. Tomas": 270,
@@ -4232,7 +4461,8 @@
         "Malvar": 183,
         "Sto. Toribio": 125,
         "Lipa": 92,
-        "Batangas": 67
+        "Batangas": 67,
+        "Calamba": 330
       },
       "Batangas": {
         "Sto. Tomas": 337,
@@ -4240,7 +4470,17 @@
         "Malvar": 251,
         "Sto. Toribio": 193,
         "Lipa": 159,
-        "Ibaan": 67
+        "Ibaan": 67,
+        "Calamba": 405
+      },
+      "Calamba": {
+        "Sto. Tomas": 102,
+        "Tanauan": 129,
+        "Malvar": 174,
+        "Sto. Toribio": 216,
+        "Lipa": 258,
+        "Ibaan": 330,
+        "Batangas": 405
       }
     }
   },
@@ -4654,33 +4894,47 @@
     "Class 1": {
       "Quirino": {
         "Quezon Ave.": 264,
-        "Balintawak": 264
+        "Balintawak": 264,
+        "Plaza Dilao": 105
       },
       "Nagtahan": {
         "Buendia": 105,
         "Quezon Ave.": 264,
-        "Balintawak": 264
+        "Balintawak": 264,
+        "Plaza Dilao": 105
       },
       "E. Rodriguez": {
         "Quezon Ave.": 129,
-        "Balintawak": 129
+        "Balintawak": 129,
+        "Plaza Dilao": 264
       },
       "Quezon Ave.": {
         "Buendia": 264,
         "Quirino": 264,
         "Nagtahan": 264,
         "E. Rodriguez": 129,
-        "Balintawak": 129
+        "Balintawak": 129,
+        "Plaza Dilao": 264
       },
       "Balintawak": {
         "Buendia": 264,
         "Quirino": 264,
         "Nagtahan": 264,
         "E. Rodriguez": 129,
-        "Quezon Ave.": 129
+        "Quezon Ave.": 129,
+        "Plaza Dilao": 264
       },
       "Buendia": {
         "Nagtahan": 105,
+        "Quezon Ave.": 264,
+        "Balintawak": 264,
+        "Plaza Dilao": 105
+      },
+      "Plaza Dilao": {
+        "Buendia": 105,
+        "Quirino": 105,
+        "Nagtahan": 105,
+        "E. Rodriguez": 264,
         "Quezon Ave.": 264,
         "Balintawak": 264
       }
@@ -4688,33 +4942,47 @@
     "Class 2": {
       "Quirino": {
         "Quezon Ave.": 528,
-        "Balintawak": 528
+        "Balintawak": 528,
+        "Plaza Dilao": 210
       },
       "Nagtahan": {
         "Buendia": 210,
         "Quezon Ave.": 528,
-        "Balintawak": 528
+        "Balintawak": 528,
+        "Plaza Dilao": 210
       },
       "E. Rodriguez": {
         "Quezon Ave.": 258,
-        "Balintawak": 258
+        "Balintawak": 258,
+        "Plaza Dilao": 528
       },
       "Quezon Ave.": {
         "Buendia": 528,
         "Quirino": 528,
         "Nagtahan": 528,
         "E. Rodriguez": 258,
-        "Balintawak": 258
+        "Balintawak": 258,
+        "Plaza Dilao": 528
       },
       "Balintawak": {
         "Buendia": 528,
         "Quirino": 528,
         "Nagtahan": 528,
         "E. Rodriguez": 258,
-        "Quezon Ave.": 258
+        "Quezon Ave.": 258,
+        "Plaza Dilao": 528
       },
       "Buendia": {
         "Nagtahan": 210,
+        "Quezon Ave.": 528,
+        "Balintawak": 528,
+        "Plaza Dilao": 210
+      },
+      "Plaza Dilao": {
+        "Buendia": 210,
+        "Quirino": 210,
+        "Nagtahan": 210,
+        "E. Rodriguez": 528,
         "Quezon Ave.": 528,
         "Balintawak": 528
       }
@@ -4722,35 +4990,301 @@
     "Class 3": {
       "Quirino": {
         "Quezon Ave.": 792,
-        "Balintawak": 792
+        "Balintawak": 792,
+        "Plaza Dilao": 315
       },
       "Nagtahan": {
         "Buendia": 315,
         "Quezon Ave.": 792,
-        "Balintawak": 792
+        "Balintawak": 792,
+        "Plaza Dilao": 315
       },
       "E. Rodriguez": {
         "Quezon Ave.": 387,
-        "Balintawak": 387
+        "Balintawak": 387,
+        "Plaza Dilao": 792
       },
       "Quezon Ave.": {
         "Buendia": 792,
         "Quirino": 792,
         "Nagtahan": 792,
         "E. Rodriguez": 387,
-        "Balintawak": 387
+        "Balintawak": 387,
+        "Plaza Dilao": 792
       },
       "Balintawak": {
         "Buendia": 792,
         "Quirino": 792,
         "Nagtahan": 792,
         "E. Rodriguez": 387,
-        "Quezon Ave.": 387
+        "Quezon Ave.": 387,
+        "Plaza Dilao": 792
       },
       "Buendia": {
         "Nagtahan": 315,
         "Quezon Ave.": 792,
+        "Balintawak": 792,
+        "Plaza Dilao": 315
+      },
+      "Plaza Dilao": {
+        "Buendia": 315,
+        "Quirino": 315,
+        "Nagtahan": 315,
+        "E. Rodriguez": 792,
+        "Quezon Ave.": 792,
         "Balintawak": 792
+      }
+    }
+  },
+  "CAVITEX": {
+    "name": "CAVITEX",
+    "Class 1": {
+      "Para\u00f1aque": {
+        "Bacoor/Zapote": 88,
+        "Kawit": 126,
+        "Sucat Rd./Dr. A. Santos Ave.": 39,
+        "C5 Rd. Ext./C.P. Garcia": 77
+      },
+      "Bacoor/Zapote": {
+        "Para\u00f1aque": 88,
+        "Kawit": 38,
+        "C5 Rd. Ext./C.P. Garcia": 38,
+        "Sucat Rd./Dr. A. Santos Ave.": 88
+      },
+      "Kawit": {
+        "Para\u00f1aque": 126,
+        "Bacoor/Zapote": 38,
+        "C5 Rd. Ext./C.P. Garcia": 126,
+        "Sucat Rd./Dr. A. Santos Ave.": 126
+      },
+      "Sucat Rd./Dr. A. Santos Ave.": {
+        "Para\u00f1aque": 39,
+        "Bacoor/Zapote": 88,
+        "Kawit": 126,
+        "C5 Rd. Ext./C.P. Garcia": 77
+      },
+      "C5 Rd. Ext./C.P. Garcia": {
+        "Bacoor/Zapote": 38,
+        "Kawit": 126,
+        "Para\u00f1aque": 77,
+        "Sucat Rd./Dr. A. Santos Ave.": 77
+      }
+    },
+    "Class 2": {
+      "Para\u00f1aque": {
+        "Bacoor/Zapote": 176,
+        "Kawit": 252,
+        "Sucat Rd./Dr. A. Santos Ave.": 78,
+        "C5 Rd. Ext./C.P. Garcia": 154
+      },
+      "Bacoor/Zapote": {
+        "Para\u00f1aque": 176,
+        "Kawit": 76,
+        "C5 Rd. Ext./C.P. Garcia": 76,
+        "Sucat Rd./Dr. A. Santos Ave.": 176
+      },
+      "Kawit": {
+        "Para\u00f1aque": 252,
+        "Bacoor/Zapote": 76,
+        "C5 Rd. Ext./C.P. Garcia": 252,
+        "Sucat Rd./Dr. A. Santos Ave.": 252
+      },
+      "Sucat Rd./Dr. A. Santos Ave.": {
+        "Para\u00f1aque": 78,
+        "Bacoor/Zapote": 176,
+        "Kawit": 252,
+        "C5 Rd. Ext./C.P. Garcia": 154
+      },
+      "C5 Rd. Ext./C.P. Garcia": {
+        "Bacoor/Zapote": 76,
+        "Kawit": 252,
+        "Para\u00f1aque": 154,
+        "Sucat Rd./Dr. A. Santos Ave.": 154
+      }
+    },
+    "Class 3": {
+      "Para\u00f1aque": {
+        "Bacoor/Zapote": 264,
+        "Kawit": 378,
+        "Sucat Rd./Dr. A. Santos Ave.": 117,
+        "C5 Rd. Ext./C.P. Garcia": 231
+      },
+      "Bacoor/Zapote": {
+        "Para\u00f1aque": 264,
+        "Kawit": 114,
+        "C5 Rd. Ext./C.P. Garcia": 114,
+        "Sucat Rd./Dr. A. Santos Ave.": 264
+      },
+      "Kawit": {
+        "Para\u00f1aque": 378,
+        "Bacoor/Zapote": 114,
+        "C5 Rd. Ext./C.P. Garcia": 378,
+        "Sucat Rd./Dr. A. Santos Ave.": 378
+      },
+      "Sucat Rd./Dr. A. Santos Ave.": {
+        "Para\u00f1aque": 117,
+        "Bacoor/Zapote": 264,
+        "Kawit": 378,
+        "C5 Rd. Ext./C.P. Garcia": 231
+      },
+      "C5 Rd. Ext./C.P. Garcia": {
+        "Bacoor/Zapote": 114,
+        "Kawit": 378,
+        "Para\u00f1aque": 231,
+        "Sucat Rd./Dr. A. Santos Ave.": 231
+      }
+    }
+  },
+  "NAIAX": {
+    "name": "NAIAX",
+    "Class 1": {
+      "Skyway": {
+        "Andrews Ave./Terminal 3": 35,
+        "NAIA Terminal 1": 80,
+        "NAIA Terminal 2": 80,
+        "NAIA Terminal 3": 80
+      },
+      "Andrews Ave./Terminal 3": {
+        "Skyway": 35,
+        "NAIA Terminal 1": 45,
+        "NAIA Terminal 2": 45,
+        "NAIA Terminal 3": 45
+      },
+      "NAIA Terminal 1": {
+        "Andrews Ave./Terminal 3": 45,
+        "Entertainment City": 45,
+        "Macapagal Blvd.": 45,
+        "CAVITEX": 45,
+        "Skyway": 80
+      },
+      "NAIA Terminal 2": {
+        "Andrews Ave./Terminal 3": 45,
+        "Entertainment City": 45,
+        "Macapagal Blvd.": 45,
+        "CAVITEX": 45,
+        "Skyway": 80
+      },
+      "NAIA Terminal 3": {
+        "Andrews Ave./Terminal 3": 45,
+        "Skyway": 80
+      },
+      "Entertainment City": {
+        "NAIA Terminal 1": 45,
+        "NAIA Terminal 2": 45,
+        "Macapagal Blvd.": 35,
+        "CAVITEX": 35
+      },
+      "Macapagal Blvd.": {
+        "NAIA Terminal 1": 45,
+        "NAIA Terminal 2": 45,
+        "Entertainment City": 35,
+        "CAVITEX": 35
+      },
+      "CAVITEX": {
+        "NAIA Terminal 1": 45,
+        "NAIA Terminal 2": 45,
+        "Entertainment City": 35,
+        "Macapagal Blvd.": 35
+      }
+    },
+    "Class 2": {
+      "Skyway": {
+        "Andrews Ave./Terminal 3": 70,
+        "NAIA Terminal 1": 160,
+        "NAIA Terminal 2": 160,
+        "NAIA Terminal 3": 160
+      },
+      "Andrews Ave./Terminal 3": {
+        "Skyway": 70,
+        "NAIA Terminal 1": 90,
+        "NAIA Terminal 2": 90,
+        "NAIA Terminal 3": 90
+      },
+      "NAIA Terminal 1": {
+        "Andrews Ave./Terminal 3": 90,
+        "Entertainment City": 90,
+        "Macapagal Blvd.": 90,
+        "CAVITEX": 90,
+        "Skyway": 160
+      },
+      "NAIA Terminal 2": {
+        "Andrews Ave./Terminal 3": 90,
+        "Entertainment City": 90,
+        "Macapagal Blvd.": 90,
+        "CAVITEX": 90,
+        "Skyway": 160
+      },
+      "NAIA Terminal 3": {
+        "Andrews Ave./Terminal 3": 90,
+        "Skyway": 160
+      },
+      "Entertainment City": {
+        "NAIA Terminal 1": 90,
+        "NAIA Terminal 2": 90,
+        "Macapagal Blvd.": 70,
+        "CAVITEX": 70
+      },
+      "Macapagal Blvd.": {
+        "NAIA Terminal 1": 90,
+        "NAIA Terminal 2": 90,
+        "Entertainment City": 70,
+        "CAVITEX": 70
+      },
+      "CAVITEX": {
+        "NAIA Terminal 1": 90,
+        "NAIA Terminal 2": 90,
+        "Entertainment City": 70,
+        "Macapagal Blvd.": 70
+      }
+    },
+    "Class 3": {
+      "Skyway": {
+        "Andrews Ave./Terminal 3": 105,
+        "NAIA Terminal 1": 240,
+        "NAIA Terminal 2": 240,
+        "NAIA Terminal 3": 240
+      },
+      "Andrews Ave./Terminal 3": {
+        "Skyway": 105,
+        "NAIA Terminal 1": 135,
+        "NAIA Terminal 2": 135,
+        "NAIA Terminal 3": 135
+      },
+      "NAIA Terminal 1": {
+        "Andrews Ave./Terminal 3": 135,
+        "Entertainment City": 135,
+        "Macapagal Blvd.": 135,
+        "CAVITEX": 135,
+        "Skyway": 240
+      },
+      "NAIA Terminal 2": {
+        "Andrews Ave./Terminal 3": 135,
+        "Entertainment City": 135,
+        "Macapagal Blvd.": 135,
+        "CAVITEX": 135,
+        "Skyway": 240
+      },
+      "NAIA Terminal 3": {
+        "Andrews Ave./Terminal 3": 135,
+        "Skyway": 240
+      },
+      "Entertainment City": {
+        "NAIA Terminal 1": 135,
+        "NAIA Terminal 2": 135,
+        "Macapagal Blvd.": 105,
+        "CAVITEX": 105
+      },
+      "Macapagal Blvd.": {
+        "NAIA Terminal 1": 135,
+        "NAIA Terminal 2": 135,
+        "Entertainment City": 105,
+        "CAVITEX": 105
+      },
+      "CAVITEX": {
+        "NAIA Terminal 1": 135,
+        "NAIA Terminal 2": 135,
+        "Entertainment City": 105,
+        "Macapagal Blvd.": 105
       }
     }
   }

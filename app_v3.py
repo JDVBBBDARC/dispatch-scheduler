@@ -1109,10 +1109,16 @@ def get_toll_data():
     if _TOLL_DATA is None:
         try:
             p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'toll_rates.json')
-            with open(p, 'r') as f:
+            # Force UTF-8 — file contains special chars like ñ (Parañaque, etc.)
+            # Default encoding on some Linux locales is ASCII, which would fail.
+            with open(p, 'r', encoding='utf-8') as f:
                 _TOLL_DATA = _json_mod.load(f)
         except Exception as e:
-            print(f'[Toll] Could not load toll_rates.json: {e}')
+            import sys
+            err = f'[Toll] Could not load toll_rates.json: {e}'
+            print(err, flush=True)
+            sys.stderr.write(err + '\n')
+            sys.stderr.flush()
             _TOLL_DATA = {}
     return _TOLL_DATA
 
@@ -1124,12 +1130,21 @@ _TOLL_CONNECTIONS = [
     (('NLEX_SCTEX', 'Mindanao Avenue'),   ('Skyway_Stage3', 'Balintawak')),
     # Skyway Stage 3 south end ↔ Skyway / SLEX north end (Buendia) — free transfer
     (('Skyway_Stage3', 'Buendia'),        ('Skyway_SLEX_MCX', 'Skyway / Buendia')),
-    # Skyway/SLEX south end ↔ STAR north end
-    (('Skyway_SLEX_MCX', 'Sto. Tomas'),  ('STAR', 'Sto. Tomas')),
+    # Skyway/SLEX south end ↔ STAR north end (Sto. Tomas / Calamba)
+    (('Skyway_SLEX_MCX', 'Sto. Tomas'),   ('STAR', 'Sto. Tomas')),
+    (('Skyway_SLEX_MCX', 'Calamba'),      ('STAR', 'Calamba')),
     # NLEX/SCTEX north end ↔ TPLEX south end
     (('NLEX_SCTEX', 'Tarlac'),            ('TPLEX', 'La Paz')),
+    # NLEX/SCTEX terminus alias — Sta. Ines ≈ Mabalacat area
+    (('NLEX_SCTEX', 'Sta. Ines'),         ('NLEX_SCTEX', 'Mabalacat')),
     # Skyway/SLEX ↔ CALAX
     (('Skyway_SLEX_MCX', 'Mamplasan'),    ('CALAX', 'Laguna Boulevard')),
+    # Skyway ↔ NAIAX (Skyway entry from NAIAX side maps to Skyway/Buendia area)
+    (('Skyway_SLEX_MCX', 'Skyway / Buendia'), ('NAIAX', 'Skyway')),
+    (('Skyway_SLEX_MCX', 'Magallanes'),       ('NAIAX', 'Skyway')),
+    # NAIAX south end ↔ CAVITEX (the two systems meet near the airport-Cavite corridor)
+    (('NAIAX', 'CAVITEX'),                ('CAVITEX', 'Parañaque')),
+    (('NAIAX', 'CAVITEX'),                ('CAVITEX', 'C5 Rd. Ext./C.P. Garcia')),
 ]
 
 def _toll_lookup(matrix, a, b):
