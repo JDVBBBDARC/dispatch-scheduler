@@ -12,15 +12,33 @@
     databaseURL: 'https://dispatch-scheduler-ce39f-default-rtdb.firebaseio.com/'
   });
   const _fbDb = firebase.database();
+
+  // ── Firebase event handler (debounced + tab-visibility aware) ──
+  // Why: Firebase fires once per data change. When 5 trips are saved in
+  // 2 seconds, that's 5 fires × 4 endpoints = 20 API calls. We coalesce
+  // them into a SINGLE refresh after a quiet period.
+  let _fbDebounceTimer = null;
+  let _fbInitialFire = true;   // skip the first fire (initial subscribe value)
+  function _fbDispatch() {
+    if (typeof loadActivity      === 'function') loadActivity();
+    if (typeof pollDelReqBadge   === 'function') pollDelReqBadge();
+    if (typeof loadDashActivity  === 'function') loadDashActivity();
+  }
   _fbDb.ref('dispatch_updates').on('value', snap => {
     const data = snap.val();
     if (!data) return;
-    // Only react after page has fully loaded
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      if (typeof loadActivity === 'function') loadActivity();
-      if (typeof pollDelReqBadge === 'function') pollDelReqBadge();
-      if (typeof loadDashActivity === 'function') loadDashActivity();
-    }
+    // Skip the initial subscribe value (Firebase always fires once on subscribe)
+    if (_fbInitialFire) { _fbInitialFire = false; return; }
+    // Don't refresh if user is on another tab — they'll see latest on focus
+    if (document.hidden) return;
+    if (document.readyState !== 'complete' && document.readyState !== 'interactive') return;
+    // Debounce: collapse rapid bursts into one refresh
+    if (_fbDebounceTimer) clearTimeout(_fbDebounceTimer);
+    _fbDebounceTimer = setTimeout(_fbDispatch, 1500);
+  });
+  // When user returns to the tab, do one fresh load
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) _fbDispatch();
   });
 </script>
 <!-- PWA -->
