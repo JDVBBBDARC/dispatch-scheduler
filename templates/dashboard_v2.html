@@ -39,12 +39,13 @@
 <!-- ── KPI CARDS ────────────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
   {% set kpis = [
-    ('Total Trips',  total,                              '#8B1A2B', 'bi-truck',            '100%',  'All units'),
-    ('Delivered',    by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
-    ('In Transit',   by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
-    ('Toll Fee',     total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'excl. canceled'),
-    ('Pending',      by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
-    ('Canceled',     by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
+    ('Total Trips',     total,                              '#8B1A2B', 'bi-truck',            '100%',  'All units'),
+    ('Delivered',       by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
+    ('In Transit',      by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
+    ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'excl. canceled'),
+    ('Breakdown Hours', total_breakdown_hours,              '#DC2626', 'bi-tools',             '100%',  'click for J.O. details'),
+    ('Pending',         by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
+    ('Canceled',        by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
   ] %}
   {% for label, value, color, icon, pct, sub in kpis %}
   {% set status_key = 'all' if label == 'Total Trips' else label %}
@@ -58,7 +59,7 @@
             <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">{{ label }}</div>
             <div id="kpi-val-{{ kpi_id }}" style="font-size:2rem;font-weight:700;line-height:1.1;color:{{ color }};"
                  data-raw="{{ value }}">
-              {% if label == 'Toll Fee' %}₱{{ '{:,.0f}'.format(value) }}{% else %}{{ value }}{% endif %}
+              {% if label == 'Toll Fee' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
             </div>
           </div>
           <div style="width:38px;height:38px;border-radius:10px;background:{{ color }}18;display:flex;align-items:center;justify-content:center;">
@@ -419,6 +420,10 @@ let _kpiStatusKey = 'all';
 
 function openKpiModal(label, statusKey, color) {
   _kpiStatusKey = statusKey;
+  // Special case: Breakdown Hours has its own dedicated renderer (per-plate grouping)
+  if (statusKey === 'Breakdown Hours') {
+    return openBreakdownHoursModal(color);
+  }
   if (statusKey === 'all') {
     _kpiBaseRows = ALL_TRIPS;
   } else if (statusKey === 'Toll Fee') {
@@ -464,6 +469,89 @@ function filterKpiByTruck(truck, btn) {
   document.querySelectorAll('#kpiTruckFilter .trend-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderKpiTable(truck);
+}
+
+// Dedicated modal for Breakdown Hours — fetches per-plate breakdown data
+// and renders an accordion-style list with each plate's accumulated hours
+// and individual J.O. (Job Order) details.
+function openBreakdownHoursModal(color) {
+  document.getElementById('kpiModalHeader').style.background = color;
+  document.getElementById('kpiModalHeader').style.color = '#fff';
+  document.getElementById('kpiTruckFilter').style.display = 'none';
+  document.getElementById('kpiModalTitle').innerHTML =
+    '<i class="bi bi-tools me-2"></i>Breakdown Hours <span class="ms-2 spinner-border spinner-border-sm" role="status"></span>';
+  document.getElementById('kpiModalBody').innerHTML =
+    '<div class="text-center py-5 text-muted">Loading breakdown details…</div>';
+  new bootstrap.Modal(document.getElementById('kpiModal')).show();
+
+  const params = new URLSearchParams(window.location.search);
+  fetch('/api/dashboard/breakdown-hours?' + params.toString())
+    .then(r => r.json())
+    .then(d => {
+      const total  = d.total_hours || 0;
+      const trucks = d.plate_count || 0;
+      const jobs   = d.total_jobs || 0;
+      document.getElementById('kpiModalTitle').innerHTML =
+        `<i class="bi bi-tools me-2"></i>Breakdown Hours
+         <span class="ms-2 badge" style="background:rgba(255,255,255,.25);font-size:.85rem;">
+           ${total.toFixed(1)} hrs · ${trucks} truck${trucks === 1 ? '' : 's'} · ${jobs} J.O.
+         </span>`;
+
+      if (!d.by_plate || !d.by_plate.length) {
+        document.getElementById('kpiModalBody').innerHTML = `
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-emoji-smile fs-1 d-block mb-2"></i>
+            No breakdown records with start/end times in this date range.<br>
+            <small>Tip: log hours in the Breakdown Monitoring page.</small>
+          </div>`;
+        return;
+      }
+
+      const html = d.by_plate.map(p => `
+        <div class="mb-3" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div style="background:${p.truck_color}1A;border-left:4px solid ${p.truck_color};padding:.6rem .9rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+            <div>
+              <strong style="font-size:.95rem;color:${p.truck_color};">${escHtml(p.plate_display)}</strong>
+              <span style="font-size:.75rem;color:var(--muted);margin-left:.4rem;">${escHtml(p.truck_type)}</span>
+            </div>
+            <div style="display:flex;gap:1rem;align-items:center;">
+              <span style="font-size:.75rem;color:var(--muted);">${p.job_orders.length} J.O.</span>
+              <strong style="font-size:1.1rem;color:#DC2626;">${p.total_hours.toFixed(1)} hrs</strong>
+            </div>
+          </div>
+          <table class="tbl" style="font-size:.8rem;width:100%;">
+            <thead style="background:#f8f9fa;font-size:.7rem;color:var(--muted);">
+              <tr>
+                <th style="width:140px;">Started</th>
+                <th style="width:140px;">Ended</th>
+                <th style="width:70px;text-align:right;">Hours</th>
+                <th>Description</th>
+                <th>Remarks</th>
+                <th style="width:90px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${p.job_orders.map(jo => `
+                <tr>
+                  <td style="white-space:nowrap;">${escHtml(jo.started_at)}</td>
+                  <td style="white-space:nowrap;">${escHtml(jo.ended_at) || '<em class="text-muted">ongoing</em>'}</td>
+                  <td style="text-align:right;font-weight:600;color:#0891B2;">${jo.hours.toFixed(1)}</td>
+                  <td>${escHtml(jo.description) || '—'}</td>
+                  <td>${escHtml(jo.remarks) || '—'}</td>
+                  <td><span class="s-badge s-${jo.status.replace(/ /g, '-')}">${escHtml(jo.status)}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('');
+
+      document.getElementById('kpiModalBody').innerHTML = `<div class="p-3">${html}</div>`;
+    })
+    .catch(err => {
+      document.getElementById('kpiModalBody').innerHTML =
+        `<div class="text-center py-5 text-danger">Failed to load breakdown data.</div>`;
+    });
 }
 
 function renderKpiTable(truckFilter) {
@@ -1070,6 +1158,7 @@ function refreshKpis() {
       const total = d.total || 0;
       const bs    = d.by_status || {};
       const toll  = d.total_toll_fee || 0;
+      const bdHrs = d.total_breakdown_hours || 0;
 
       function setVal(id, text) {
         const el = document.getElementById(id);
@@ -1099,6 +1188,12 @@ function refreshKpis() {
       // Toll Fee — formatted as currency, bar stays 100%
       const tollFmt = '₱' + toll.toLocaleString('en-PH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
       setVal('kpi-val-Toll-Fee', tollFmt);
+
+      // Breakdown Hours — formatted as "X.X hrs" with smaller "hrs" suffix
+      const bdEl = document.getElementById('kpi-val-Breakdown-Hours');
+      if (bdEl) {
+        bdEl.innerHTML = `${bdHrs.toFixed(1)}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>`;
+      }
     }).catch(() => {});
 }
 

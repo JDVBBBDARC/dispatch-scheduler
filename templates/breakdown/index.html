@@ -241,11 +241,12 @@
           <th style="width:40px;">#</th>
           <th style="min-width:100px;">Date</th>
           <th style="min-width:140px;">Plate / Truck</th>
-          <th style="min-width:200px;">Description</th>
+          <th style="min-width:170px;">Description</th>
           <th style="min-width:110px;">Status</th>
-          <th style="min-width:110px;">Resolved Date</th>
-          <th style="min-width:160px;">Remarks</th>
-          <th style="min-width:100px;">Updated By</th>
+          <th style="min-width:170px;" title="When the unit broke down">Started At</th>
+          <th style="min-width:170px;" title="When the repair was finished">Ended At</th>
+          <th style="min-width:80px;text-align:right;">Hours</th>
+          <th style="min-width:140px;">Remarks</th>
           <th style="width:50px;" class="center"></th>
         </tr>
       </thead>
@@ -286,9 +287,17 @@
             </select>
           </td>
           <td>
-            <input class="bd-inline" type="date"
-                   value="{{ log.resolved_date.isoformat() if log.resolved_date else '' }}"
-                   onchange="updateBd({{ log.id }}, 'resolved_date', this.value)">
+            <input class="bd-inline" type="datetime-local"
+                   value="{{ log.started_at.strftime('%Y-%m-%dT%H:%M') if log.started_at else '' }}"
+                   onchange="updateBd({{ log.id }}, 'started_at', this.value); recalcHours(this.closest('tr'))">
+          </td>
+          <td>
+            <input class="bd-inline" type="datetime-local"
+                   value="{{ log.ended_at.strftime('%Y-%m-%dT%H:%M') if log.ended_at else '' }}"
+                   onchange="updateBd({{ log.id }}, 'ended_at', this.value); recalcHours(this.closest('tr'))">
+          </td>
+          <td class="bd-hours" style="text-align:right;font-weight:600;color:#0891B2;font-family:'Barlow Condensed', sans-serif;">
+            {{ '%.1f'|format(log.duration_hours) if log.duration_hours else '—' }}
           </td>
           <td>
             <input class="bd-inline" type="text"
@@ -296,7 +305,6 @@
                    placeholder="Remarks…"
                    onchange="updateBd({{ log.id }}, 'remarks', this.value)">
           </td>
-          <td style="font-size:.75rem;color:var(--muted);">{{ log.updated_by or '—' }}</td>
           <td class="center">
             <button class="btn btn-danger btn-xs" onclick="deleteBd({{ log.id }}, this)" title="Delete">
               <i class="bi bi-trash"></i>
@@ -384,8 +392,9 @@ function insertBdRow(data) {
         <thead><tr>
           <th style="width:40px;">#</th>
           <th>Date</th><th>Plate / Truck</th><th>Description</th>
-          <th>Status</th><th>Resolved Date</th><th>Remarks</th>
-          <th>Updated By</th><th class="center" style="width:50px;"></th>
+          <th>Status</th><th>Started At</th><th>Ended At</th>
+          <th style="text-align:right;">Hours</th><th>Remarks</th>
+          <th class="center" style="width:50px;"></th>
         </tr></thead>
         <tbody id="bdTbody"></tbody>
       </table>`;
@@ -407,9 +416,10 @@ function insertBdRow(data) {
     <td><select class="bd-inline-sel" onchange="updateBd(${data.id},'plate_id',this.value)">${plateOpts}</select></td>
     <td><textarea class="bd-inline" rows="1" onchange="updateBd(${data.id},'description',this.value)" placeholder="Description…">${escHtml(data.description)}</textarea></td>
     <td><select class="bd-inline-sel" onchange="updateBd(${data.id},'status',this.value);updateRowStyle(this)">${statusOpts}</select></td>
-    <td><input class="bd-inline" type="date" value="${data.resolved_date}" onchange="updateBd(${data.id},'resolved_date',this.value)"></td>
+    <td><input class="bd-inline" type="datetime-local" value="${data.started_at || ''}" onchange="updateBd(${data.id},'started_at',this.value); recalcHours(this.closest('tr'))"></td>
+    <td><input class="bd-inline" type="datetime-local" value="${data.ended_at || ''}" onchange="updateBd(${data.id},'ended_at',this.value); recalcHours(this.closest('tr'))"></td>
+    <td class="bd-hours" style="text-align:right;font-weight:600;color:#0891B2;font-family:'Barlow Condensed', sans-serif;">${data.duration_hours ? data.duration_hours.toFixed(1) : '—'}</td>
     <td><input class="bd-inline" type="text" value="${escHtml(data.remarks)}" placeholder="Remarks…" onchange="updateBd(${data.id},'remarks',this.value)"></td>
-    <td style="font-size:.75rem;color:var(--muted);">—</td>
     <td class="center"><button class="btn btn-danger btn-xs" onclick="deleteBd(${data.id},this)" title="Delete"><i class="bi bi-trash"></i></button></td>`;
 
   // Set selected plate
@@ -421,6 +431,28 @@ function insertBdRow(data) {
 }
 
 // ── UPDATE BREAKDOWN ──────────────────────────────────────────────────────
+// ── RECALCULATE HOURS ─────────────────────────────────────────────────────
+// Reads the started_at and ended_at inputs in a row and updates the Hours cell.
+function recalcHours(tr) {
+  if (!tr) return;
+  const inputs = tr.querySelectorAll('input[type="datetime-local"]');
+  if (inputs.length < 2) return;
+  const start = inputs[0].value;
+  const end   = inputs[1].value;
+  const cell  = tr.querySelector('.bd-hours');
+  if (!cell) return;
+  if (start && end) {
+    const ms = new Date(end) - new Date(start);
+    if (ms > 0) {
+      cell.textContent = (ms / 3600000).toFixed(1);
+    } else {
+      cell.textContent = '—';
+    }
+  } else {
+    cell.textContent = '—';
+  }
+}
+
 function updateBd(id, field, value) {
   fetch(`/api/breakdown/${id}/update`, {
     method: 'POST',
