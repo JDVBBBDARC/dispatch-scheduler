@@ -239,7 +239,22 @@
       <span class="master-card-title"><i class="bi bi-truck me-1"></i>PLATE NUMBERS BY TRUCK TYPE</span>
       <span style="font-size:.72rem;color:var(--muted);" id="cnt-plates">{{ plates|length }} records</span>
     </div>
-    <div class="master-list" id="list-plates" style="max-height:320px;">
+
+    <!-- Cartrack sync toolbar -->
+    <div class="px-3 py-2" style="background:#eef6fc;border-bottom:1px solid #d6e9f5;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.78rem;">
+      <i class="bi bi-broadcast-pin" style="color:#0891B2;font-size:1rem;"></i>
+      <strong style="color:#0891B2;">Cartrack GPS</strong>
+      <span id="cartrack-status" style="color:var(--muted);">checking status…</span>
+      <span style="flex:1;"></span>
+      <button class="btn btn-xs btn-ghost" onclick="cartrackAutoMap()">
+        <i class="bi bi-magic"></i> Auto-map all
+      </button>
+      <button class="btn btn-xs btn-ghost" onclick="cartrackPollNow()">
+        <i class="bi bi-lightning-charge"></i> Poll Now
+      </button>
+    </div>
+
+    <div class="master-list" id="list-plates" style="max-height:340px;">
       {% for p in plates %}
       <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="plates">
         <div>
@@ -248,10 +263,25 @@
             <span class="truck-type-dot" style="background:{{ p.truck_type.color }};"></span>
             {% endif %}
             {{ p.display }}
+            {% if p.cartrack_vehicle_id %}
+            <span class="badge ms-1" style="background:#0891B2;color:#fff;font-size:.6rem;font-weight:600;"
+                  title="Mapped to Cartrack vehicle #{{ p.cartrack_vehicle_id }}">
+              <i class="bi bi-broadcast"></i> CT #{{ p.cartrack_vehicle_id }}
+            </span>
+            {% else %}
+            <span class="badge ms-1 bg-secondary" style="font-size:.6rem;font-weight:500;opacity:.6;"
+                  title="Not yet linked to Cartrack GPS">
+              <i class="bi bi-broadcast-pin"></i> unmapped
+            </span>
+            {% endif %}
           </div>
           <div class="master-item-sub">{{ p.truck_type.name if p.truck_type else 'Unassigned' }}</div>
         </div>
         <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" title="Map to Cartrack vehicle"
+                  onclick="openCartrackMapModal({{ p.id }}, '{{ p.display|replace("'","\\'") }}', {{ p.cartrack_vehicle_id or 'null' }})">
+            <i class="bi bi-broadcast" style="color:#0891B2;"></i>
+          </button>
           <button class="btn btn-ghost btn-xs"
                   onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }})">
             <i class="bi bi-pencil"></i>
@@ -579,5 +609,126 @@ function updateCount(cat, listEl) {
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── CARTRACK GPS INTEGRATION ─────────────────────────────────────────────
+
+// Show overall Cartrack mapping status in the toolbar
+function loadCartrackStatus() {
+  fetch('/api/cartrack/status')
+    .then(r => r.json())
+    .then(d => {
+      const el = document.getElementById('cartrack-status');
+      if (!el) return;
+      if (!d.cartrack_configured) {
+        el.innerHTML = '<span style="color:#b54600;">⚠ Not configured (set CARTRACK_USERNAME/PASSWORD env vars)</span>';
+        return;
+      }
+      const totalMapped = d.plates_mapped || 0;
+      const totalPlates = d.plates_total || 0;
+      const fills = d.auto_fills_today || 0;
+      el.innerHTML = `${totalMapped}/${totalPlates} plates mapped · ${fills} auto-fills today`
+        + (d.open_trips ? ` · ${d.open_trips} trips being tracked` : '');
+    })
+    .catch(() => {
+      const el = document.getElementById('cartrack-status');
+      if (el) el.textContent = 'status unavailable';
+    });
+}
+
+// Auto-load status on page load
+document.addEventListener('DOMContentLoaded', loadCartrackStatus);
+
+// Auto-map all unmapped plates by registration match
+function cartrackAutoMap() {
+  if (!confirm('Auto-match all unmapped plates with Cartrack vehicles? Existing mappings are preserved.')) return;
+  showToast('Auto-mapping…');
+  fetch('/api/cartrack/auto-map', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Error: ' + d.error); return; }
+      const msg = `Auto-map done: ${d.matched_count} matched, ${d.ambiguous_count} ambiguous, ${d.unmatched_count} unmatched`;
+      showToast(msg);
+      setTimeout(() => location.reload(), 1200);
+    })
+    .catch(e => showToast('Auto-map failed: ' + e));
+}
+
+// Manually trigger one polling cycle
+function cartrackPollNow() {
+  showToast('Polling Cartrack…');
+  fetch('/api/cartrack/poll-now', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Error: ' + d.error); return; }
+      let msg = `Poll done: ${d.vehicles_seen} vehicles seen, ${d.plates_tracked} tracked`;
+      if (d.enters_detected) msg += `, ${d.enters_detected} entries`;
+      if (d.exits_detected)  msg += `, ${d.exits_detected} exits`;
+      if (d.trips_closed)    msg += `, ${d.trips_closed} trips closed`;
+      if (d.toll_fees_filled) msg += `, ${d.toll_fees_filled} toll fees filled`;
+      if (d.errors && d.errors.length) msg += ' — errors: ' + d.errors.join(', ');
+      showToast(msg);
+      loadCartrackStatus();
+    })
+    .catch(e => showToast('Poll failed: ' + e));
+}
+
+// Open mapping modal for a specific plate
+function openCartrackMapModal(plateId, plateDisplay, currentCartrackId) {
+  // Fetch the list of Cartrack vehicles
+  fetch('/api/cartrack/vehicles')
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Cartrack: ' + d.error); return; }
+      const vehicles = d.vehicles || [];
+
+      // Build modal body with a searchable list
+      const opts = vehicles.map(v =>
+        `<option value="${v.vehicle_id}" ${v.vehicle_id == currentCartrackId ? 'selected' : ''}>
+           ${escHtml(v.vehicle_name || v.registration)} (ID: ${v.vehicle_id})
+         </option>`
+      ).join('');
+
+      editCat = 'cartrack-map';
+      editId  = plateId;
+      document.getElementById('editModalTitle').textContent = `Map ${plateDisplay} to Cartrack`;
+      document.getElementById('editModalBody').innerHTML = `
+        <div class="mb-2">
+          <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Cartrack Vehicle</label>
+          <select id="cartrackVehicleSelect" class="form-select mt-1">
+            <option value="">— Not mapped —</option>
+            ${opts}
+          </select>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:6px;">
+            Select the Cartrack vehicle that corresponds to <strong>${escHtml(plateDisplay)}</strong>.
+            The polling worker uses this mapping to track this truck's GPS for toll auto-fill.
+          </div>
+        </div>`;
+      editModal.show();
+    })
+    .catch(e => showToast('Cartrack: ' + e));
+}
+
+// Hook into saveEdit() for the cartrack-map case
+const _origSaveEdit = window.saveEdit;
+window.saveEdit = function () {
+  if (editCat === 'cartrack-map') {
+    const sel = document.getElementById('cartrackVehicleSelect');
+    const cartrackId = sel ? sel.value : '';
+    fetch(`/api/cartrack/plate/${editId}/map`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ cartrack_vehicle_id: cartrackId || null }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { alert(d.error); return; }
+      editModal.hide();
+      location.reload();
+    });
+    return;
+  }
+  // Fall through to the original saveEdit for other categories
+  if (typeof _origSaveEdit === 'function') _origSaveEdit();
+};
 </script>
 {% endblock %}
