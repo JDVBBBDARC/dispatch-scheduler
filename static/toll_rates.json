@@ -2769,6 +2769,163 @@
         "Tarlac": 1941,
         "Dau": 120
       }
+    },
+    "coordinates": {
+      "Balintawak": {
+        "lat": 14.663,
+        "lng": 120.975,
+        "radius_m": 250
+      },
+      "Mindanao Avenue": {
+        "lat": 14.697,
+        "lng": 120.9846,
+        "radius_m": 200
+      },
+      "Karuhatan": {
+        "lat": 14.7167,
+        "lng": 120.974,
+        "radius_m": 200
+      },
+      "Valenzuela": {
+        "lat": 14.725,
+        "lng": 120.9568,
+        "radius_m": 200
+      },
+      "Meycauayan": {
+        "lat": 14.739,
+        "lng": 120.943,
+        "radius_m": 200
+      },
+      "Marilao": {
+        "lat": 14.7549,
+        "lng": 120.946,
+        "radius_m": 200
+      },
+      "Ciudad de Victoria": {
+        "lat": 14.7794,
+        "lng": 120.9282,
+        "radius_m": 200
+      },
+      "Bocaue": {
+        "lat": 14.7991,
+        "lng": 120.9237,
+        "radius_m": 200
+      },
+      "Tambubong": {
+        "lat": 14.823,
+        "lng": 120.902,
+        "radius_m": 200
+      },
+      "Balagtas": {
+        "lat": 14.85,
+        "lng": 120.909,
+        "radius_m": 200
+      },
+      "Tabang": {
+        "lat": 14.881,
+        "lng": 120.895,
+        "radius_m": 200
+      },
+      "Sta. Rita": {
+        "lat": 14.89,
+        "lng": 120.891,
+        "radius_m": 200
+      },
+      "Pulilan": {
+        "lat": 14.9061,
+        "lng": 120.8489,
+        "radius_m": 250
+      },
+      "San Simon": {
+        "lat": 14.9695,
+        "lng": 120.7798,
+        "radius_m": 200
+      },
+      "San Fernando": {
+        "lat": 15.0349,
+        "lng": 120.69,
+        "radius_m": 200
+      },
+      "Mexico": {
+        "lat": 15.07,
+        "lng": 120.68,
+        "radius_m": 200
+      },
+      "Angeles": {
+        "lat": 15.145,
+        "lng": 120.5928,
+        "radius_m": 200
+      },
+      "Dau": {
+        "lat": 15.183,
+        "lng": 120.567,
+        "radius_m": 200
+      },
+      "Sta. Ines": {
+        "lat": 15.201,
+        "lng": 120.566,
+        "radius_m": 200
+      },
+      "Tipo/SFEX": {
+        "lat": 14.7456,
+        "lng": 120.2767,
+        "radius_m": 250
+      },
+      "Dinalupihan": {
+        "lat": 14.8674,
+        "lng": 120.453,
+        "radius_m": 200
+      },
+      "Floridablanca": {
+        "lat": 14.954,
+        "lng": 120.517,
+        "radius_m": 200
+      },
+      "Porac": {
+        "lat": 15.071,
+        "lng": 120.545,
+        "radius_m": 200
+      },
+      "Clark South": {
+        "lat": 15.153,
+        "lng": 120.561,
+        "radius_m": 200
+      },
+      "Mabalacat": {
+        "lat": 15.2147,
+        "lng": 120.563,
+        "radius_m": 200
+      },
+      "Clark North": {
+        "lat": 15.248,
+        "lng": 120.567,
+        "radius_m": 200
+      },
+      "Dolores": {
+        "lat": 15.292,
+        "lng": 120.585,
+        "radius_m": 200
+      },
+      "Bamban (New Clark City)": {
+        "lat": 15.3175,
+        "lng": 120.591,
+        "radius_m": 250
+      },
+      "Concepcion": {
+        "lat": 15.347,
+        "lng": 120.5957,
+        "radius_m": 200
+      },
+      "Hacienda Luisita": {
+        "lat": 15.404,
+        "lng": 120.598,
+        "radius_m": 200
+      },
+      "Tarlac": {
+        "lat": 15.483,
+        "lng": 120.587,
+        "radius_m": 200
+      }
     }
   },
   "Skyway_SLEX_MCX": {
@@ -4128,6 +4285,113 @@
         "Sto. Tomas": 974.0,
         "Skyway / Buendia": 0
       }
+    },
+    "coordinates": {
+      "Skyway / Buendia": {
+        "lat": 14.556,
+        "lng": 121.0227,
+        "radius_m": 250
+      },
+      "Magallanes": {
+        "lat": 14.543,
+        "lng": 121.0227,
+        "radius_m": 200
+      },
+      "Amorsolo": {
+        "lat": 14.535,
+        "lng": 121.0227,
+        "radius_m": 200
+      },
+      "C-5": {
+        "lat": 14.545,
+        "lng": 121.057,
+        "radius_m": 200
+      },
+      "Bicutan": {
+        "lat": 14.486,
+        "lng": 121.041,
+        "radius_m": 200
+      },
+      "Merville": {
+        "lat": 14.505,
+        "lng": 121.025,
+        "radius_m": 200
+      },
+      "Sucat": {
+        "lat": 14.469,
+        "lng": 121.0473,
+        "radius_m": 200
+      },
+      "Alabang": {
+        "lat": 14.418,
+        "lng": 121.042,
+        "radius_m": 250
+      },
+      "Filinvest": {
+        "lat": 14.409,
+        "lng": 121.042,
+        "radius_m": 200
+      },
+      "Muntinlupa-Cavite X'way": {
+        "lat": 14.403,
+        "lng": 121.044,
+        "radius_m": 200
+      },
+      "Susana Heights": {
+        "lat": 14.385,
+        "lng": 121.0445,
+        "radius_m": 200
+      },
+      "San Pedro": {
+        "lat": 14.358,
+        "lng": 121.0454,
+        "radius_m": 200
+      },
+      "Southwoods": {
+        "lat": 14.336,
+        "lng": 121.049,
+        "radius_m": 200
+      },
+      "Carmona": {
+        "lat": 14.303,
+        "lng": 121.057,
+        "radius_m": 200
+      },
+      "Mamplasan": {
+        "lat": 14.278,
+        "lng": 121.079,
+        "radius_m": 200
+      },
+      "Sta. Rosa": {
+        "lat": 14.257,
+        "lng": 121.108,
+        "radius_m": 200
+      },
+      "ABI/Greenfield": {
+        "lat": 14.231,
+        "lng": 121.132,
+        "radius_m": 200
+      },
+      "Cabuyao": {
+        "lat": 14.2074,
+        "lng": 121.1505,
+        "radius_m": 200
+      },
+      "Silangan": {
+        "lat": 14.181,
+        "lng": 121.161,
+        "radius_m": 200
+      },
+      "Calamba": {
+        "lat": 14.167,
+        "lng": 121.188,
+        "radius_m": 250
+      },
+      "Sto. Tomas": {
+        "lat": 14.108,
+        "lng": 121.141,
+        "radius_m": 200
+      }
     }
   },
   "CALAX": {
@@ -4256,6 +4520,43 @@
         "Silang East": 192.0,
         "Santa Rosa-Tagaytay": 134.0,
         "Laguna Boulevard": 91.0
+      }
+    },
+    "coordinates": {
+      "Mamplasan": {
+        "lat": 14.278,
+        "lng": 121.079,
+        "radius_m": 200
+      },
+      "Laguna Boulevard": {
+        "lat": 14.266,
+        "lng": 121.061,
+        "radius_m": 200
+      },
+      "Greenfield": {
+        "lat": 14.268,
+        "lng": 121.051,
+        "radius_m": 200
+      },
+      "Technopark": {
+        "lat": 14.27,
+        "lng": 121.021,
+        "radius_m": 200
+      },
+      "Santa Rosa-Tagaytay": {
+        "lat": 14.241,
+        "lng": 121.029,
+        "radius_m": 200
+      },
+      "Silang East": {
+        "lat": 14.228,
+        "lng": 121.007,
+        "radius_m": 200
+      },
+      "Silang Interchange": {
+        "lat": 14.227,
+        "lng": 120.983,
+        "radius_m": 200
       }
     }
   },
@@ -4481,6 +4782,48 @@
         "Lipa": 258,
         "Ibaan": 330,
         "Batangas": 405
+      }
+    },
+    "coordinates": {
+      "Sto. Tomas": {
+        "lat": 14.108,
+        "lng": 121.141,
+        "radius_m": 200
+      },
+      "Calamba": {
+        "lat": 14.167,
+        "lng": 121.188,
+        "radius_m": 250
+      },
+      "Tanauan": {
+        "lat": 14.082,
+        "lng": 121.153,
+        "radius_m": 200
+      },
+      "Malvar": {
+        "lat": 14.048,
+        "lng": 121.162,
+        "radius_m": 200
+      },
+      "Sto. Toribio": {
+        "lat": 14.005,
+        "lng": 121.181,
+        "radius_m": 200
+      },
+      "Lipa": {
+        "lat": 13.967,
+        "lng": 121.183,
+        "radius_m": 200
+      },
+      "Ibaan": {
+        "lat": 13.82,
+        "lng": 121.133,
+        "radius_m": 200
+      },
+      "Batangas": {
+        "lat": 13.766,
+        "lng": 121.05,
+        "radius_m": 250
       }
     }
   },
@@ -4887,6 +5230,63 @@
         "Pozorrubio": 124,
         "Sison": 62
       }
+    },
+    "coordinates": {
+      "La Paz": {
+        "lat": 15.5183,
+        "lng": 120.5803,
+        "radius_m": 200
+      },
+      "Victoria": {
+        "lat": 15.5783,
+        "lng": 120.6735,
+        "radius_m": 200
+      },
+      "Gerona": {
+        "lat": 15.6082,
+        "lng": 120.5985,
+        "radius_m": 200
+      },
+      "Paniqui": {
+        "lat": 15.675,
+        "lng": 120.578,
+        "radius_m": 200
+      },
+      "Moncada": {
+        "lat": 15.735,
+        "lng": 120.574,
+        "radius_m": 200
+      },
+      "Carmen": {
+        "lat": 15.848,
+        "lng": 120.579,
+        "radius_m": 200
+      },
+      "Urdaneta": {
+        "lat": 15.976,
+        "lng": 120.571,
+        "radius_m": 200
+      },
+      "Binalonan": {
+        "lat": 16.051,
+        "lng": 120.597,
+        "radius_m": 200
+      },
+      "Pozorrubio": {
+        "lat": 16.109,
+        "lng": 120.544,
+        "radius_m": 200
+      },
+      "Sison": {
+        "lat": 16.1655,
+        "lng": 120.5145,
+        "radius_m": 200
+      },
+      "Rosario": {
+        "lat": 16.253,
+        "lng": 120.452,
+        "radius_m": 200
+      }
     }
   },
   "Skyway_Stage3": {
@@ -5034,6 +5434,43 @@
         "Quezon Ave.": 792,
         "Balintawak": 792
       }
+    },
+    "coordinates": {
+      "Buendia": {
+        "lat": 14.556,
+        "lng": 121.0227,
+        "radius_m": 200
+      },
+      "Quirino": {
+        "lat": 14.5867,
+        "lng": 121.0028,
+        "radius_m": 200
+      },
+      "Plaza Dilao": {
+        "lat": 14.5896,
+        "lng": 120.9999,
+        "radius_m": 200
+      },
+      "Nagtahan": {
+        "lat": 14.597,
+        "lng": 120.992,
+        "radius_m": 200
+      },
+      "E. Rodriguez": {
+        "lat": 14.621,
+        "lng": 121.004,
+        "radius_m": 200
+      },
+      "Quezon Ave.": {
+        "lat": 14.636,
+        "lng": 121.0193,
+        "radius_m": 200
+      },
+      "Balintawak": {
+        "lat": 14.661,
+        "lng": 120.981,
+        "radius_m": 200
+      }
     }
   },
   "CAVITEX": {
@@ -5132,6 +5569,33 @@
         "Kawit": 378,
         "Para\u00f1aque": 231,
         "Sucat Rd./Dr. A. Santos Ave.": 231
+      }
+    },
+    "coordinates": {
+      "Para\u00f1aque": {
+        "lat": 14.496,
+        "lng": 120.97,
+        "radius_m": 200
+      },
+      "Bacoor/Zapote": {
+        "lat": 14.463,
+        "lng": 120.953,
+        "radius_m": 200
+      },
+      "Kawit": {
+        "lat": 14.449,
+        "lng": 120.902,
+        "radius_m": 250
+      },
+      "Sucat Rd./Dr. A. Santos Ave.": {
+        "lat": 14.472,
+        "lng": 121.015,
+        "radius_m": 200
+      },
+      "C5 Rd. Ext./C.P. Garcia": {
+        "lat": 14.483,
+        "lng": 121.071,
+        "radius_m": 200
       }
     }
   },
@@ -5285,6 +5749,48 @@
         "NAIA Terminal 2": 135,
         "Entertainment City": 105,
         "Macapagal Blvd.": 105
+      }
+    },
+    "coordinates": {
+      "Skyway": {
+        "lat": 14.505,
+        "lng": 121.014,
+        "radius_m": 200
+      },
+      "Macapagal Blvd.": {
+        "lat": 14.524,
+        "lng": 120.981,
+        "radius_m": 200
+      },
+      "Entertainment City": {
+        "lat": 14.541,
+        "lng": 120.975,
+        "radius_m": 200
+      },
+      "CAVITEX": {
+        "lat": 14.497,
+        "lng": 120.976,
+        "radius_m": 200
+      },
+      "NAIA Terminal 1": {
+        "lat": 14.51,
+        "lng": 121.019,
+        "radius_m": 200
+      },
+      "NAIA Terminal 2": {
+        "lat": 14.512,
+        "lng": 121.015,
+        "radius_m": 200
+      },
+      "NAIA Terminal 3": {
+        "lat": 14.518,
+        "lng": 121.011,
+        "radius_m": 200
+      },
+      "Andrews Ave./Terminal 3": {
+        "lat": 14.524,
+        "lng": 121.011,
+        "radius_m": 200
       }
     }
   }
