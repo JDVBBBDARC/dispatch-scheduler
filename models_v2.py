@@ -152,6 +152,10 @@ class Plate(db.Model):
     body_no       = db.Column(db.String(20))
     truck_type_id = db.Column(db.Integer, db.ForeignKey('truck_type_defs.id'), nullable=True)
     active        = db.Column(db.Boolean, default=True)
+    # Cartrack GPS provider linkage. When set, the polling worker can fetch
+    # this truck's live position and detect toll plaza crossings to
+    # auto-fill toll fees on TripRecord. NULL = not yet mapped to Cartrack.
+    cartrack_vehicle_id = db.Column(db.Integer, nullable=True, index=True)
 
     truck_type  = db.relationship('TruckTypeDef', back_populates='plates')
     trips       = db.relationship('TripRecord', foreign_keys='TripRecord.plate_id', back_populates='plate')
@@ -320,6 +324,64 @@ class BreakdownLog(db.Model):
             'remarks':       self.remarks or '',
             'updated_by':    self.updated_by or '',
         }
+
+
+# ── Cartrack GPS integration ──────────────────────────────────────────────
+class CartrackTruckState(db.Model):
+    """Per-plate state for the Cartrack polling worker. One row per plate.
+
+    Tracks which toll plazas a truck is currently inside (so we can detect
+    enter/exit transitions between polls), plus the running trip-tracking
+    state (entry plaza, current exit candidate) used to compute toll fees.
+    """
+    __tablename__ = 'cartrack_truck_state'
+    id              = db.Column(db.Integer, primary_key=True)
+    plate_id        = db.Column(db.Integer, db.ForeignKey('plates.id'), nullable=False, unique=True, index=True)
+    # Comma-separated list of plaza names the truck is currently inside.
+    # e.g., "Pulilan" or "" (none). Updated every poll.
+    current_plazas  = db.Column(db.Text, default='')
+    # Trip-tracking state — the FIRST plaza entered in an "open" trip
+    entry_plaza     = db.Column(db.String(80))
+    # Latest plaza touched (becomes the exit when trip closes)
+    last_plaza      = db.Column(db.String(80))
+    # When we last saw plaza activity (used for the 30-min idle close rule)
+    last_event_ts   = db.Column(db.DateTime)
+    # Last GPS position seen (for diagnostics)
+    last_lat        = db.Column(db.Float)
+    last_lng        = db.Column(db.Float)
+    last_position_at= db.Column(db.DateTime)
+    # Which TripRecord this state maps to (for auto-fill). Set when entry detected.
+    open_trip_id    = db.Column(db.Integer, db.ForeignKey('trip_records.id'), nullable=True)
+    # Bookkeeping
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    plate = db.relationship('Plate')
+
+
+class CartrackEvent(db.Model):
+    """Audit log of plaza entry/exit events detected by the polling worker.
+
+    Used for debugging, dashboards, and post-hoc analysis.
+    Auto-pruned to last 60 days to keep storage bounded.
+    """
+    __tablename__ = 'cartrack_events'
+    id          = db.Column(db.Integer, primary_key=True)
+    plate_id    = db.Column(db.Integer, db.ForeignKey('plates.id'), nullable=False, index=True)
+    event_type  = db.Column(db.String(20), nullable=False)   # 'enter' | 'exit' | 'trip_closed'
+    plaza_name  = db.Column(db.String(80))                   # normalized plaza name
+    expressway  = db.Column(db.String(50))                   # which expressway it belongs to
+    lat         = db.Column(db.Float)
+    lng         = db.Column(db.Float)
+    trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'), nullable=True)
+    # For trip_closed events: the computed toll fee
+    toll_fee    = db.Column(db.Float)
+    toll_entry  = db.Column(db.String(80))
+    toll_exit   = db.Column(db.String(80))
+    # Bookkeeping
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    notes       = db.Column(db.String(200))
+
+    plate = db.relationship('Plate')
 
 
 # ── App Settings (key/value store) ────────────────────────────────────────

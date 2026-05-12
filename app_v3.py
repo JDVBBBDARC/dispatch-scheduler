@@ -44,6 +44,7 @@ from flask import (Flask, render_template, request, redirect, url_for,
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
                        Driver, Helper, Product, Client, Dispatcher, Plate,
                        ChangeLog, Attendance, HelperAttendance, BreakdownLog, AppSetting,
+                       CartrackTruckState, CartrackEvent,
                        TRUCK_TYPES_SEED, STATUSES,
                        ATTENDANCE_STATUSES, BREAKDOWN_STATUSES, TRIP_TYPES,
                        DOC_HEADER_DEFAULTS, SHEETS_WEBHOOK_KEY, SHEETS_WEBHOOK_DEFAULT,
@@ -1928,6 +1929,10 @@ def init_db():
         # breakdown_log — precise start/end timestamps for hours calculation
         add_col('breakdown_log', 'started_at', 'ALTER TABLE breakdown_log ADD COLUMN started_at DATETIME')
         add_col('breakdown_log', 'ended_at',   'ALTER TABLE breakdown_log ADD COLUMN ended_at DATETIME')
+
+        # plates — Cartrack GPS provider linkage (which Cartrack vehicle this plate maps to)
+        add_col('plates', 'cartrack_vehicle_id',
+                'ALTER TABLE plates ADD COLUMN cartrack_vehicle_id INTEGER')
 
         # drivers — truck type category (which type they're trained/assigned to drive)
         # Legacy single-category column. Source of truth moved to driver_truck_types
