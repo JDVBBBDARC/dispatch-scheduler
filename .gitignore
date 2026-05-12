@@ -7,3 +7,6 @@ dispatch.db
 launch.bat
 .env
 *firebase-adminsdk*.json
+# Cartrack API test script — contains credentials, never commit
+cartrack_test.py
+cartrack_credentials.py
