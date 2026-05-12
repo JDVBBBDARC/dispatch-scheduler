@@ -1329,6 +1329,160 @@ def api_breakdown_delete(lid):
     return jsonify({'ok': True})
 
 
+# ── CARTRACK GPS INTEGRATION ──────────────────────────────────────────────
+@app.route('/api/cartrack/vehicles')
+@login_required
+def api_cartrack_vehicles():
+    """Return the list of vehicles from Cartrack (for plate-mapping UI)."""
+    from cartrack_client import CartrackClient
+    cc = CartrackClient.from_env()
+    if not cc.configured:
+        return jsonify({'error': 'Cartrack not configured. Set CARTRACK_USERNAME and CARTRACK_PASSWORD in environment variables.'}), 503
+    vehicles, err = cc.list_vehicles()
+    if err:
+        return jsonify({'error': err}), 502
+    # Trim down to just what the UI needs
+    slim = [{
+        'vehicle_id':    v.get('vehicle_id'),
+        'registration':  v.get('registration') or v.get('vehicle_name'),
+        'vehicle_name':  v.get('vehicle_name'),
+        'description':   v.get('client_vehicle_description'),
+        'type':          v.get('vehicle_type'),
+    } for v in (vehicles or [])]
+    return jsonify({'vehicles': slim, 'total': len(slim)})
+
+
+@app.route('/api/cartrack/plate/<int:plate_id>/map', methods=['POST'])
+@login_required
+def api_cartrack_plate_map(plate_id):
+    """Map a Plate to a Cartrack vehicle_id (or clear the mapping)."""
+    plate = Plate.query.get_or_404(plate_id)
+    data = request.get_json() or {}
+    cartrack_id = data.get('cartrack_vehicle_id')
+    if cartrack_id in (None, '', 0):
+        plate.cartrack_vehicle_id = None
+        action = f"Unmapped {plate.display} from Cartrack"
+    else:
+        try:
+            plate.cartrack_vehicle_id = int(cartrack_id)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid cartrack_vehicle_id'}), 400
+        action = f"Mapped {plate.display} -> Cartrack #{cartrack_id}"
+    db.session.commit()
+    log_change(action, 'plates')
+    db.session.commit()
+    return jsonify({'ok': True, 'plate_id': plate.id,
+                    'cartrack_vehicle_id': plate.cartrack_vehicle_id})
+
+
+@app.route('/api/cartrack/auto-map', methods=['POST'])
+@login_required
+def api_cartrack_auto_map():
+    """Try to auto-match all unmapped active plates to Cartrack vehicles by
+    matching the plate number against the vehicle's registration field."""
+    from cartrack_client import CartrackClient
+    cc = CartrackClient.from_env()
+    if not cc.configured:
+        return jsonify({'error': 'Cartrack not configured'}), 503
+
+    vehicles, err = cc.list_vehicles()
+    if err:
+        return jsonify({'error': err}), 502
+
+    matched, ambiguous, unmatched = [], [], []
+    plates = Plate.query.filter(Plate.active == True,
+                                Plate.cartrack_vehicle_id.is_(None)).all()
+    from cartrack_client import _norm_plate
+    for plate in plates:
+        target = _norm_plate(plate.plate_no)
+        if not target:
+            continue
+        hits = []
+        for v in vehicles:
+            for field in ('registration', 'vehicle_name'):
+                v_norm = _norm_plate(v.get(field) or '')
+                if target and v_norm and target in v_norm:
+                    hits.append(v)
+                    break
+        if len(hits) == 1:
+            plate.cartrack_vehicle_id = hits[0].get('vehicle_id')
+            matched.append({'plate': plate.display,
+                            'cartrack_id': plate.cartrack_vehicle_id,
+                            'cartrack_name': hits[0].get('vehicle_name')})
+        elif len(hits) > 1:
+            ambiguous.append({'plate': plate.display,
+                              'candidates': [h.get('vehicle_name') for h in hits]})
+        else:
+            unmatched.append(plate.display)
+    db.session.commit()
+    log_change(f"Cartrack auto-map: {len(matched)} matched, {len(ambiguous)} ambiguous, {len(unmatched)} unmatched", 'plates')
+    db.session.commit()
+    return jsonify({
+        'matched_count':   len(matched),
+        'ambiguous_count': len(ambiguous),
+        'unmatched_count': len(unmatched),
+        'matched':         matched,
+        'ambiguous':       ambiguous,
+        'unmatched':       unmatched,
+    })
+
+
+@app.route('/api/cartrack/poll-now', methods=['POST'])
+@login_required
+def api_cartrack_poll_now():
+    """Manually trigger the polling worker. Returns the summary dict."""
+    try:
+        from cartrack_poll import run_poll
+        summary = run_poll(app=app)
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@app.route('/api/cartrack/status')
+@login_required
+def api_cartrack_status():
+    """Diagnostic endpoint: how many plates are mapped, when last poll ran, etc."""
+    total_plates = Plate.query.filter_by(active=True).count()
+    mapped_plates = Plate.query.filter(
+        Plate.active == True, Plate.cartrack_vehicle_id.isnot(None)
+    ).count()
+    # Most recent CartrackEvent
+    last_event = CartrackEvent.query.order_by(CartrackEvent.created_at.desc()).first()
+    # CartrackTruckState count + open trips count
+    state_total = CartrackTruckState.query.count()
+    open_trips  = CartrackTruckState.query.filter(
+        CartrackTruckState.entry_plaza.isnot(None)
+    ).count()
+    # Cartrack config
+    cartrack_configured = bool(os.environ.get('CARTRACK_USERNAME') and
+                               os.environ.get('CARTRACK_PASSWORD'))
+    # Toll fills today
+    from sqlalchemy import func
+    today = ph_today()
+    fills_today = (db.session.query(func.count(CartrackEvent.id))
+                   .filter(CartrackEvent.event_type == 'trip_closed',
+                           CartrackEvent.toll_fee.isnot(None),
+                           func.date(CartrackEvent.created_at) == today)
+                   .scalar() or 0)
+    return jsonify({
+        'cartrack_configured': cartrack_configured,
+        'plates_total':        total_plates,
+        'plates_mapped':       mapped_plates,
+        'plates_unmapped':     total_plates - mapped_plates,
+        'tracked_trucks':      state_total,
+        'open_trips':          open_trips,
+        'last_event': {
+            'when':       last_event.created_at.isoformat() if last_event else None,
+            'plate_id':   last_event.plate_id if last_event else None,
+            'type':       last_event.event_type if last_event else None,
+            'plaza':      last_event.plaza_name if last_event else None,
+        } if last_event else None,
+        'auto_fills_today': fills_today,
+    })
+
+
 # ── TOLL CALCULATOR ───────────────────────────────────────────────────────
 import json as _json_mod
 from collections import deque
