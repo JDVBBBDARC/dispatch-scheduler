@@ -77,7 +77,11 @@ class CartrackClient:
                 pass
 
         s = requests.Session()
-        s.trust_env = False           # ignore HTTP(S)_PROXY env vars (they cause hangs on corp networks)
+        # NOTE: Do NOT set s.trust_env = False here. On PythonAnywhere free tier,
+        # outbound HTTPS goes through their proxy (HTTPS_PROXY env var) which
+        # enforces the whitelist. Bypassing it would fail with [Errno 111]
+        # Connection refused even after the host is whitelisted. We keep
+        # trust_env at its default (True) so requests honors the proxy.
         s.verify    = not self.insecure_ssl
         s.auth      = (self.username, self.password)
         s.headers.update({
@@ -114,16 +118,34 @@ class CartrackClient:
     # ─────────────────────────────────────────────────────────────
 
     def list_vehicles(self):
-        """Return the list of vehicles in the account.
+        """Return the list of vehicles in the account — handles pagination.
+
+        Cartrack's /rest/vehicles returns 10 records per page by default and
+        exposes pagination via a 'meta' object: {'current_page', 'last_page',
+        'per_page', 'total'}. We loop through all pages and concatenate.
 
         Returns:
             (list_of_vehicle_dicts, None) on success
             (None, error_string) on failure
         """
-        status, body = self._call('/rest/vehicles')
-        if status != 200 or not isinstance(body, dict):
-            return None, f'list_vehicles HTTP {status}: {body}'
-        return body.get('data', []), None
+        all_vehicles = []
+        page = 1
+        while True:
+            status, body = self._call('/rest/vehicles', params={'page': page})
+            if status != 200 or not isinstance(body, dict):
+                return None, f'list_vehicles HTTP {status}: {body}'
+            data = body.get('data', [])
+            all_vehicles.extend(data)
+            meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
+            current_page = meta.get('current_page', page)
+            last_page    = meta.get('last_page', 1)
+            if current_page >= last_page:
+                break
+            page += 1
+            # Safety guard — never fetch more than 100 pages
+            if page > 100:
+                break
+        return all_vehicles, None
 
     def get_status(self):
         """Return current status (position + geofence_ids) for all vehicles."""
@@ -187,7 +209,11 @@ class CartrackClient:
         if not norm:
             return None, 'empty plate_no'
         for v in vehicles:
-            for field in ('registration', 'vehicle_name'):
+            # Cartrack exposes plate identifiers in multiple fields:
+            #   'registration'  — compact form, e.g. 'DT06-LAK8098' or 'NKR9373'
+            #   'vehicle_name'  — display form, e.g. 'DT06 - LAK8098'
+            #   'name'          — alternate display field used in some accounts
+            for field in ('registration', 'vehicle_name', 'name'):
                 if _norm_plate(v.get(field) or '').endswith(norm):
                     return v, None
                 if norm in _norm_plate(v.get(field) or ''):
