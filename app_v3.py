@@ -1668,6 +1668,240 @@ def toll_calculator():
     return render_template('toll_calculator.html')
 
 
+# ── TOLL LOG (Cartrack GPS Events) ────────────────────────────────────────
+@app.route('/toll-log')
+@login_required
+def toll_log():
+    """Render the Toll Log page — shows all Cartrack plaza events and auto-fills."""
+    return render_template('toll_log/index.html')
+
+
+@app.route('/api/toll-log/summary')
+@login_required
+def api_toll_log_summary():
+    """Return summary stats for the Toll Log page: today/week/month counts + fees."""
+    today = ph_today()
+    today_start = datetime.combine(today, datetime.min.time())
+    week_start  = today_start - timedelta(days=7)
+    month_start = today_start - timedelta(days=30)
+
+    def stats_for(since):
+        events = CartrackEvent.query.filter(CartrackEvent.created_at >= since)
+        total = events.count()
+        enters = events.filter_by(event_type='enter').count()
+        exits  = events.filter_by(event_type='exit').count()
+        closed = events.filter_by(event_type='trip_closed').all()
+        total_fee = sum((e.toll_fee or 0) for e in closed)
+        unique_trucks = events.with_entities(CartrackEvent.plate_id).distinct().count()
+        return {
+            'total_events': total,
+            'enters': enters,
+            'exits': exits,
+            'trip_closed': len(closed),
+            'total_toll_fee': round(total_fee, 2),
+            'unique_trucks': unique_trucks,
+        }
+
+    return jsonify({
+        'today': stats_for(today_start),
+        'week':  stats_for(week_start),
+        'month': stats_for(month_start),
+    })
+
+
+@app.route('/api/toll-log/events')
+@login_required
+def api_toll_log_events():
+    """Return filtered list of CartrackEvent rows for the Toll Log table."""
+    # Parse filters
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    plate_id  = request.args.get('plate_id', '')
+    event_type= request.args.get('event_type', '')
+    expressway= request.args.get('expressway', '')
+    limit     = int(request.args.get('limit', 200))
+
+    q = CartrackEvent.query
+    if date_from:
+        try:
+            d = datetime.strptime(date_from, '%Y-%m-%d')
+            q = q.filter(CartrackEvent.created_at >= d)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            d = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            q = q.filter(CartrackEvent.created_at < d)
+        except ValueError:
+            pass
+    if plate_id:
+        try:
+            q = q.filter(CartrackEvent.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if event_type:
+        q = q.filter(CartrackEvent.event_type == event_type)
+    if expressway:
+        q = q.filter(CartrackEvent.expressway == expressway)
+
+    events = q.order_by(CartrackEvent.created_at.desc()).limit(limit).all()
+
+    rows = []
+    for e in events:
+        plate = e.plate
+        rows.append({
+            'id':         e.id,
+            'created_at': e.created_at.isoformat() if e.created_at else None,
+            'plate_id':   e.plate_id,
+            'plate_no':   plate.plate_no if plate else 'N/A',
+            'event_type': e.event_type,
+            'plaza_name': e.plaza_name or '',
+            'expressway': e.expressway or '',
+            'lat':        e.lat,
+            'lng':        e.lng,
+            'trip_id':    e.trip_id,
+            'toll_fee':   e.toll_fee,
+            'toll_entry': e.toll_entry,
+            'toll_exit':  e.toll_exit,
+            'notes':      e.notes or '',
+        })
+    return jsonify({'events': rows, 'count': len(rows), 'limit': limit})
+
+
+@app.route('/api/toll-log/filters')
+@login_required
+def api_toll_log_filters():
+    """Return dropdown options for filters: plates with events, expressways."""
+    # Plates that have at least one event
+    plate_ids = [pid for (pid,) in
+                 db.session.query(CartrackEvent.plate_id).distinct().all()
+                 if pid is not None]
+    plates = Plate.query.filter(Plate.id.in_(plate_ids))\
+                        .order_by(Plate.plate_no).all() if plate_ids else []
+
+    # Distinct expressways
+    expressways = sorted(set(
+        (e or '') for (e,) in
+        db.session.query(CartrackEvent.expressway).distinct().all()
+        if e
+    ))
+
+    return jsonify({
+        'plates':      [{'id': p.id, 'plate_no': p.plate_no} for p in plates],
+        'expressways': expressways,
+        'event_types': ['enter', 'exit', 'trip_closed'],
+    })
+
+
+@app.route('/api/toll-log/export')
+@login_required
+def api_toll_log_export():
+    """Export filtered events to Excel (.xlsx)."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return jsonify({'error': 'openpyxl not installed on server'}), 500
+
+    # Same filters as events endpoint
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    plate_id  = request.args.get('plate_id', '')
+    event_type= request.args.get('event_type', '')
+    expressway= request.args.get('expressway', '')
+
+    q = CartrackEvent.query
+    if date_from:
+        try:
+            d = datetime.strptime(date_from, '%Y-%m-%d')
+            q = q.filter(CartrackEvent.created_at >= d)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            d = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            q = q.filter(CartrackEvent.created_at < d)
+        except ValueError:
+            pass
+    if plate_id:
+        try:
+            q = q.filter(CartrackEvent.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if event_type:
+        q = q.filter(CartrackEvent.event_type == event_type)
+    if expressway:
+        q = q.filter(CartrackEvent.expressway == expressway)
+
+    events = q.order_by(CartrackEvent.created_at.desc()).all()
+
+    # Build workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Toll Log"
+
+    # Header row with styling
+    headers = ['Date/Time', 'Plate No', 'Event Type', 'Plaza',
+               'Expressway', 'Toll Fee', 'Entry Plaza', 'Exit Plaza',
+               'Trip ID', 'Lat', 'Lng', 'Notes']
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill('solid', fgColor='8B1A2B')
+    center = Alignment(horizontal='center', vertical='center')
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+
+    # Data rows
+    for row_idx, e in enumerate(events, 2):
+        plate = e.plate
+        plate_no = plate.plate_no if plate else 'N/A'
+        ws.cell(row=row_idx, column=1,  value=e.created_at.strftime('%Y-%m-%d %H:%M:%S') if e.created_at else '')
+        ws.cell(row=row_idx, column=2,  value=plate_no)
+        ws.cell(row=row_idx, column=3,  value=e.event_type or '')
+        ws.cell(row=row_idx, column=4,  value=e.plaza_name or '')
+        ws.cell(row=row_idx, column=5,  value=e.expressway or '')
+        ws.cell(row=row_idx, column=6,  value=float(e.toll_fee) if e.toll_fee else None)
+        ws.cell(row=row_idx, column=7,  value=e.toll_entry or '')
+        ws.cell(row=row_idx, column=8,  value=e.toll_exit or '')
+        ws.cell(row=row_idx, column=9,  value=e.trip_id)
+        ws.cell(row=row_idx, column=10, value=e.lat)
+        ws.cell(row=row_idx, column=11, value=e.lng)
+        ws.cell(row=row_idx, column=12, value=e.notes or '')
+
+    # Summary row at bottom (total toll fees)
+    if events:
+        last_row = len(events) + 1
+        summary_row = last_row + 2
+        ws.cell(row=summary_row, column=1, value='TOTAL TOLL FEES:').font = Font(bold=True)
+        ws.cell(row=summary_row, column=6,
+                value=f'=SUM(F2:F{last_row})').font = Font(bold=True)
+
+    # Auto-size columns
+    column_widths = [20, 15, 14, 22, 12, 12, 22, 22, 10, 12, 12, 30]
+    for col_idx, width in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    # Freeze header row
+    ws.freeze_panes = 'A2'
+
+    # Send file
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f'toll_log_{ph_today().isoformat()}.xlsx'
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+
 # ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────
 @app.route('/api/sync-to-sheets', methods=['POST'])
 @login_required
