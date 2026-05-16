@@ -2949,7 +2949,8 @@
         "Silangan": 223.0,
         "Calamba": 244.0,
         "Sto. Tomas": 278.0,
-        "C-5": 49.0
+        "C-5": 49.0,
+        "Don Bosco": 49.0
       },
       "Magallanes": {
         "Merville": 49.0,
@@ -2991,7 +2992,8 @@
         "Calamba": 195.0,
         "Sto. Tomas": 229.0,
         "C-5": 49.0,
-        "Amorsolo": 72
+        "Amorsolo": 72,
+        "Don Bosco": 49.0
       },
       "Skyway / Buendia": {
         "Bicutan": 72.0,
@@ -3032,7 +3034,8 @@
         "Calamba": 160.0,
         "Sto. Tomas": 194.0,
         "C-5": 84.0,
-        "Amorsolo": 118.0
+        "Amorsolo": 118.0,
+        "Don Bosco": 84.0
       },
       "Alabang": {
         "Skyway / Buendia": 164.0,
@@ -3054,7 +3057,8 @@
         "Calamba": 126.0,
         "Sto. Tomas": 160.0,
         "C-5": 118.0,
-        "Amorsolo": 164.0
+        "Amorsolo": 164.0,
+        "Don Bosco": 118.0
       },
       "Filinvest": {
         "Skyway / Buendia": 170.0,
@@ -3076,7 +3080,8 @@
         "Calamba": 121.0,
         "Sto. Tomas": 155.0,
         "C-5": 124.0,
-        "Amorsolo": 170.0
+        "Amorsolo": 170.0,
+        "Don Bosco": 124.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 208.0,
@@ -3098,7 +3103,8 @@
         "Calamba": 128.0,
         "Sto. Tomas": 162.0,
         "C-5": 162.0,
-        "Amorsolo": 208.0
+        "Amorsolo": 208.0,
+        "Don Bosco": 162.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 185.0,
@@ -3120,7 +3126,8 @@
         "Calamba": 105.0,
         "Sto. Tomas": 139.0,
         "C-5": 139.0,
-        "Amorsolo": 185.0
+        "Amorsolo": 185.0,
+        "Don Bosco": 139.0
       },
       "San Pedro": {
         "Skyway / Buendia": 192.0,
@@ -3142,7 +3149,8 @@
         "Calamba": 98.0,
         "Sto. Tomas": 132.0,
         "C-5": 146.0,
-        "Amorsolo": 192.0
+        "Amorsolo": 192.0,
+        "Don Bosco": 146.0
       },
       "Southwoods": {
         "Skyway / Buendia": 210.0,
@@ -3164,7 +3172,8 @@
         "Calamba": 81.0,
         "Sto. Tomas": 115.0,
         "C-5": 164.0,
-        "Amorsolo": 210.0
+        "Amorsolo": 210.0,
+        "Don Bosco": 164.0
       },
       "Carmona": {
         "Skyway / Buendia": 216.0,
@@ -3186,7 +3195,8 @@
         "Calamba": 74.0,
         "Sto. Tomas": 108.0,
         "C-5": 170.0,
-        "Amorsolo": 216.0
+        "Amorsolo": 216.0,
+        "Don Bosco": 170.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 228.0,
@@ -3208,7 +3218,8 @@
         "Calamba": 62.0,
         "Sto. Tomas": 96.0,
         "C-5": 182.0,
-        "Amorsolo": 228.0
+        "Amorsolo": 228.0,
+        "Don Bosco": 182.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 239.0,
@@ -3230,7 +3241,8 @@
         "Calamba": 52.0,
         "Sto. Tomas": 86.0,
         "C-5": 193.0,
-        "Amorsolo": 239.0
+        "Amorsolo": 239.0,
+        "Don Bosco": 193.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 253.0,
@@ -3252,7 +3264,8 @@
         "Calamba": 37.0,
         "Sto. Tomas": 71.0,
         "C-5": 207.0,
-        "Amorsolo": 253.0
+        "Amorsolo": 253.0,
+        "Don Bosco": 207.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 263.0,
@@ -3274,7 +3287,8 @@
         "Calamba": 27.0,
         "Sto. Tomas": 61.0,
         "C-5": 217.0,
-        "Amorsolo": 263.0
+        "Amorsolo": 263.0,
+        "Don Bosco": 217.0
       },
       "Silangan": {
         "Skyway / Buendia": 269.0,
@@ -3296,7 +3310,8 @@
         "Calamba": 21.0,
         "Sto. Tomas": 55.0,
         "C-5": 223.0,
-        "Amorsolo": 269.0
+        "Amorsolo": 269.0,
+        "Don Bosco": 223.0
       },
       "Calamba": {
         "Skyway / Buendia": 290.0,
@@ -3318,7 +3333,8 @@
         "Silangan": 21.0,
         "Sto. Tomas": 34.0,
         "C-5": 244.0,
-        "Amorsolo": 290.0
+        "Amorsolo": 290.0,
+        "Don Bosco": 244.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 324.0,
@@ -3340,7 +3356,8 @@
         "Silangan": 55.0,
         "Calamba": 34.0,
         "C-5": 278.0,
-        "Amorsolo": 324.0
+        "Amorsolo": 324.0,
+        "Don Bosco": 278.0
       },
       "C-5": {
         "Merville": 49.0,
@@ -3360,7 +3377,8 @@
         "Silangan": 223.0,
         "Calamba": 244.0,
         "Sto. Tomas": 278.0,
-        "Magallanes": 0
+        "Magallanes": 0,
+        "Don Bosco": 0
       },
       "Amorsolo": {
         "Bicutan": 72,
@@ -3380,6 +3398,26 @@
         "Calamba": 290.0,
         "Sto. Tomas": 324.0,
         "Skyway / Buendia": 0
+      },
+      "Don Bosco": {
+        "Merville": 49.0,
+        "Bicutan": 49.0,
+        "Sucat": 84.0,
+        "Alabang": 118.0,
+        "Filinvest": 124.0,
+        "Muntinlupa-Cavite X'way": 162.0,
+        "Susana Heights": 139.0,
+        "San Pedro": 146.0,
+        "Southwoods": 164.0,
+        "Carmona": 170.0,
+        "Mamplasan": 182.0,
+        "Sta. Rosa": 193.0,
+        "ABI/Greenfield": 207.0,
+        "Cabuyao": 217.0,
+        "Silangan": 223.0,
+        "Calamba": 244.0,
+        "Sto. Tomas": 278.0,
+        "C-5": 0
       }
     },
     "Class 2": {
@@ -3401,7 +3439,8 @@
         "Silangan": 448.0,
         "Calamba": 490.0,
         "Sto. Tomas": 558.0,
-        "C-5": 98.0
+        "C-5": 98.0,
+        "Don Bosco": 98.0
       },
       "Magallanes": {
         "Merville": 98.0,
@@ -3443,7 +3482,8 @@
         "Calamba": 391.0,
         "Sto. Tomas": 459.0,
         "C-5": 98.0,
-        "Amorsolo": 144
+        "Amorsolo": 144,
+        "Don Bosco": 98.0
       },
       "Skyway / Buendia": {
         "Bicutan": 145.0,
@@ -3484,7 +3524,8 @@
         "Calamba": 322.0,
         "Sto. Tomas": 390.0,
         "C-5": 168.0,
-        "Amorsolo": 237.0
+        "Amorsolo": 237.0,
+        "Don Bosco": 168.0
       },
       "Alabang": {
         "Skyway / Buendia": 329.0,
@@ -3506,7 +3547,8 @@
         "Calamba": 253.0,
         "Sto. Tomas": 321.0,
         "C-5": 237.0,
-        "Amorsolo": 329.0
+        "Amorsolo": 329.0,
+        "Don Bosco": 237.0
       },
       "Filinvest": {
         "Skyway / Buendia": 340.0,
@@ -3528,7 +3570,8 @@
         "Calamba": 242.0,
         "Sto. Tomas": 310.0,
         "C-5": 248.0,
-        "Amorsolo": 340.0
+        "Amorsolo": 340.0,
+        "Don Bosco": 248.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 418.0,
@@ -3550,7 +3593,8 @@
         "Calamba": 258.0,
         "Sto. Tomas": 326.0,
         "C-5": 326.0,
-        "Amorsolo": 418.0
+        "Amorsolo": 418.0,
+        "Don Bosco": 326.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 371.0,
@@ -3572,7 +3616,8 @@
         "Calamba": 211.0,
         "Sto. Tomas": 279.0,
         "C-5": 279.0,
-        "Amorsolo": 371.0
+        "Amorsolo": 371.0,
+        "Don Bosco": 279.0
       },
       "San Pedro": {
         "Skyway / Buendia": 385.0,
@@ -3594,7 +3639,8 @@
         "Calamba": 197.0,
         "Sto. Tomas": 265.0,
         "C-5": 293.0,
-        "Amorsolo": 385.0
+        "Amorsolo": 385.0,
+        "Don Bosco": 293.0
       },
       "Southwoods": {
         "Skyway / Buendia": 420.0,
@@ -3616,7 +3662,8 @@
         "Calamba": 162.0,
         "Sto. Tomas": 230.0,
         "C-5": 328.0,
-        "Amorsolo": 420.0
+        "Amorsolo": 420.0,
+        "Don Bosco": 328.0
       },
       "Carmona": {
         "Skyway / Buendia": 434.0,
@@ -3638,7 +3685,8 @@
         "Calamba": 148.0,
         "Sto. Tomas": 216.0,
         "C-5": 342.0,
-        "Amorsolo": 434.0
+        "Amorsolo": 434.0,
+        "Don Bosco": 342.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 457.0,
@@ -3660,7 +3708,8 @@
         "Calamba": 124.0,
         "Sto. Tomas": 192.0,
         "C-5": 365.0,
-        "Amorsolo": 457.0
+        "Amorsolo": 457.0,
+        "Don Bosco": 365.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 478.0,
@@ -3682,7 +3731,8 @@
         "Calamba": 104.0,
         "Sto. Tomas": 172.0,
         "C-5": 386.0,
-        "Amorsolo": 478.0
+        "Amorsolo": 478.0,
+        "Don Bosco": 386.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 508.0,
@@ -3704,7 +3754,8 @@
         "Calamba": 74.0,
         "Sto. Tomas": 142.0,
         "C-5": 416.0,
-        "Amorsolo": 508.0
+        "Amorsolo": 508.0,
+        "Don Bosco": 416.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 527.0,
@@ -3726,7 +3777,8 @@
         "Calamba": 55.0,
         "Sto. Tomas": 123.0,
         "C-5": 435.0,
-        "Amorsolo": 527.0
+        "Amorsolo": 527.0,
+        "Don Bosco": 435.0
       },
       "Silangan": {
         "Skyway / Buendia": 540.0,
@@ -3748,7 +3800,8 @@
         "Calamba": 42.0,
         "Sto. Tomas": 110.0,
         "C-5": 448.0,
-        "Amorsolo": 540.0
+        "Amorsolo": 540.0,
+        "Don Bosco": 448.0
       },
       "Calamba": {
         "Skyway / Buendia": 582.0,
@@ -3770,7 +3823,8 @@
         "Silangan": 42.0,
         "Sto. Tomas": 68.0,
         "C-5": 490.0,
-        "Amorsolo": 582.0
+        "Amorsolo": 582.0,
+        "Don Bosco": 490.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 650.0,
@@ -3792,7 +3846,8 @@
         "Silangan": 110.0,
         "Calamba": 68.0,
         "C-5": 558.0,
-        "Amorsolo": 650.0
+        "Amorsolo": 650.0,
+        "Don Bosco": 558.0
       },
       "C-5": {
         "Merville": 98.0,
@@ -3812,7 +3867,8 @@
         "Silangan": 448.0,
         "Calamba": 490.0,
         "Sto. Tomas": 558.0,
-        "Magallanes": 0
+        "Magallanes": 0,
+        "Don Bosco": 0
       },
       "Amorsolo": {
         "Bicutan": 144,
@@ -3832,6 +3888,26 @@
         "Calamba": 582.0,
         "Sto. Tomas": 650.0,
         "Skyway / Buendia": 0
+      },
+      "Don Bosco": {
+        "Merville": 98.0,
+        "Bicutan": 98.0,
+        "Sucat": 168.0,
+        "Alabang": 237.0,
+        "Filinvest": 248.0,
+        "Muntinlupa-Cavite X'way": 326.0,
+        "Susana Heights": 279.0,
+        "San Pedro": 293.0,
+        "Southwoods": 328.0,
+        "Carmona": 342.0,
+        "Mamplasan": 365.0,
+        "Sta. Rosa": 386.0,
+        "ABI/Greenfield": 416.0,
+        "Cabuyao": 435.0,
+        "Silangan": 448.0,
+        "Calamba": 490.0,
+        "Sto. Tomas": 558.0,
+        "C-5": 0
       }
     },
     "Class 3": {
@@ -3853,7 +3929,8 @@
         "Silangan": 672.0,
         "Calamba": 735.0,
         "Sto. Tomas": 837.0,
-        "C-5": 147.0
+        "C-5": 147.0,
+        "Don Bosco": 147.0
       },
       "Magallanes": {
         "Merville": 147.0,
@@ -3895,7 +3972,8 @@
         "Calamba": 587.0,
         "Sto. Tomas": 689.0,
         "C-5": 147.0,
-        "Amorsolo": 216
+        "Amorsolo": 216,
+        "Don Bosco": 147.0
       },
       "Skyway / Buendia": {
         "Bicutan": 218.0,
@@ -3936,7 +4014,8 @@
         "Calamba": 483.0,
         "Sto. Tomas": 585.0,
         "C-5": 252.0,
-        "Amorsolo": 356.0
+        "Amorsolo": 356.0,
+        "Don Bosco": 252.0
       },
       "Alabang": {
         "Skyway / Buendia": 493.0,
@@ -3958,7 +4037,8 @@
         "Calamba": 379.0,
         "Sto. Tomas": 481.0,
         "C-5": 356.0,
-        "Amorsolo": 493.0
+        "Amorsolo": 493.0,
+        "Don Bosco": 356.0
       },
       "Filinvest": {
         "Skyway / Buendia": 510.0,
@@ -3980,7 +4060,8 @@
         "Calamba": 362.0,
         "Sto. Tomas": 464.0,
         "C-5": 373.0,
-        "Amorsolo": 510.0
+        "Amorsolo": 510.0,
+        "Don Bosco": 373.0
       },
       "Muntinlupa-Cavite X'way": {
         "Skyway / Buendia": 626.0,
@@ -4002,7 +4083,8 @@
         "Calamba": 386.0,
         "Sto. Tomas": 488.0,
         "C-5": 489.0,
-        "Amorsolo": 626.0
+        "Amorsolo": 626.0,
+        "Don Bosco": 489.0
       },
       "Susana Heights": {
         "Skyway / Buendia": 556.0,
@@ -4024,7 +4106,8 @@
         "Calamba": 316.0,
         "Sto. Tomas": 418.0,
         "C-5": 419.0,
-        "Amorsolo": 556.0
+        "Amorsolo": 556.0,
+        "Don Bosco": 419.0
       },
       "San Pedro": {
         "Skyway / Buendia": 577.0,
@@ -4046,7 +4129,8 @@
         "Calamba": 295.0,
         "Sto. Tomas": 397.0,
         "C-5": 440.0,
-        "Amorsolo": 577.0
+        "Amorsolo": 577.0,
+        "Don Bosco": 440.0
       },
       "Southwoods": {
         "Skyway / Buendia": 630.0,
@@ -4068,7 +4152,8 @@
         "Calamba": 242.0,
         "Sto. Tomas": 344.0,
         "C-5": 493.0,
-        "Amorsolo": 630.0
+        "Amorsolo": 630.0,
+        "Don Bosco": 493.0
       },
       "Carmona": {
         "Skyway / Buendia": 650.0,
@@ -4090,7 +4175,8 @@
         "Calamba": 222.0,
         "Sto. Tomas": 324.0,
         "C-5": 513.0,
-        "Amorsolo": 650.0
+        "Amorsolo": 650.0,
+        "Don Bosco": 513.0
       },
       "Mamplasan": {
         "Skyway / Buendia": 685.0,
@@ -4112,7 +4198,8 @@
         "Calamba": 187.0,
         "Sto. Tomas": 289.0,
         "C-5": 548.0,
-        "Amorsolo": 685.0
+        "Amorsolo": 685.0,
+        "Don Bosco": 548.0
       },
       "Sta. Rosa": {
         "Skyway / Buendia": 717.0,
@@ -4134,7 +4221,8 @@
         "Calamba": 155.0,
         "Sto. Tomas": 257.0,
         "C-5": 580.0,
-        "Amorsolo": 717.0
+        "Amorsolo": 717.0,
+        "Don Bosco": 580.0
       },
       "ABI/Greenfield": {
         "Skyway / Buendia": 761.0,
@@ -4156,7 +4244,8 @@
         "Calamba": 111.0,
         "Sto. Tomas": 213.0,
         "C-5": 624.0,
-        "Amorsolo": 761.0
+        "Amorsolo": 761.0,
+        "Don Bosco": 624.0
       },
       "Cabuyao": {
         "Skyway / Buendia": 790.0,
@@ -4178,7 +4267,8 @@
         "Calamba": 82.0,
         "Sto. Tomas": 184.0,
         "C-5": 653.0,
-        "Amorsolo": 790.0
+        "Amorsolo": 790.0,
+        "Don Bosco": 653.0
       },
       "Silangan": {
         "Skyway / Buendia": 809.0,
@@ -4200,7 +4290,8 @@
         "Calamba": 63.0,
         "Sto. Tomas": 165.0,
         "C-5": 672.0,
-        "Amorsolo": 809.0
+        "Amorsolo": 809.0,
+        "Don Bosco": 672.0
       },
       "Calamba": {
         "Skyway / Buendia": 872.0,
@@ -4222,7 +4313,8 @@
         "Silangan": 63.0,
         "Sto. Tomas": 102.0,
         "C-5": 735.0,
-        "Amorsolo": 872.0
+        "Amorsolo": 872.0,
+        "Don Bosco": 735.0
       },
       "Sto. Tomas": {
         "Skyway / Buendia": 974.0,
@@ -4244,7 +4336,8 @@
         "Silangan": 165.0,
         "Calamba": 102.0,
         "C-5": 837.0,
-        "Amorsolo": 974.0
+        "Amorsolo": 974.0,
+        "Don Bosco": 837.0
       },
       "C-5": {
         "Merville": 147.0,
@@ -4264,7 +4357,8 @@
         "Silangan": 672.0,
         "Calamba": 735.0,
         "Sto. Tomas": 837.0,
-        "Magallanes": 0
+        "Magallanes": 0,
+        "Don Bosco": 0
       },
       "Amorsolo": {
         "Bicutan": 216,
@@ -4284,6 +4378,26 @@
         "Calamba": 872.0,
         "Sto. Tomas": 974.0,
         "Skyway / Buendia": 0
+      },
+      "Don Bosco": {
+        "Merville": 147.0,
+        "Bicutan": 147.0,
+        "Sucat": 252.0,
+        "Alabang": 356.0,
+        "Filinvest": 373.0,
+        "Muntinlupa-Cavite X'way": 489.0,
+        "Susana Heights": 419.0,
+        "San Pedro": 440.0,
+        "Southwoods": 493.0,
+        "Carmona": 513.0,
+        "Mamplasan": 548.0,
+        "Sta. Rosa": 580.0,
+        "ABI/Greenfield": 624.0,
+        "Cabuyao": 653.0,
+        "Silangan": 672.0,
+        "Calamba": 735.0,
+        "Sto. Tomas": 837.0,
+        "C-5": 0
       }
     },
     "coordinates": {
@@ -4390,6 +4504,11 @@
       "Sto. Tomas": {
         "lat": 14.108,
         "lng": 121.141,
+        "radius_m": 200
+      },
+      "Don Bosco": {
+        "lat": 14.546,
+        "lng": 121.029,
         "radius_m": 200
       }
     }
@@ -5476,26 +5595,26 @@
   "CAVITEX": {
     "name": "CAVITEX",
     "Class 1": {
-      "Para\u00f1aque": {
+      "Parañaque": {
         "Bacoor/Zapote": 88,
         "Kawit": 126,
         "Sucat Rd./Dr. A. Santos Ave.": 39,
         "C5 Rd. Ext./C.P. Garcia": 77
       },
       "Bacoor/Zapote": {
-        "Para\u00f1aque": 88,
+        "Parañaque": 88,
         "Kawit": 38,
         "C5 Rd. Ext./C.P. Garcia": 38,
         "Sucat Rd./Dr. A. Santos Ave.": 88
       },
       "Kawit": {
-        "Para\u00f1aque": 126,
+        "Parañaque": 126,
         "Bacoor/Zapote": 38,
         "C5 Rd. Ext./C.P. Garcia": 126,
         "Sucat Rd./Dr. A. Santos Ave.": 126
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Para\u00f1aque": 39,
+        "Parañaque": 39,
         "Bacoor/Zapote": 88,
         "Kawit": 126,
         "C5 Rd. Ext./C.P. Garcia": 77
@@ -5503,31 +5622,31 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 38,
         "Kawit": 126,
-        "Para\u00f1aque": 77,
+        "Parañaque": 77,
         "Sucat Rd./Dr. A. Santos Ave.": 77
       }
     },
     "Class 2": {
-      "Para\u00f1aque": {
+      "Parañaque": {
         "Bacoor/Zapote": 176,
         "Kawit": 252,
         "Sucat Rd./Dr. A. Santos Ave.": 78,
         "C5 Rd. Ext./C.P. Garcia": 154
       },
       "Bacoor/Zapote": {
-        "Para\u00f1aque": 176,
+        "Parañaque": 176,
         "Kawit": 76,
         "C5 Rd. Ext./C.P. Garcia": 76,
         "Sucat Rd./Dr. A. Santos Ave.": 176
       },
       "Kawit": {
-        "Para\u00f1aque": 252,
+        "Parañaque": 252,
         "Bacoor/Zapote": 76,
         "C5 Rd. Ext./C.P. Garcia": 252,
         "Sucat Rd./Dr. A. Santos Ave.": 252
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Para\u00f1aque": 78,
+        "Parañaque": 78,
         "Bacoor/Zapote": 176,
         "Kawit": 252,
         "C5 Rd. Ext./C.P. Garcia": 154
@@ -5535,31 +5654,31 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 76,
         "Kawit": 252,
-        "Para\u00f1aque": 154,
+        "Parañaque": 154,
         "Sucat Rd./Dr. A. Santos Ave.": 154
       }
     },
     "Class 3": {
-      "Para\u00f1aque": {
+      "Parañaque": {
         "Bacoor/Zapote": 264,
         "Kawit": 378,
         "Sucat Rd./Dr. A. Santos Ave.": 117,
         "C5 Rd. Ext./C.P. Garcia": 231
       },
       "Bacoor/Zapote": {
-        "Para\u00f1aque": 264,
+        "Parañaque": 264,
         "Kawit": 114,
         "C5 Rd. Ext./C.P. Garcia": 114,
         "Sucat Rd./Dr. A. Santos Ave.": 264
       },
       "Kawit": {
-        "Para\u00f1aque": 378,
+        "Parañaque": 378,
         "Bacoor/Zapote": 114,
         "C5 Rd. Ext./C.P. Garcia": 378,
         "Sucat Rd./Dr. A. Santos Ave.": 378
       },
       "Sucat Rd./Dr. A. Santos Ave.": {
-        "Para\u00f1aque": 117,
+        "Parañaque": 117,
         "Bacoor/Zapote": 264,
         "Kawit": 378,
         "C5 Rd. Ext./C.P. Garcia": 231
@@ -5567,12 +5686,12 @@
       "C5 Rd. Ext./C.P. Garcia": {
         "Bacoor/Zapote": 114,
         "Kawit": 378,
-        "Para\u00f1aque": 231,
+        "Parañaque": 231,
         "Sucat Rd./Dr. A. Santos Ave.": 231
       }
     },
     "coordinates": {
-      "Para\u00f1aque": {
+      "Parañaque": {
         "lat": 14.496,
         "lng": 120.97,
         "radius_m": 200
@@ -5649,7 +5768,8 @@
         "NAIA Terminal 2": 45,
         "Entertainment City": 35,
         "Macapagal Blvd.": 35
-      }
+      },
+      "Aurora Blvd. (Tramo)": {}
     },
     "Class 2": {
       "Skyway": {
@@ -5699,7 +5819,8 @@
         "NAIA Terminal 2": 90,
         "Entertainment City": 70,
         "Macapagal Blvd.": 70
-      }
+      },
+      "Aurora Blvd. (Tramo)": {}
     },
     "Class 3": {
       "Skyway": {
@@ -5749,7 +5870,8 @@
         "NAIA Terminal 2": 135,
         "Entertainment City": 105,
         "Macapagal Blvd.": 105
-      }
+      },
+      "Aurora Blvd. (Tramo)": {}
     },
     "coordinates": {
       "Skyway": {
@@ -5790,6 +5912,199 @@
       "Andrews Ave./Terminal 3": {
         "lat": 14.524,
         "lng": 121.011,
+        "radius_m": 200
+      },
+      "Aurora Blvd. (Tramo)": {
+        "lat": 14.5439,
+        "lng": 121.0028,
+        "radius_m": 200
+      }
+    }
+  },
+  "NLEX_Connector": {
+    "name": "NLEX Connector",
+    "Class 1": {
+      "España": {
+        "Magsaysay": 119,
+        "C-3 Road/5th Ave.": 119
+      },
+      "Magsaysay": {
+        "España": 119,
+        "C-3 Road/5th Ave.": 119
+      },
+      "C-3 Road/5th Ave.": {
+        "España": 119,
+        "Magsaysay": 119
+      }
+    },
+    "Class 2": {
+      "España": {
+        "Magsaysay": 298,
+        "C-3 Road/5th Ave.": 298
+      },
+      "Magsaysay": {
+        "España": 298,
+        "C-3 Road/5th Ave.": 298
+      },
+      "C-3 Road/5th Ave.": {
+        "España": 298,
+        "Magsaysay": 298
+      }
+    },
+    "Class 3": {
+      "España": {
+        "Magsaysay": 357,
+        "C-3 Road/5th Ave.": 357
+      },
+      "Magsaysay": {
+        "España": 357,
+        "C-3 Road/5th Ave.": 357
+      },
+      "C-3 Road/5th Ave.": {
+        "España": 357,
+        "Magsaysay": 357
+      }
+    },
+    "coordinates": {
+      "España": {
+        "lat": 14.6126,
+        "lng": 120.9942,
+        "radius_m": 200
+      },
+      "Magsaysay": {
+        "lat": 14.6243,
+        "lng": 121.0017,
+        "radius_m": 200
+      },
+      "C-3 Road/5th Ave.": {
+        "lat": 14.6457,
+        "lng": 120.9842,
+        "radius_m": 200
+      }
+    }
+  },
+  "Harbor_Link": {
+    "name": "Harbor Link",
+    "Class 1": {
+      "Karuhatan/Valenzuela": {
+        "C-3 Road/5th Ave.": 79,
+        "R-10/Port of Manila": 79,
+        "Malabon/Dagat-Dagatan": 79,
+        "Harbor Link Interchange": 0
+      },
+      "C-3 Road/5th Ave.": {
+        "Karuhatan/Valenzuela": 79,
+        "R-10/Port of Manila": 79,
+        "Malabon/Dagat-Dagatan": 79,
+        "Harbor Link Interchange": 0
+      },
+      "R-10/Port of Manila": {
+        "Karuhatan/Valenzuela": 79,
+        "C-3 Road/5th Ave.": 79,
+        "Malabon/Dagat-Dagatan": 79,
+        "Harbor Link Interchange": 0
+      },
+      "Malabon/Dagat-Dagatan": {
+        "Karuhatan/Valenzuela": 79,
+        "C-3 Road/5th Ave.": 79,
+        "R-10/Port of Manila": 79,
+        "Harbor Link Interchange": 0
+      },
+      "Harbor Link Interchange": {
+        "Karuhatan/Valenzuela": 0,
+        "C-3 Road/5th Ave.": 0,
+        "R-10/Port of Manila": 0,
+        "Malabon/Dagat-Dagatan": 0
+      }
+    },
+    "Class 2": {
+      "Karuhatan/Valenzuela": {
+        "C-3 Road/5th Ave.": 198,
+        "R-10/Port of Manila": 198,
+        "Malabon/Dagat-Dagatan": 198,
+        "Harbor Link Interchange": 0
+      },
+      "C-3 Road/5th Ave.": {
+        "Karuhatan/Valenzuela": 198,
+        "R-10/Port of Manila": 198,
+        "Malabon/Dagat-Dagatan": 198,
+        "Harbor Link Interchange": 0
+      },
+      "R-10/Port of Manila": {
+        "Karuhatan/Valenzuela": 198,
+        "C-3 Road/5th Ave.": 198,
+        "Malabon/Dagat-Dagatan": 198,
+        "Harbor Link Interchange": 0
+      },
+      "Malabon/Dagat-Dagatan": {
+        "Karuhatan/Valenzuela": 198,
+        "C-3 Road/5th Ave.": 198,
+        "R-10/Port of Manila": 198,
+        "Harbor Link Interchange": 0
+      },
+      "Harbor Link Interchange": {
+        "Karuhatan/Valenzuela": 0,
+        "C-3 Road/5th Ave.": 0,
+        "R-10/Port of Manila": 0,
+        "Malabon/Dagat-Dagatan": 0
+      }
+    },
+    "Class 3": {
+      "Karuhatan/Valenzuela": {
+        "C-3 Road/5th Ave.": 237,
+        "R-10/Port of Manila": 237,
+        "Malabon/Dagat-Dagatan": 237,
+        "Harbor Link Interchange": 0
+      },
+      "C-3 Road/5th Ave.": {
+        "Karuhatan/Valenzuela": 237,
+        "R-10/Port of Manila": 237,
+        "Malabon/Dagat-Dagatan": 237,
+        "Harbor Link Interchange": 0
+      },
+      "R-10/Port of Manila": {
+        "Karuhatan/Valenzuela": 237,
+        "C-3 Road/5th Ave.": 237,
+        "Malabon/Dagat-Dagatan": 237,
+        "Harbor Link Interchange": 0
+      },
+      "Malabon/Dagat-Dagatan": {
+        "Karuhatan/Valenzuela": 237,
+        "C-3 Road/5th Ave.": 237,
+        "R-10/Port of Manila": 237,
+        "Harbor Link Interchange": 0
+      },
+      "Harbor Link Interchange": {
+        "Karuhatan/Valenzuela": 0,
+        "C-3 Road/5th Ave.": 0,
+        "R-10/Port of Manila": 0,
+        "Malabon/Dagat-Dagatan": 0
+      }
+    },
+    "coordinates": {
+      "Karuhatan/Valenzuela": {
+        "lat": 14.6918,
+        "lng": 120.9819,
+        "radius_m": 250
+      },
+      "C-3 Road/5th Ave.": {
+        "lat": 14.6457,
+        "lng": 120.9842,
+        "radius_m": 200
+      },
+      "R-10/Port of Manila": {
+        "lat": 14.6019,
+        "lng": 120.9573,
+        "radius_m": 250
+      },
+      "Malabon/Dagat-Dagatan": {
+        "lat": 14.658,
+        "lng": 120.9598,
+        "radius_m": 200
+      },
+      "Harbor Link Interchange": {
+        "lat": 14.668,
+        "lng": 120.9712,
         "radius_m": 200
       }
     }
