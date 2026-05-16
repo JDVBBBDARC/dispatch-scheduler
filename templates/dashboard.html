@@ -32,32 +32,133 @@
   </a>
 </form>
 
-<!-- KPI Row -->
+<!-- KPI Row (clickable — opens trip drill-down modal) -->
 <div class="kpi-row">
-  <div class="kpi-card">
-    <div class="kpi-label">Total Trips</div>
+  <div class="kpi-card" role="button" tabindex="0"
+       onclick="openTripDrilldown('all','Total Trips')"
+       onkeydown="if(event.key==='Enter')openTripDrilldown('all','Total Trips')"
+       title="Click to see all trips">
+    <div class="kpi-label">Total Trips <i class="bi bi-search ms-1" style="font-size:.7rem;opacity:.5;"></i></div>
     <div class="kpi-value">{{ total }}</div>
     <div class="kpi-sub">{{ filter_date }}</div>
   </div>
-  <div class="kpi-card green">
-    <div class="kpi-label">Delivered</div>
+  <div class="kpi-card green" role="button" tabindex="0"
+       onclick="openTripDrilldown('Delivered','Delivered Trips')"
+       onkeydown="if(event.key==='Enter')openTripDrilldown('Delivered','Delivered Trips')"
+       title="Click to see delivered trips">
+    <div class="kpi-label">Delivered <i class="bi bi-search ms-1" style="font-size:.7rem;opacity:.5;"></i></div>
     <div class="kpi-value" style="color:var(--c-delivered);">{{ by_status.get('Delivered',0) }}</div>
     <div class="kpi-sub">{{ ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0) }}%</div>
   </div>
-  <div class="kpi-card orange">
-    <div class="kpi-label">In Transit</div>
+  <div class="kpi-card orange" role="button" tabindex="0"
+       onclick="openTripDrilldown('In Transit','In Transit Trips')"
+       onkeydown="if(event.key==='Enter')openTripDrilldown('In Transit','In Transit Trips')"
+       title="Click to see in-transit trips">
+    <div class="kpi-label">In Transit <i class="bi bi-search ms-1" style="font-size:.7rem;opacity:.5;"></i></div>
     <div class="kpi-value" style="color:var(--c-transit);">{{ by_status.get('In Transit',0) }}</div>
     <div class="kpi-sub">moving</div>
   </div>
-  <div class="kpi-card blue">
-    <div class="kpi-label">Loading</div>
+  <div class="kpi-card blue" role="button" tabindex="0"
+       onclick="openTripDrilldown('Loading','Loading Trips')"
+       onkeydown="if(event.key==='Enter')openTripDrilldown('Loading','Loading Trips')"
+       title="Click to see loading trips">
+    <div class="kpi-label">Loading <i class="bi bi-search ms-1" style="font-size:.7rem;opacity:.5;"></i></div>
     <div class="kpi-value" style="color:var(--c-loading);">{{ by_status.get('Loading',0) }}</div>
     <div class="kpi-sub">at depot</div>
   </div>
-  <div class="kpi-card yellow">
-    <div class="kpi-label">Pending</div>
+  <div class="kpi-card yellow" role="button" tabindex="0"
+       onclick="openTripDrilldown('Pending','Pending Trips')"
+       onkeydown="if(event.key==='Enter')openTripDrilldown('Pending','Pending Trips')"
+       title="Click to see pending trips">
+    <div class="kpi-label">Pending <i class="bi bi-search ms-1" style="font-size:.7rem;opacity:.5;"></i></div>
     <div class="kpi-value" style="color:var(--c-pending);">{{ by_status.get('Pending',0) }}</div>
     <div class="kpi-sub">not started</div>
+  </div>
+</div>
+
+<!-- Hover styling for clickable KPI cards -->
+<style>
+  .kpi-card[role="button"] {
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+    user-select: none;
+  }
+  .kpi-card[role="button"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,.08);
+  }
+  .kpi-card[role="button"]:active {
+    transform: translateY(0);
+  }
+  .kpi-card[role="button"]:focus {
+    outline: 2px solid var(--maroon);
+    outline-offset: 2px;
+  }
+  /* Trip row in modal */
+  .trip-drill-row {
+    cursor: pointer;
+    transition: background .1s ease;
+  }
+  .trip-drill-row:hover {
+    background: rgba(139,26,43,.06);
+  }
+  .trip-drill-row:hover td:last-child .open-hint {
+    opacity: 1;
+  }
+  .open-hint {
+    opacity: 0;
+    transition: opacity .15s ease;
+    font-size: .75rem;
+    color: var(--maroon);
+    white-space: nowrap;
+  }
+</style>
+
+<!-- Trip Drill-Down Modal -->
+<div class="modal fade" id="tripDrilldownModal" tabindex="-1" aria-labelledby="tripDrilldownTitle" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--maroon);color:#fff;">
+        <h5 class="modal-title" id="tripDrilldownTitle">
+          <i class="bi bi-list-check me-2"></i><span id="tripDrilldownTitleText">Trips</span>
+          <span class="badge bg-light text-dark ms-2" id="tripDrilldownCount">0</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="px-3 pt-3 pb-2" style="background:#f8f9fa;border-bottom:1px solid #e5e7eb;font-size:.8rem;color:var(--muted);">
+          <i class="bi bi-info-circle me-1"></i>
+          Click a row to open that trip in the Schedule page.
+        </div>
+        <div id="tripDrilldownEmpty" class="text-center py-5 text-muted" style="display:none;">
+          <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+          <div class="mt-2 small">No trips match this filter.</div>
+        </div>
+        <div class="table-responsive" id="tripDrilldownTableWrap">
+          <table class="tbl mb-0">
+            <thead style="background:#f8f9fa;">
+              <tr>
+                <th>Date</th>
+                <th>Truck Type</th>
+                <th>Wave</th>
+                <th class="text-center">#</th>
+                <th>Driver</th>
+                <th>Helper</th>
+                <th>Plate</th>
+                <th>Product</th>
+                <th>Client</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tripDrilldownBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -196,6 +297,105 @@
 const trendDays   = {{ trend_days|tojson }};
 const trendCounts = {{ trend_counts|tojson }};
 const byStatus    = {{ by_status|tojson }};
+
+// ── Trip drill-down data ────────────────────────────────────────────────────
+// Serialized once on page load so the modal can filter without an extra
+// round trip. Reflects the current dashboard filters (date range, truck, status).
+const allTrips = [
+  {% for t in trips %}
+  {
+    id:          {{ t.id }},
+    date:        {{ (t.wave.date.isoformat() if t.wave and t.wave.date else '')|tojson }},
+    truck_type:  {{ (t.wave.truck_type.name if t.wave and t.wave.truck_type else '—')|tojson }},
+    truck_color: {{ (t.wave.truck_type.color if t.wave and t.wave.truck_type else '#999')|tojson }},
+    wave:        {{ (t.wave.label if t.wave else '—')|tojson }},
+    trip_number: {{ t.trip_number or 0 }},
+    driver:      {{ (t.driver.name if t.driver else '—')|tojson }},
+    helper:      {{ (t.helper.name if t.helper else '—')|tojson }},
+    plate:       {{ (t.plate.display if t.plate else '—')|tojson }},
+    product:     {{ (t.product.name if t.product else '—')|tojson }},
+    client:      {{ (t.client.name if t.client else '—')|tojson }},
+    status:      {{ (t.status or 'Pending')|tojson }}
+  }{{ ',' if not loop.last else '' }}
+  {% endfor %}
+];
+
+const STATUS_BADGE_CLASS = {
+  'Pending':    's-Pending',
+  'Loading':    's-Loading',
+  'In Transit': 's-In-Transit',
+  'Delivered':  's-Delivered',
+  'Canceled':   's-Canceled',
+};
+
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function navigateToTrip(date, tripId) {
+  if (!date) return;
+  // Open the schedule page for that trip's date, with a fragment so the
+  // schedule page can scroll/highlight the specific trip if it wants.
+  window.location.href = `/schedule/${date}#trip-${tripId}`;
+}
+
+function openTripDrilldown(statusFilter, title) {
+  // Filter by status; 'all' means everything except Canceled.
+  let rows = statusFilter === 'all'
+    ? allTrips.filter(t => t.status !== 'Canceled')
+    : allTrips.filter(t => t.status === statusFilter);
+
+  // Sort: latest date first, then by wave label + trip number
+  rows.sort((a, b) => {
+    if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+    if (a.wave !== b.wave) return (a.wave || '').localeCompare(b.wave || '');
+    return (a.trip_number || 0) - (b.trip_number || 0);
+  });
+
+  document.getElementById('tripDrilldownTitleText').textContent = title;
+  document.getElementById('tripDrilldownCount').textContent     = rows.length;
+
+  const tbody = document.getElementById('tripDrilldownBody');
+  const empty = document.getElementById('tripDrilldownEmpty');
+  const tableWrap = document.getElementById('tripDrilldownTableWrap');
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    tableWrap.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
+    tableWrap.style.display = '';
+    tbody.innerHTML = rows.map(t => {
+      const statusCls = STATUS_BADGE_CLASS[t.status] || 's-Pending';
+      return `<tr class="trip-drill-row" onclick="navigateToTrip('${t.date}', ${t.id})">
+        <td class="small text-muted">${escHtml(t.date)}</td>
+        <td>
+          <span class="truck-type-dot" style="background:${escHtml(t.truck_color)};"></span>
+          ${escHtml(t.truck_type)}
+        </td>
+        <td>${escHtml(t.wave)}</td>
+        <td class="text-center fw-bold">${t.trip_number}</td>
+        <td>${escHtml(t.driver)}</td>
+        <td>${escHtml(t.helper)}</td>
+        <td>${escHtml(t.plate)}</td>
+        <td>${escHtml(t.product)}</td>
+        <td>${escHtml(t.client)}</td>
+        <td><span class="s-badge ${statusCls}">${escHtml(t.status)}</span></td>
+        <td><span class="open-hint">Open in Schedule <i class="bi bi-arrow-right-short"></i></span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Show modal (Bootstrap 5)
+  const modalEl = document.getElementById('tripDrilldownModal');
+  let modal = bootstrap.Modal.getInstance(modalEl);
+  if (!modal) modal = new bootstrap.Modal(modalEl);
+  modal.show();
+}
 
 // Trend chart
 new Chart(document.getElementById('trendChart'), {
