@@ -1576,6 +1576,23 @@ _TOLL_CONNECTIONS = [
     # NAIAX south end ↔ CAVITEX (the two systems meet near the airport-Cavite corridor)
     (('NAIAX', 'CAVITEX'),                ('CAVITEX', 'Parañaque')),
     (('NAIAX', 'CAVITEX'),                ('CAVITEX', 'C5 Rd. Ext./C.P. Garcia')),
+
+    # NLEX Connector — 8-km elevated bypass linking NLEX (Caloocan side) to
+    # Skyway Stage 3 (España side) without going through EDSA.
+    # North end: C-3 Road / 5th Ave., same physical area as NLEX Balintawak/Karuhatan.
+    (('NLEX_Connector', 'C-3 Road/5th Ave.'), ('NLEX_SCTEX', 'Balintawak')),
+    (('NLEX_Connector', 'C-3 Road/5th Ave.'), ('NLEX_SCTEX', 'Karuhatan')),
+    # South end: España area, drops onto Skyway Stage 3 near Quirino / Plaza Dilao.
+    (('NLEX_Connector', 'España'),             ('Skyway_Stage3', 'Quirino')),
+    (('NLEX_Connector', 'España'),             ('Skyway_Stage3', 'Plaza Dilao')),
+
+    # Harbor Link / NLEX Segment 10 — spur of NLEX heading to Manila Port.
+    # Karuhatan booth is the same physical location on both NLEX and Harbor Link.
+    (('Harbor_Link', 'Karuhatan/Valenzuela'), ('NLEX_SCTEX', 'Karuhatan')),
+    # Harbor Link Interchange = the NLEX junction (already-free transfer point).
+    (('Harbor_Link', 'Harbor Link Interchange'), ('NLEX_SCTEX', 'Balintawak')),
+    # Harbor Link and NLEX Connector share a C-3 Road exit (same physical booth).
+    (('Harbor_Link', 'C-3 Road/5th Ave.'), ('NLEX_Connector', 'C-3 Road/5th Ave.')),
 ]
 
 def _toll_lookup(matrix, a, b):
