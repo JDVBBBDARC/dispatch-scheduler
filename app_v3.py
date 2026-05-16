@@ -1440,6 +1440,53 @@ def api_cartrack_poll_now():
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 
+@app.route('/api/cartrack/poll-cron', methods=['GET', 'POST'])
+def api_cartrack_poll_cron():
+    """External-cron entrypoint for Cartrack polling.
+
+    Bypasses @login_required so services like cron-job.org or GitHub Actions
+    can hit this endpoint on a schedule. Auth is via a shared secret token
+    set in the CRON_SECRET environment variable.
+
+    Usage:
+        GET/POST /api/cartrack/poll-cron?token=YOUR_SECRET
+        — OR —
+        GET/POST /api/cartrack/poll-cron
+        Header: X-Cron-Token: YOUR_SECRET
+
+    Returns the same summary dict as /api/cartrack/poll-now on success,
+    or 401 if the token is missing/invalid, 500 on poll exceptions.
+    """
+    # Resolve the expected secret
+    expected = os.environ.get('CRON_SECRET', '').strip()
+    if not expected:
+        return jsonify({
+            'error': 'CRON_SECRET env var not configured on server. '
+                     'Set it in the WSGI config to enable this endpoint.'
+        }), 503
+
+    # Accept token from either query string or header (cron-job.org friendly)
+    provided = (request.args.get('token') or
+                request.headers.get('X-Cron-Token') or '').strip()
+    if not provided or provided != expected:
+        return jsonify({'error': 'Unauthorized — invalid or missing token'}), 401
+
+    # Run the same polling worker as the "Poll Now" button
+    try:
+        from cartrack_poll import run_poll
+        summary = run_poll(app=app)
+        # Augment with caller info for cron dashboard visibility
+        summary['triggered_by'] = 'cron'
+        summary['ts'] = ph_now().isoformat()
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'trace': traceback.format_exc(),
+        }), 500
+
+
 @app.route('/api/cartrack/status')
 @login_required
 def api_cartrack_status():
