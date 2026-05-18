@@ -1818,7 +1818,10 @@ def api_toll_log_events():
             'id':         e.id,
             'created_at': e.created_at.isoformat() if e.created_at else None,
             'plate_id':   e.plate_id,
-            'plate_no':   plate.plate_no if plate else 'N/A',
+            # Display form ("DT06 / LAK8098") so the UI doesn't need the
+            # truck code memorized — falls back to bare plate_no if
+            # body_no isn't set.
+            'plate_no':   plate.display if plate else 'N/A',
             'event_type': e.event_type,
             'plaza_name': e.plaza_name or '',
             'expressway': e.expressway or '',
@@ -1923,7 +1926,7 @@ def api_toll_log_export():
     # Data rows
     for row_idx, e in enumerate(events, 2):
         plate = e.plate
-        plate_no = plate.plate_no if plate else 'N/A'
+        plate_no = plate.display if plate else 'N/A'
         ws.cell(row=row_idx, column=1,  value=e.created_at.strftime('%Y-%m-%d %H:%M:%S') if e.created_at else '')
         ws.cell(row=row_idx, column=2,  value=plate_no)
         ws.cell(row=row_idx, column=3,  value=e.event_type or '')
@@ -2015,7 +2018,7 @@ def api_cycle_time_summary():
         open_summary.append({
             'cycle_id':    c.id,
             'plate_id':    c.plate_id,
-            'plate_no':    c.plate.plate_no if c.plate else 'N/A',
+            'plate_no':    c.plate.display if c.plate else 'N/A',
             'started_at':  c.started_at.isoformat() if c.started_at else None,
             'elapsed_minutes': elapsed_min,
             'elapsed_hours':   round(elapsed_min / 60, 1),
@@ -2094,7 +2097,7 @@ def api_cycle_time_cycles():
         rows.append({
             'id':          c.id,
             'plate_id':    c.plate_id,
-            'plate_no':    c.plate.plate_no if c.plate else 'N/A',
+            'plate_no':    c.plate.display if c.plate else 'N/A',
             'started_at':  c.started_at.isoformat() if c.started_at else None,
             'ended_at':    c.ended_at.isoformat() if c.ended_at else None,
             'duration_minutes': c.duration_minutes,
@@ -2160,7 +2163,7 @@ def api_cycle_time_idling():
         pct_overall = round(100.0 * total_idle / total_dur, 1) if total_dur else 0
         rows.append({
             'plate_id':         r.plate_id,
-            'plate_no':         plate.plate_no if plate else 'N/A',
+            'plate_no':         plate.display if plate else 'N/A',
             'visits':           int(r.visits or 0),
             'total_minutes':    round(total_dur / 60, 1),
             'idling_minutes':   round(total_idle / 60, 1),
@@ -2241,7 +2244,7 @@ def api_cycle_time_export():
         plate = c.plate
         ws.cell(row=row_idx, column=1, value=c.started_at.strftime('%Y-%m-%d %H:%M') if c.started_at else '')
         ws.cell(row=row_idx, column=2, value=c.ended_at.strftime('%Y-%m-%d %H:%M') if c.ended_at else '')
-        ws.cell(row=row_idx, column=3, value=plate.plate_no if plate else 'N/A')
+        ws.cell(row=row_idx, column=3, value=plate.display if plate else 'N/A')
         ws.cell(row=row_idx, column=4, value=round(c.duration_minutes / 60, 2) if c.duration_minutes else None)
         ws.cell(row=row_idx, column=5, value=c.category)
         ws.cell(row=row_idx, column=6, value=SiteVisit.query.filter_by(cycle_id=c.id).count())
