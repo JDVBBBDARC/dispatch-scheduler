@@ -372,6 +372,17 @@
 .kpi-card:active {
   transform: translateY(0);
 }
+/* Clickable trip rows in the KPI drill-down modal */
+.kpi-trip-row {
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.kpi-trip-row:hover {
+  background: rgba(139, 26, 43, 0.06);
+}
+.kpi-trip-row:hover .kpi-trip-row-hint {
+  opacity: 1 !important;
+}
 .trend-btn {
   padding: 3px 10px;
   font-size: .75rem;
@@ -393,6 +404,7 @@
 const ALL_TRIPS = [
   {% for t in trips %}
   {
+    id:        {{ t.id }},
     date:      "{{ t.wave.date.isoformat() if t.wave else '' }}",
     truck:     "{{ t.wave.truck_type.name if t.wave and t.wave.truck_type else '' }}",
     truckColor:"{{ t.wave.truck_type.color if t.wave and t.wave.truck_type else '#999' }}",
@@ -425,6 +437,14 @@ const STATUS_BADGE_CLASS = {
 
 let _kpiBaseRows = [];
 let _kpiStatusKey = 'all';
+
+// Navigate from a KPI-modal trip row into the Schedule page for that date.
+// Hash `#trip-<id>` is forwarded so the Schedule page can scroll to / highlight
+// the specific row (harmless if the page doesn't read the hash).
+function navigateToScheduleTrip(date, tripId) {
+  if (!date) return;
+  window.location.href = `/schedule/${date}#trip-${tripId}`;
+}
 
 function openKpiModal(label, statusKey, color) {
   _kpiStatusKey = statusKey;
@@ -579,6 +599,10 @@ function renderKpiTable(truckFilter) {
   const fmtPeso = v => '₱' + Number(v).toLocaleString('en-PH', {minimumFractionDigits: 2});
 
   document.getElementById('kpiModalBody').innerHTML = `
+    <div class="px-3 pt-2 pb-1" style="background:#f8f9fa;border-bottom:1px solid var(--border);font-size:.75rem;color:var(--muted);">
+      <i class="bi bi-info-circle me-1"></i>
+      Click a row to open that trip on the Schedule page.
+    </div>
     <div class="scrollable-x">
       <table class="tbl" style="font-size:.82rem;">
         <thead>
@@ -590,11 +614,14 @@ function renderKpiTable(truckFilter) {
             ${showStatus ? '<th>Status</th>' : ''}
             ${showToll   ? '<th>Toll Fee</th>' : ''}
             <th>Notes</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
         ${rows.map(t => `
-          <tr>
+          <tr class="kpi-trip-row" data-date="${escHtml(t.date)}" data-trip-id="${t.id}"
+              onclick="navigateToScheduleTrip('${escHtml(t.date)}', ${t.id})"
+              title="Click to open in Schedule">
             <td style="white-space:nowrap;">${escHtml(t.date)}</td>
             <td><span class="truck-type-dot" style="background:${t.truckColor};"></span>${escHtml(t.truck)}</td>
             <td style="white-space:nowrap;">${escHtml(t.wave)}</td>
@@ -611,6 +638,9 @@ function renderKpiTable(truckFilter) {
             ${showStatus ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : ''}
             ${showToll   ? `<td class="fw-bold" style="color:#0891B2;white-space:nowrap;">${t.toll_fee ? fmtPeso(t.toll_fee) : '—'}</td>` : ''}
             <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes)||'—'}</td>
+            <td style="white-space:nowrap;font-size:.7rem;color:var(--maroon);opacity:0;" class="kpi-trip-row-hint">
+              Open <i class="bi bi-arrow-right-short"></i>
+            </td>
           </tr>`).join('')}
         </tbody>
         ${showToll ? `
