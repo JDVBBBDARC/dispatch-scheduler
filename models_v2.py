@@ -384,6 +384,119 @@ class CartrackEvent(db.Model):
     plate = db.relationship('Plate')
 
 
+# ── Cartrack Geofences (synced from Cartrack account) ─────────────────────
+class CartrackGeofence(db.Model):
+    """Mirrors the geofences configured in the Cartrack Fleet account.
+
+    Synced periodically via cc.list_geofences(). The Cartrack-side UUID is
+    the source of truth; we keep a local cache so the app can categorize,
+    annotate, and join geofences without hitting Cartrack on every read.
+
+    Categories are auto-assigned at sync time based on name patterns
+    (e.g., 'BIG BEN SCM' -> 'home', 'SHELL ...' -> 'fuel') and can be
+    edited manually later if needed.
+    """
+    __tablename__ = 'cartrack_geofences'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    # Cartrack's stable UUID for this geofence — primary lookup key.
+    cartrack_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    name        = db.Column(db.String(200), nullable=False, index=True)
+    description = db.Column(db.Text)
+    position_description = db.Column(db.Text)   # human-readable address
+    colour      = db.Column(db.String(20))      # hex from Cartrack
+    # Polygon as raw WKT (POLYGON((lng lat, lng lat, ...))) — we don't run
+    # geometric ops in the app (Cartrack does that via geofence_ids in
+    # /rest/vehicles/status), so storage as text is fine.
+    polygon_wkt = db.Column(db.Text)
+    # Auto-assigned category — see _categorize_geofence() in cartrack_poll.py.
+    # Values: 'home', 'customer', 'quarry', 'fuel', 'toll', 'operations', 'other'
+    category    = db.Column(db.String(30), default='other', index=True)
+    # True if this is a depot/home base. BIG BEN SCM should be the only one
+    # marked True initially; admins can flip the flag for other depots later.
+    is_home     = db.Column(db.Boolean, default=False, index=True)
+    # When we last pulled this geofence from Cartrack — useful for stale
+    # detection (e.g., the Cartrack-side entry was deleted but ours lingers).
+    last_synced_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ── Site Visits (per-truck enter/exit tracking) ───────────────────────────
+class SiteVisit(db.Model):
+    """One row per plate × geofence × visit (enter -> exit pair).
+
+    Opened when the polling worker first sees a truck inside a geofence
+    that it wasn't inside on the previous poll. Closed when the truck
+    leaves the geofence (or after a long idle timeout).
+
+    Idling time is accumulated across the visit — each poll where the
+    truck reports idling=True AND is inside this geofence adds the
+    polling interval (default 60s) to idling_seconds.
+    """
+    __tablename__ = 'site_visits'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    plate_id    = db.Column(db.Integer, db.ForeignKey('plates.id'),
+                            nullable=False, index=True)
+    geofence_id = db.Column(db.Integer, db.ForeignKey('cartrack_geofences.id'),
+                            nullable=False, index=True)
+    enter_at    = db.Column(db.DateTime, nullable=False, index=True)
+    exit_at     = db.Column(db.DateTime)                       # null = ongoing
+    # Cached duration (seconds). Computed when exit_at is set.
+    duration_seconds = db.Column(db.Integer, default=0)
+    # Cumulative idle time during this visit (seconds).
+    idling_seconds = db.Column(db.Integer, default=0)
+    # Idle percentage: idling / duration × 100. Computed on close.
+    idling_pct  = db.Column(db.Float)
+    # Link to the TripRecord this visit belongs to, when we can match
+    # by date + driver/plate (filled by a separate matcher pass).
+    trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'),
+                            nullable=True, index=True)
+    # Link to the open TruckCycle this visit happened during.
+    cycle_id    = db.Column(db.Integer, db.ForeignKey('truck_cycles.id'),
+                            nullable=True, index=True)
+
+    plate    = db.relationship('Plate')
+    geofence = db.relationship('CartrackGeofence')
+
+
+# ── Truck Cycles (home -> ... -> home round trips) ────────────────────────
+class TruckCycle(db.Model):
+    """One full round trip: truck leaves home -> visits sites -> returns home.
+
+    Opened the moment a truck exits the home geofence (BIG BEN SCM).
+    Closed when the same truck re-enters home. Visits made along the way
+    are linked via SiteVisit.cycle_id.
+
+    Multi-day cycles are fully supported — ended_at can be hours or days
+    after started_at. While ended_at is NULL, the cycle is 'ongoing'.
+    """
+    __tablename__ = 'truck_cycles'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    plate_id     = db.Column(db.Integer, db.ForeignKey('plates.id'),
+                             nullable=False, index=True)
+    started_at   = db.Column(db.DateTime, nullable=False, index=True)
+    ended_at     = db.Column(db.DateTime, index=True)             # null = ongoing
+    duration_minutes = db.Column(db.Integer)                       # computed on close
+    # Number of distinct geofence visits during this cycle.
+    visit_count  = db.Column(db.Integer, default=0)
+    # Cumulative idling minutes across all visits in this cycle.
+    total_idling_minutes = db.Column(db.Integer, default=0)
+    # Category, auto-assigned when cycle closes:
+    #   'short'    — under 12 hours (typical single-day round trip)
+    #   'standard' — 12-24 hours (long single-day or quick overnight)
+    #   'long'     — over 24 hours (multi-day journey)
+    #   'ongoing'  — cycle still open (truck hasn't returned home)
+    category     = db.Column(db.String(20), default='ongoing', index=True)
+
+    plate = db.relationship('Plate')
+
+    @property
+    def is_open(self):
+        return self.ended_at is None
+
+
 # ── App Settings (key/value store) ────────────────────────────────────────
 class AppSetting(db.Model):
     __tablename__ = 'app_settings'
