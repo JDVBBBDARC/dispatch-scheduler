@@ -364,8 +364,64 @@ def run_poll(app=None, log=None):
 # CLI entry point
 # ─────────────────────────────────────────────────────────────────────
 
+def _run_loop(interval_seconds=60):
+    """Run run_poll() forever, sleeping between iterations.
+
+    Intended for PythonAnywhere Always-On Tasks: PA keeps the process
+    alive and restarts it on hard crash, so we just need a loop that
+    polls, logs a compact one-line summary, and sleeps.
+
+    Transient exceptions (Cartrack API hiccup, DB blip) are caught so
+    they don't take the loop down — only KeyboardInterrupt exits.
+    """
+    import time
+    print(f'[always-on] Cartrack polling loop starting '
+          f'(interval={interval_seconds}s)', flush=True)
+    iteration = 0
+    while True:
+        iteration += 1
+        started = time.time()
+        try:
+            summary = run_poll()
+            elapsed = time.time() - started
+            print(f'[#{iteration}] {datetime.utcnow().isoformat()}Z '
+                  f'elapsed={elapsed:.1f}s '
+                  f'tracked={summary.get("plates_tracked", 0)} '
+                  f'enters={summary.get("plaza_enters_detected", 0)} '
+                  f'exits={summary.get("plaza_exits_detected", 0)} '
+                  f'closed={summary.get("trips_closed", 0)} '
+                  f'filled={summary.get("toll_fees_filled", 0)} '
+                  f'errors={len(summary.get("errors", []))}',
+                  flush=True)
+            if summary.get('errors'):
+                for err in summary['errors'][:2]:
+                    print(f'  ERR: {err}', flush=True)
+        except KeyboardInterrupt:
+            print('[always-on] interrupt received — exiting cleanly', flush=True)
+            return
+        except Exception as e:
+            import traceback
+            elapsed = time.time() - started
+            print(f'[#{iteration}] EXCEPTION after {elapsed:.1f}s: {e}', flush=True)
+            traceback.print_exc()
+            # Continue anyway — never let a single poll failure stop the loop.
+
+        sleep_for = max(1.0, interval_seconds - (time.time() - started))
+        time.sleep(sleep_for)
+
+
 if __name__ == '__main__':
-    summary = run_poll()
-    print(json.dumps(summary, indent=2, default=str))
-    if summary.get('errors'):
-        sys.exit(1)
+    # `python cartrack_poll.py`              -> one-shot poll, then exits
+    # `python cartrack_poll.py --loop`       -> infinite loop, default 60s
+    # `python cartrack_poll.py --loop 30`    -> infinite loop, every 30s
+    if len(sys.argv) > 1 and sys.argv[1] == '--loop':
+        try:
+            interval = int(sys.argv[2]) if len(sys.argv) > 2 else 60
+        except (ValueError, IndexError):
+            interval = 60
+        _run_loop(interval_seconds=interval)
+    else:
+        summary = run_poll()
+        print(json.dumps(summary, indent=2, default=str))
+        if summary.get('errors'):
+            sys.exit(1)
