@@ -53,6 +53,19 @@ TRIP_IDLE_CLOSE_MINUTES = 30
 # How many days of CartrackEvent log to keep
 EVENT_RETENTION_DAYS = 60
 
+# Polling interval in seconds. Used to accumulate idling time per poll.
+# Should match the --loop argument passed to cartrack_poll.py (default 60s).
+# If you change the loop interval, update this too — otherwise idling stats
+# will be over- or under-counted by the same ratio.
+POLL_INTERVAL_SECONDS = 60
+
+# Stale-cycle auto-close: if a cycle has been open for this long without
+# the truck returning to home, we flag it as a 'long' cycle but keep it
+# open (in case the truck is on a real multi-day trip). After this many
+# days though, we hard-close it as 'abandoned' so the open-cycle count
+# doesn't grow forever.
+CYCLE_HARD_CLOSE_DAYS = 14
+
 # Logger
 _log = logging.getLogger('cartrack_poll')
 if not _log.handlers:
@@ -138,6 +151,180 @@ def compute_toll_fee(entry_plaza, exit_plaza, toll_class='Class 3'):
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Geofence sync + categorization
+# ─────────────────────────────────────────────────────────────────────
+
+# Patterns used to auto-categorize Cartrack geofences by name.
+# Order matters: first match wins, so put more-specific keywords first.
+# All comparisons are case-insensitive against the geofence name.
+_GEOFENCE_CATEGORY_PATTERNS = [
+    # Home base — special case, the only one that sets is_home=True.
+    ('home', [
+        'BIG BEN SCM',
+    ]),
+    # Toll plazas — user manually drew geofences around booths in Cartrack.
+    # Anything starting with "Toll" or containing common booth names.
+    ('toll', [
+        'TOLL ',  # e.g., "Toll - Bocaue", "Toll - Pulilan"
+        'TOLLBOOTH',
+        'TOLL PLAZA',
+    ]),
+    # Fuel / service stations
+    ('fuel', [
+        'SHELL',
+        'PETRON',
+        'CALTEX',
+        'PHOENIX',
+        'TOTAL',
+        'SEAOIL',
+        'DIESEL',     # generic diesel stations
+        'GAS STATION',
+        'GASOLINE',
+    ]),
+    # Quarries / aggregate suppliers
+    ('quarry', [
+        'QUARRY',
+    ]),
+    # Internal operations / monitoring zones
+    ('operations', [
+        'WEIGHING SCALE',
+        'WEIGH STATION',
+        'URINE STATION',
+        'INSPECTION',
+    ]),
+    # Construction / customer sites — broad catch for typical project keywords
+    ('customer', [
+        'CONSTRUCTION',
+        'BUILDERS',
+        'CONCRETE',
+        'CEMENT',
+        'READYMIX',
+        'STEEL STRUCTURE',
+        'RECYCLABLES',
+        'RENEWWABLE',
+        'RENEWABLE',
+    ]),
+]
+
+
+def _categorize_geofence(name):
+    """Return (category, is_home) tuple for a geofence name.
+
+    Falls back to 'other' / False if no pattern matches.
+    """
+    if not name:
+        return 'other', False
+    upper = name.upper()
+    for category, keywords in _GEOFENCE_CATEGORY_PATTERNS:
+        for kw in keywords:
+            if kw in upper:
+                return category, (category == 'home')
+    return 'other', False
+
+
+def sync_geofences(app=None, log=None):
+    """Pull every geofence from Cartrack and cache it in CartrackGeofence.
+
+    Idempotent — uses cartrack_id (Cartrack's UUID) as the unique key.
+    Updates name/description/polygon on each run so admin-side edits in
+    Cartrack flow back to the app.
+
+    Newly-created rows get an auto-assigned category and is_home flag
+    based on their name; existing rows keep their (possibly manually
+    edited) category unless their name changes.
+
+    Returns a summary dict.
+    """
+    if log is None:
+        log = logging.getLogger('cartrack_geofence_sync')
+
+    if app is None:
+        import app_v3 as _app_module
+        app = _app_module.app
+
+    summary = {
+        'configured':       False,
+        'total_fetched':    0,
+        'created':          0,
+        'updated':          0,
+        'name_changed':     0,
+        'recategorized':    0,
+        'errors':           [],
+    }
+
+    with app.app_context():
+        from models_v2 import db, CartrackGeofence
+        from cartrack_client import CartrackClient
+
+        cc = CartrackClient.from_env()
+        summary['configured'] = cc.configured
+        if not cc.configured:
+            summary['errors'].append('Cartrack not configured (env vars missing)')
+            return summary
+
+        geofences, err = cc.list_geofences()
+        if err:
+            summary['errors'].append(f'list_geofences failed: {err}')
+            return summary
+
+        summary['total_fetched'] = len(geofences or [])
+        now = datetime.utcnow()
+
+        for g in (geofences or []):
+            cartrack_id = (g.get('geofence_id') or '').strip()
+            name        = (g.get('name') or '').strip()
+            if not cartrack_id or not name:
+                continue   # skip malformed entries
+
+            existing = (CartrackGeofence.query
+                        .filter_by(cartrack_id=cartrack_id)
+                        .first())
+
+            if existing is None:
+                # New geofence — categorize and insert
+                category, is_home = _categorize_geofence(name)
+                row = CartrackGeofence(
+                    cartrack_id          = cartrack_id,
+                    name                 = name,
+                    description          = g.get('description') or '',
+                    position_description = g.get('position_description') or '',
+                    colour               = g.get('colour') or '',
+                    polygon_wkt          = g.get('polygon') or '',
+                    category             = category,
+                    is_home              = is_home,
+                    last_synced_at       = now,
+                )
+                db.session.add(row)
+                summary['created'] += 1
+                log.info('[sync] CREATE %s (category=%s, is_home=%s)',
+                         name, category, is_home)
+            else:
+                # Existing — refresh fields, re-categorize if name changed
+                if existing.name != name:
+                    summary['name_changed'] += 1
+                    new_cat, new_home = _categorize_geofence(name)
+                    if new_cat != existing.category:
+                        summary['recategorized'] += 1
+                        existing.category = new_cat
+                        existing.is_home  = new_home
+                    existing.name = name
+                existing.description          = g.get('description') or existing.description
+                existing.position_description = g.get('position_description') or existing.position_description
+                existing.colour               = g.get('colour') or existing.colour
+                existing.polygon_wkt          = g.get('polygon') or existing.polygon_wkt
+                existing.last_synced_at       = now
+                summary['updated'] += 1
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            summary['errors'].append(f'commit failed: {e}')
+
+    return summary
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Main polling routine
 # ─────────────────────────────────────────────────────────────────────
 
@@ -166,16 +353,24 @@ def run_poll(app=None, log=None):
         'vehicles_seen':  0,
         'plates_tracked': 0,
         'plates_unmapped': 0,
+        # Toll plaza tracking (existing)
         'enters_detected': 0,
         'exits_detected':  0,
         'trips_closed':    0,
         'toll_fees_filled': 0,
+        # Cartrack-side geofence tracking (new — site visits + cycles)
+        'site_visits_opened': 0,
+        'site_visits_closed': 0,
+        'cycles_opened':      0,
+        'cycles_closed':      0,
+        'idle_seconds_logged': 0,
         'errors':         [],
     }
 
     with app.app_context():
         from models_v2 import (db, Plate, TripRecord, Wave, CartrackTruckState,
-                                CartrackEvent)
+                                CartrackEvent, CartrackGeofence, SiteVisit,
+                                TruckCycle)
         from cartrack_client import CartrackClient
 
         # ── 1. Set up Cartrack client ────────────────────────────────
@@ -279,6 +474,108 @@ def run_poll(app=None, log=None):
             # Save updated plaza membership
             state.current_plazas = ','.join(sorted(current_set))
 
+            # ── 5b. CARTRACK-SIDE GEOFENCE TRACKING (sites + cycles) ──
+            # Cartrack reports geofence_ids per truck in get_status, so we
+            # don't recompute geometry — just diff vs. the open SiteVisits
+            # we have for this plate.
+
+            current_geofence_uuids = set(loc.get('geofence_ids') or [])
+            current_geofences = []
+            if current_geofence_uuids:
+                current_geofences = (CartrackGeofence.query
+                                      .filter(CartrackGeofence.cartrack_id.in_(current_geofence_uuids))
+                                      .all())
+            current_gf_local_ids = {g.id for g in current_geofences}
+            gf_by_id = {g.id: g for g in current_geofences}
+
+            # Previously inside = plate has open (unclosed) SiteVisits
+            open_visits = (SiteVisit.query
+                            .filter(SiteVisit.plate_id == plate.id,
+                                    SiteVisit.exit_at.is_(None))
+                            .all())
+            previous_gf_local_ids = {v.geofence_id for v in open_visits}
+
+            gf_new_enters = current_gf_local_ids - previous_gf_local_ids
+            gf_new_exits  = previous_gf_local_ids - current_gf_local_ids
+            gf_still_in   = current_gf_local_ids & previous_gf_local_ids
+
+            # Truck-level idle state (Cartrack returns top-level 'idling' bool).
+            is_idling = bool(status.get('idling', False))
+
+            # Find a currently-open TruckCycle for this plate (if any).
+            open_cycle = (TruckCycle.query
+                          .filter(TruckCycle.plate_id == plate.id,
+                                  TruckCycle.ended_at.is_(None))
+                          .first())
+
+            # ── Open new SiteVisits ──
+            for gf_id in gf_new_enters:
+                gf = gf_by_id.get(gf_id)
+                if gf is None:
+                    continue
+                visit = SiteVisit(
+                    plate_id        = plate.id,
+                    geofence_id     = gf.id,
+                    enter_at        = now,
+                    idling_seconds  = POLL_INTERVAL_SECONDS if is_idling else 0,
+                    cycle_id        = open_cycle.id if open_cycle else None,
+                )
+                db.session.add(visit)
+                summary['site_visits_opened'] += 1
+                log.info('[VISIT-IN ] %s -> %s (cycle=%s)',
+                         plate.display, gf.name,
+                         open_cycle.id if open_cycle else '-')
+
+                # If entering HOME, close any open cycle for this plate.
+                if gf.is_home and open_cycle is not None:
+                    open_cycle.ended_at = now
+                    open_cycle.duration_minutes = max(
+                        1, int((now - open_cycle.started_at).total_seconds() / 60))
+                    h = open_cycle.duration_minutes / 60.0
+                    open_cycle.category = (
+                        'short'    if h < 12 else
+                        'standard' if h < 24 else
+                        'long'
+                    )
+                    summary['cycles_closed'] += 1
+                    log.info('[CYCLE-END] %s: cycle #%s duration=%.1fh (%s)',
+                             plate.display, open_cycle.id, h, open_cycle.category)
+                    open_cycle = None   # this plate no longer has an open cycle
+
+            # ── Close exited SiteVisits ──
+            for visit in open_visits:
+                if visit.geofence_id not in gf_new_exits:
+                    continue
+                visit.exit_at = now
+                duration = max(0, int((now - visit.enter_at).total_seconds()))
+                visit.duration_seconds = duration
+                if duration > 0:
+                    visit.idling_pct = round(
+                        100.0 * (visit.idling_seconds or 0) / duration, 1)
+                summary['site_visits_closed'] += 1
+
+                # If LEAVING home, open a new TruckCycle for this plate.
+                left_gf = (CartrackGeofence.query
+                           .filter_by(id=visit.geofence_id).first())
+                if left_gf and left_gf.is_home and open_cycle is None:
+                    new_cycle = TruckCycle(
+                        plate_id   = plate.id,
+                        started_at = now,
+                        category   = 'ongoing',
+                    )
+                    db.session.add(new_cycle)
+                    db.session.flush()   # need cycle.id for next iteration's links
+                    open_cycle = new_cycle
+                    summary['cycles_opened'] += 1
+                    log.info('[CYCLE-START] %s: cycle #%s', plate.display, new_cycle.id)
+
+            # ── Accumulate idling time for currently-inside visits ──
+            if is_idling and gf_still_in:
+                for visit in open_visits:
+                    if visit.geofence_id in gf_still_in:
+                        visit.idling_seconds = (visit.idling_seconds or 0) + POLL_INTERVAL_SECONDS
+                        summary['idle_seconds_logged'] += POLL_INTERVAL_SECONDS
+
         db.session.commit()
 
         # ── 6. Close trips idle for >= 30 minutes ────────────────────
@@ -357,6 +654,24 @@ def run_poll(app=None, log=None):
             log.info('[PRUNE] deleted %s old CartrackEvent rows', deleted)
         db.session.commit()
 
+        # ── 8. Hard-close abandoned cycles ───────────────────────────
+        # A cycle that's been "open" for > CYCLE_HARD_CLOSE_DAYS is almost
+        # certainly stuck (truck sold, GPS broken, or boundary edge case).
+        # Force-close so /api/cycle-time/summary doesn't accumulate fake
+        # 'ongoing' cycles forever.
+        stale_cutoff = now - timedelta(days=CYCLE_HARD_CLOSE_DAYS)
+        stale_cycles = TruckCycle.query.filter(
+            TruckCycle.ended_at.is_(None),
+            TruckCycle.started_at < stale_cutoff,
+        ).all()
+        for sc in stale_cycles:
+            sc.ended_at = now
+            sc.duration_minutes = int((now - sc.started_at).total_seconds() / 60)
+            sc.category = 'long'   # technically multi-day; flagged via notes elsewhere
+        if stale_cycles:
+            log.info('[PRUNE] force-closed %s abandoned cycles', len(stale_cycles))
+            db.session.commit()
+
     return summary
 
 
@@ -387,10 +702,10 @@ def _run_loop(interval_seconds=60):
             print(f'[#{iteration}] {datetime.utcnow().isoformat()}Z '
                   f'elapsed={elapsed:.1f}s '
                   f'tracked={summary.get("plates_tracked", 0)} '
-                  f'enters={summary.get("plaza_enters_detected", 0)} '
-                  f'exits={summary.get("plaza_exits_detected", 0)} '
-                  f'closed={summary.get("trips_closed", 0)} '
+                  f'toll(in/out)={summary.get("enters_detected", 0)}/{summary.get("exits_detected", 0)} '
                   f'filled={summary.get("toll_fees_filled", 0)} '
+                  f'site(in/out)={summary.get("site_visits_opened", 0)}/{summary.get("site_visits_closed", 0)} '
+                  f'cycle(start/end)={summary.get("cycles_opened", 0)}/{summary.get("cycles_closed", 0)} '
                   f'errors={len(summary.get("errors", []))}',
                   flush=True)
             if summary.get('errors'):
