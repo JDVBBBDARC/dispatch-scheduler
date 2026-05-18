@@ -1,0 +1,480 @@
+{% extends 'base.html' %}
+{% block title %}Truck Cycle Time{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <i class="bi bi-clock-history" style="font-size:2rem;color:#7c3aed;"></i>
+      <div>
+        <h4 class="mb-0 fw-bold">Truck Cycle Time</h4>
+        <small class="text-muted">
+          Round-trip duration from <span id="homeLabel" class="fw-semibold">home base</span>,
+          and per-truck idling rate at geofences.
+        </small>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshAll()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+      <button class="btn btn-sm btn-outline-info" onclick="syncGeofences()">
+        <i class="bi bi-cloud-download"></i> Sync Geofences
+      </button>
+      <button class="btn btn-sm btn-success" onclick="exportToExcel()">
+        <i class="bi bi-file-earmark-excel"></i> Export to Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100"
+           style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-white bg-opacity-25 rounded-3 p-2">
+              <i class="bi bi-broadcast-pin" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="small text-white-50">Open Cycles</div>
+              <div class="fs-3 fw-bold" id="kpiOpen">—</div>
+              <small class="text-white-50" id="kpiOpenSub">trucks currently out</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-success bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-check-circle text-success" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Closed Today</div>
+              <div class="fs-3 fw-bold" id="kpiClosedToday">—</div>
+              <small class="text-muted" id="kpiClosedTodaySub">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-stopwatch text-primary" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Avg Cycle Time</div>
+              <div class="fs-3 fw-bold" id="kpiAvg">—</div>
+              <small class="text-muted" id="kpiAvgSub">7d average</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-hourglass-split text-warning" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Long Cycles (7d)</div>
+              <div class="fs-3 fw-bold" id="kpiLong">—</div>
+              <small class="text-muted">multi-day journeys</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open cycles snapshot -->
+  <div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
+      <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+        <i class="bi bi-broadcast me-1"></i> Currently Open Cycles
+        <span class="badge bg-secondary ms-2" id="openCount">0</span>
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      <div id="openCyclesList" class="p-3 small text-muted">
+        <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column: idling chart + filters -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
+          <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+            <i class="bi bi-bar-chart-line me-1"></i> Top 15 Trucks by Idling %
+          </h6>
+        </div>
+        <div class="card-body">
+          <canvas id="idlingChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
+          <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+            <i class="bi bi-funnel me-1"></i> Filters
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small text-muted">From Date</label>
+              <input type="date" class="form-control form-control-sm" id="filterDateFrom" onchange="loadAll()">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">To Date</label>
+              <input type="date" class="form-control form-control-sm" id="filterDateTo" onchange="loadAll()">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Plate</label>
+              <select class="form-select form-select-sm" id="filterPlate" onchange="loadCycles()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Category</label>
+              <select class="form-select form-select-sm" id="filterCategory" onchange="loadCycles()">
+                <option value="">All</option>
+                <option value="short">Short (&lt;12h)</option>
+                <option value="standard">Standard (12–24h)</option>
+                <option value="long">Long (&gt;24h)</option>
+                <option value="ongoing">Ongoing</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Status</label>
+              <select class="form-select form-select-sm" id="filterStatus" onchange="loadCycles()">
+                <option value="all">All</option>
+                <option value="closed">Closed only</option>
+                <option value="open">Open only</option>
+              </select>
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()">
+                <i class="bi bi-x-circle"></i> Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cycles table -->
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center"
+         style="border-radius:1rem 1rem 0 0;">
+      <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+        <i class="bi bi-list-check me-1"></i> Cycle History
+        <span class="badge bg-secondary ms-2" id="cycleCount">0</span>
+      </h6>
+      <div class="d-flex align-items-center gap-2">
+        <small class="text-muted">Auto-refresh (60s)</small>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="small text-muted text-uppercase">Started</th>
+              <th class="small text-muted text-uppercase">Ended</th>
+              <th class="small text-muted text-uppercase">Plate</th>
+              <th class="small text-muted text-uppercase">Duration</th>
+              <th class="small text-muted text-uppercase">Category</th>
+              <th class="small text-muted text-uppercase">Visits</th>
+              <th class="small text-muted text-uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody id="cyclesTbody">
+            <tr><td colspan="7" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js (already loaded sa base.html if not, ensure here) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+let _idlingChart = null;
+let _autoRefreshTimer = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatHours(h) {
+  if (h == null) return '—';
+  if (h < 1) return Math.round(h * 60) + 'm';
+  return h.toFixed(1) + 'h';
+}
+
+function formatDT(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-PH', {
+    year: '2-digit', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+const CATEGORY_BADGE = {
+  short:    '<span class="badge bg-success">SHORT</span>',
+  standard: '<span class="badge bg-primary">STANDARD</span>',
+  long:     '<span class="badge bg-warning text-dark">LONG</span>',
+  ongoing:  '<span class="badge bg-info">ONGOING</span>',
+};
+
+// ── Loaders ───────────────────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const r = await fetch('/api/cycle-time/summary');
+    const j = await r.json();
+
+    document.getElementById('kpiOpen').textContent          = j.open_count;
+    document.getElementById('kpiOpenSub').textContent       = j.open_count === 0
+      ? 'all trucks at home' : `${j.open_count} on the road`;
+    document.getElementById('kpiClosedToday').textContent   = j.today.closed_cycles;
+    document.getElementById('kpiClosedTodaySub').textContent = `last 7d: ${j.week.closed_cycles}`;
+    document.getElementById('kpiAvg').textContent           = formatHours(j.week.avg_hours);
+    document.getElementById('kpiAvgSub').textContent        = `today: ${formatHours(j.today.avg_hours)}`;
+    document.getElementById('kpiLong').textContent          = j.week.by_category.long;
+
+    if (j.home_geofence) {
+      document.getElementById('homeLabel').textContent = j.home_geofence;
+    }
+
+    // Open cycles list
+    const list = document.getElementById('openCyclesList');
+    document.getElementById('openCount').textContent = j.open_count;
+    if (j.open.length === 0) {
+      list.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-house-check fs-3 d-block opacity-50"></i>No trucks currently away from home base.</div>';
+    } else {
+      list.innerHTML = '<div class="row g-2">' + j.open.map(c => `
+        <div class="col-md-4 col-sm-6">
+          <div class="d-flex align-items-center gap-2 p-2 border rounded">
+            <i class="bi bi-truck text-info"></i>
+            <div class="flex-grow-1">
+              <div class="fw-semibold small">${escHtml(c.plate_no)}</div>
+              <small class="text-muted">Out for ${formatHours(c.elapsed_hours)}</small>
+            </div>
+          </div>
+        </div>
+      `).join('') + '</div>';
+    }
+  } catch (e) {
+    console.error('loadSummary error:', e);
+  }
+}
+
+async function loadFilters() {
+  try {
+    const r = await fetch('/api/cycle-time/filters');
+    const j = await r.json();
+    const sel = document.getElementById('filterPlate');
+    j.plates.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.plate_no;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('loadFilters error:', e);
+  }
+}
+
+async function loadIdling() {
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const params = new URLSearchParams();
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+
+  try {
+    const r = await fetch('/api/cycle-time/idling?' + params.toString());
+    const j = await r.json();
+    const top = j.rows.slice(0, 15);
+
+    if (_idlingChart) _idlingChart.destroy();
+    const ctx = document.getElementById('idlingChart').getContext('2d');
+    _idlingChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: top.map(r => r.plate_no),
+        datasets: [{
+          label: 'Idling %',
+          data: top.map(r => r.idling_pct),
+          backgroundColor: top.map(r =>
+            r.idling_pct > 50 ? '#dc2626' :
+            r.idling_pct > 30 ? '#ea580c' :
+            r.idling_pct > 15 ? '#d97706' : '#16a34a'
+          ),
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const r = top[ctx.dataIndex];
+                return `${r.idling_pct}% (${r.idling_minutes}min of ${r.total_minutes}min across ${r.visits} visits)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, max: 100, title: { display: true, text: 'Idling %' } },
+          y: { ticks: { font: { size: 11 } } },
+        }
+      }
+    });
+  } catch (e) {
+    console.error('loadIdling error:', e);
+  }
+}
+
+async function loadCycles() {
+  const params = new URLSearchParams();
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const pl = document.getElementById('filterPlate').value;
+  const ca = document.getElementById('filterCategory').value;
+  const st = document.getElementById('filterStatus').value;
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (pl) params.set('plate_id', pl);
+  if (ca) params.set('category', ca);
+  if (st && st !== 'all') params.set('status', st);
+
+  try {
+    const r = await fetch('/api/cycle-time/cycles?' + params.toString());
+    const j = await r.json();
+    const tbody = document.getElementById('cyclesTbody');
+    document.getElementById('cycleCount').textContent = j.count;
+
+    if (j.cycles.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-2 d-block opacity-30"></i>
+        <small>No cycles match the filters yet. Data accumulates as trucks leave + return to home base.</small>
+      </td></tr>`;
+      return;
+    }
+    tbody.innerHTML = j.cycles.map(c => `
+      <tr>
+        <td class="small">${formatDT(c.started_at)}</td>
+        <td class="small">${c.ended_at ? formatDT(c.ended_at) : '<em class="text-muted">ongoing</em>'}</td>
+        <td class="fw-semibold small">${escHtml(c.plate_no)}</td>
+        <td class="small">${c.duration_hours != null ? formatHours(c.duration_hours) : '—'}</td>
+        <td>${CATEGORY_BADGE[c.category] || c.category}</td>
+        <td class="text-center small">${c.visit_count}</td>
+        <td>${c.is_open ? '<span class="badge bg-info">OPEN</span>' : '<span class="badge bg-secondary">CLOSED</span>'}</td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error('loadCycles error:', e);
+  }
+}
+
+// ── Actions ───────────────────────────────────────────────────────────
+function refreshAll() {
+  loadSummary();
+  loadIdling();
+  loadCycles();
+}
+
+function loadAll() {
+  loadIdling();
+  loadCycles();
+}
+
+function clearFilters() {
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  document.getElementById('filterPlate').value = '';
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('filterStatus').value = 'all';
+  loadAll();
+}
+
+function toggleAutoRefresh() {
+  if (_autoRefreshTimer) {
+    clearInterval(_autoRefreshTimer);
+    _autoRefreshTimer = null;
+  }
+  if (document.getElementById('autoRefresh').checked) {
+    _autoRefreshTimer = setInterval(refreshAll, 60000);
+  }
+}
+
+function exportToExcel() {
+  const params = new URLSearchParams();
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const pl = document.getElementById('filterPlate').value;
+  const ca = document.getElementById('filterCategory').value;
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (pl) params.set('plate_id', pl);
+  if (ca) params.set('category', ca);
+  window.location.href = '/api/cycle-time/export?' + params.toString();
+}
+
+async function syncGeofences() {
+  if (!confirm('Pull all geofences from Cartrack and refresh the local cache?\n\nThis is safe to run anytime — it only adds new geofences and updates existing ones.')) return;
+  try {
+    const r = await fetch('/api/cycle-time/sync-geofences', { method: 'POST' });
+    const j = await r.json();
+    if (j.error) {
+      alert('Sync failed: ' + j.error);
+      return;
+    }
+    alert(`Geofence sync complete!\n\nFetched: ${j.total_fetched}\nCreated: ${j.created}\nUpdated: ${j.updated}\nName changes: ${j.name_changed}`);
+    refreshAll();
+  } catch (e) {
+    alert('Sync request failed: ' + e.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadFilters();
+  refreshAll();
+});
+</script>
+{% endblock %}

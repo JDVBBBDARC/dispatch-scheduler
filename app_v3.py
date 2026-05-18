@@ -1967,6 +1967,306 @@ def api_toll_log_export():
     )
 
 
+# ── TRUCK CYCLE TIME (round-trip analytics + idling) ──────────────────────
+@app.route('/truck-cycle-time')
+@login_required
+def truck_cycle_time():
+    """Render the Truck Cycle Time analytics page."""
+    return render_template('truck_cycle_time/index.html')
+
+
+@app.route('/api/cycle-time/summary')
+@login_required
+def api_cycle_time_summary():
+    """KPI summary for the Truck Cycle Time page.
+
+    Returns counts + averages for today, last 7 days, last 30 days,
+    plus a snapshot of currently-open cycles.
+    """
+    from sqlalchemy import func
+    now = ph_now()
+    today_start = datetime.combine(ph_today(), datetime.min.time())
+    week_start  = today_start - timedelta(days=7)
+    month_start = today_start - timedelta(days=30)
+
+    def stats_for(since):
+        cycles = TruckCycle.query.filter(
+            TruckCycle.started_at >= since,
+            TruckCycle.ended_at.isnot(None),
+        ).all()
+        closed_count = len(cycles)
+        durations = [c.duration_minutes for c in cycles if c.duration_minutes]
+        avg_minutes = round(sum(durations) / len(durations), 1) if durations else 0
+        by_cat = {'short': 0, 'standard': 0, 'long': 0}
+        for c in cycles:
+            if c.category in by_cat:
+                by_cat[c.category] += 1
+        return {
+            'closed_cycles':    closed_count,
+            'avg_minutes':      avg_minutes,
+            'avg_hours':        round(avg_minutes / 60, 2) if avg_minutes else 0,
+            'by_category':      by_cat,
+        }
+
+    open_cycles = TruckCycle.query.filter(TruckCycle.ended_at.is_(None)).all()
+    open_summary = []
+    for c in open_cycles[:50]:   # cap to keep payload small
+        elapsed_min = int((datetime.utcnow() - c.started_at).total_seconds() / 60)
+        open_summary.append({
+            'cycle_id':    c.id,
+            'plate_id':    c.plate_id,
+            'plate_no':    c.plate.plate_no if c.plate else 'N/A',
+            'started_at':  c.started_at.isoformat() if c.started_at else None,
+            'elapsed_minutes': elapsed_min,
+            'elapsed_hours':   round(elapsed_min / 60, 1),
+        })
+
+    return jsonify({
+        'today':       stats_for(today_start),
+        'week':        stats_for(week_start),
+        'month':       stats_for(month_start),
+        'open_count':  len(open_cycles),
+        'open':        open_summary,
+        'home_geofence': (CartrackGeofence.query.filter_by(is_home=True).first().name
+                          if CartrackGeofence.query.filter_by(is_home=True).first()
+                          else None),
+    })
+
+
+@app.route('/api/cycle-time/cycles')
+@login_required
+def api_cycle_time_cycles():
+    """Return list of cycles with filters.
+
+    Query params:
+        date_from, date_to  — ISO dates, filter by started_at
+        plate_id            — single plate
+        category            — short / standard / long / ongoing
+        status              — 'open' / 'closed' / 'all'
+        limit               — max rows (default 200)
+    """
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    plate_id  = request.args.get('plate_id', '')
+    category  = request.args.get('category', '')
+    status    = request.args.get('status', 'all')
+    limit     = min(int(request.args.get('limit', 200)), 1000)
+
+    q = TruckCycle.query
+    if date_from:
+        try:
+            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+    if plate_id:
+        try:
+            q = q.filter(TruckCycle.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if category:
+        q = q.filter(TruckCycle.category == category)
+    if status == 'open':
+        q = q.filter(TruckCycle.ended_at.is_(None))
+    elif status == 'closed':
+        q = q.filter(TruckCycle.ended_at.isnot(None))
+
+    cycles = q.order_by(TruckCycle.started_at.desc()).limit(limit).all()
+
+    rows = []
+    for c in cycles:
+        # Count visits in this cycle
+        visit_count = SiteVisit.query.filter_by(cycle_id=c.id).count()
+        rows.append({
+            'id':          c.id,
+            'plate_id':    c.plate_id,
+            'plate_no':    c.plate.plate_no if c.plate else 'N/A',
+            'started_at':  c.started_at.isoformat() if c.started_at else None,
+            'ended_at':    c.ended_at.isoformat() if c.ended_at else None,
+            'duration_minutes': c.duration_minutes,
+            'duration_hours':   (round(c.duration_minutes / 60, 1) if c.duration_minutes else None),
+            'category':    c.category,
+            'visit_count': visit_count,
+            'is_open':     c.ended_at is None,
+        })
+    return jsonify({'cycles': rows, 'count': len(rows), 'limit': limit})
+
+
+@app.route('/api/cycle-time/idling')
+@login_required
+def api_cycle_time_idling():
+    """Return aggregated idling stats per truck.
+
+    Computed across the date range from SiteVisit records:
+      total_visits, total_duration_minutes, total_idling_minutes,
+      idling_pct (overall), avg_idling_pct_per_visit.
+
+    Used by the idling-rate bar chart on the Truck Cycle Time page.
+    """
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+
+    # Build query
+    from sqlalchemy import func
+    q = (db.session.query(
+            SiteVisit.plate_id,
+            func.count(SiteVisit.id).label('visits'),
+            func.coalesce(func.sum(SiteVisit.duration_seconds), 0).label('total_dur'),
+            func.coalesce(func.sum(SiteVisit.idling_seconds), 0).label('total_idle'),
+            func.avg(SiteVisit.idling_pct).label('avg_pct'),
+         )
+         .filter(SiteVisit.exit_at.isnot(None))   # only closed visits
+         .group_by(SiteVisit.plate_id))
+
+    if date_from:
+        try:
+            q = q.filter(SiteVisit.enter_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(SiteVisit.enter_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+
+    results = q.all()
+    plate_map = {p.id: p for p in Plate.query.all()}
+
+    rows = []
+    for r in results:
+        plate = plate_map.get(r.plate_id)
+        total_dur = int(r.total_dur or 0)
+        total_idle = int(r.total_idle or 0)
+        pct_overall = round(100.0 * total_idle / total_dur, 1) if total_dur else 0
+        rows.append({
+            'plate_id':         r.plate_id,
+            'plate_no':         plate.plate_no if plate else 'N/A',
+            'visits':           int(r.visits or 0),
+            'total_minutes':    round(total_dur / 60, 1),
+            'idling_minutes':   round(total_idle / 60, 1),
+            'idling_pct':       pct_overall,
+            'avg_idling_pct':   round(r.avg_pct or 0, 1),
+        })
+    # Sort by idling % desc
+    rows.sort(key=lambda x: x['idling_pct'], reverse=True)
+    return jsonify({'rows': rows, 'count': len(rows)})
+
+
+@app.route('/api/cycle-time/filters')
+@login_required
+def api_cycle_time_filters():
+    """Dropdown options: plates with cycle data, available categories."""
+    plate_ids = [pid for (pid,) in
+                 db.session.query(TruckCycle.plate_id).distinct().all()
+                 if pid is not None]
+    plates = (Plate.query.filter(Plate.id.in_(plate_ids))
+                       .order_by(Plate.plate_no).all() if plate_ids else [])
+    return jsonify({
+        'plates':     [{'id': p.id, 'plate_no': p.plate_no} for p in plates],
+        'categories': ['short', 'standard', 'long', 'ongoing'],
+    })
+
+
+@app.route('/api/cycle-time/export')
+@login_required
+def api_cycle_time_export():
+    """Export cycles to Excel."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return jsonify({'error': 'openpyxl not installed'}), 500
+
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    plate_id  = request.args.get('plate_id', '')
+    category  = request.args.get('category', '')
+
+    q = TruckCycle.query
+    if date_from:
+        try:
+            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+    if plate_id:
+        try:
+            q = q.filter(TruckCycle.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if category:
+        q = q.filter(TruckCycle.category == category)
+
+    cycles = q.order_by(TruckCycle.started_at.desc()).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Truck Cycles'
+
+    headers = ['Started', 'Ended', 'Plate', 'Duration (hrs)', 'Category',
+               'Visit Count', 'Total Idling (min)', 'Status']
+    hf = Font(bold=True, color='FFFFFF')
+    hfill = PatternFill('solid', fgColor='8B1A2B')
+    ca = Alignment(horizontal='center', vertical='center')
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font = hf; cell.fill = hfill; cell.alignment = ca
+
+    for row_idx, c in enumerate(cycles, 2):
+        plate = c.plate
+        ws.cell(row=row_idx, column=1, value=c.started_at.strftime('%Y-%m-%d %H:%M') if c.started_at else '')
+        ws.cell(row=row_idx, column=2, value=c.ended_at.strftime('%Y-%m-%d %H:%M') if c.ended_at else '')
+        ws.cell(row=row_idx, column=3, value=plate.plate_no if plate else 'N/A')
+        ws.cell(row=row_idx, column=4, value=round(c.duration_minutes / 60, 2) if c.duration_minutes else None)
+        ws.cell(row=row_idx, column=5, value=c.category)
+        ws.cell(row=row_idx, column=6, value=SiteVisit.query.filter_by(cycle_id=c.id).count())
+        ws.cell(row=row_idx, column=7, value=c.total_idling_minutes)
+        ws.cell(row=row_idx, column=8, value='Open' if c.ended_at is None else 'Closed')
+
+    column_widths = [18, 18, 14, 14, 12, 12, 18, 10]
+    for col_idx, w in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = w
+    ws.freeze_panes = 'A2'
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'truck_cycles_{ph_today().isoformat()}.xlsx'
+    )
+
+
+@app.route('/api/cycle-time/sync-geofences', methods=['POST'])
+@login_required
+def api_cycle_time_sync_geofences():
+    """Admin trigger: pull all geofences from Cartrack into local cache.
+
+    Should be called once after setup, then periodically (e.g., weekly)
+    to pick up new geofences admins create in Cartrack. The polling
+    worker only reads from the local cache, so newly-created geofences
+    in Cartrack won't be tracked until this sync runs.
+    """
+    try:
+        from cartrack_poll import sync_geofences
+        summary = sync_geofences(app=app)
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
 # ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────
 @app.route('/api/sync-to-sheets', methods=['POST'])
 @login_required
