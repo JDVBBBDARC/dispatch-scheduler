@@ -448,6 +448,11 @@ class SiteVisit(db.Model):
     idling_seconds = db.Column(db.Integer, default=0)
     # Idle percentage: idling / duration × 100. Computed on close.
     idling_pct  = db.Column(db.Float)
+    # True if the visit was shorter than the minimum dwell threshold
+    # (default 5 min) — i.e., the truck just passed through or briefly
+    # touched the geofence edge. UI hides these by default since they
+    # don't represent real delivery/pickup stops.
+    is_drive_by = db.Column(db.Boolean, default=False, index=True)
     # Link to the TripRecord this visit belongs to, when we can match
     # by date + driver/plate (filled by a separate matcher pass).
     trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'),

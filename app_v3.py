@@ -2021,15 +2021,22 @@ def api_cycle_time_summary():
             'elapsed_hours':   round(elapsed_min / 60, 1),
         })
 
+    # Expose the threshold so the UI can show "Min dwell: 5 min"
+    try:
+        from cartrack_poll import MIN_VISIT_MINUTES, TRACK_HOME_AS_VISIT
+    except ImportError:
+        MIN_VISIT_MINUTES, TRACK_HOME_AS_VISIT = 5, False
+
+    home_row = CartrackGeofence.query.filter_by(is_home=True).first()
     return jsonify({
         'today':       stats_for(today_start),
         'week':        stats_for(week_start),
         'month':       stats_for(month_start),
         'open_count':  len(open_cycles),
         'open':        open_summary,
-        'home_geofence': (CartrackGeofence.query.filter_by(is_home=True).first().name
-                          if CartrackGeofence.query.filter_by(is_home=True).first()
-                          else None),
+        'home_geofence': home_row.name if home_row else None,
+        'min_visit_minutes':  MIN_VISIT_MINUTES,
+        'track_home_as_visit': TRACK_HOME_AS_VISIT,
     })
 
 
@@ -2079,8 +2086,11 @@ def api_cycle_time_cycles():
 
     rows = []
     for c in cycles:
-        # Count visits in this cycle
-        visit_count = SiteVisit.query.filter_by(cycle_id=c.id).count()
+        # Count only REAL visits (exclude drive-bys) in this cycle.
+        visit_count = (SiteVisit.query
+                       .filter_by(cycle_id=c.id)
+                       .filter(SiteVisit.is_drive_by == False)   # noqa: E712
+                       .count())
         rows.append({
             'id':          c.id,
             'plate_id':    c.plate_id,
@@ -2110,7 +2120,11 @@ def api_cycle_time_idling():
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
 
-    # Build query
+    # Build query — excludes drive-by visits by default since they're
+    # transient touches, not real delivery stops. Use ?include_drive_by=1
+    # to see them.
+    include_drive_by = request.args.get('include_drive_by', '0') in ('1', 'true', 'True')
+
     from sqlalchemy import func
     q = (db.session.query(
             SiteVisit.plate_id,
@@ -2121,6 +2135,8 @@ def api_cycle_time_idling():
          )
          .filter(SiteVisit.exit_at.isnot(None))   # only closed visits
          .group_by(SiteVisit.plate_id))
+    if not include_drive_by:
+        q = q.filter(SiteVisit.is_drive_by == False)   # noqa: E712
 
     if date_from:
         try:

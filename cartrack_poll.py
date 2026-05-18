@@ -66,6 +66,24 @@ POLL_INTERVAL_SECONDS = 60
 # doesn't grow forever.
 CYCLE_HARD_CLOSE_DAYS = 14
 
+# Minimum dwell time (in minutes) for a SiteVisit to be considered a
+# 'real' delivery/pickup stop. Anything shorter is marked is_drive_by=True
+# and hidden from the UI by default. Helps filter out:
+#   - Trucks passing through a geofence on a road that overlaps with one
+#   - Brief touch-and-go (e.g., u-turn at the edge of a customer site)
+#   - GPS jitter that briefly puts a truck inside a fence
+# Set to 5 min based on real-world observation; raise to 10 min if you
+# want to be stricter, or 1-2 min if your geofences are tightly drawn.
+MIN_VISIT_MINUTES = 5
+
+# Whether to create SiteVisit rows for the HOME geofence (BIG BEN SCM).
+# When False (recommended), the polling worker uses home enter/exit
+# events ONLY to open/close TruckCycles, but doesn't clutter the visits
+# table with "idle at home for 18 hours" rows — those aren't useful for
+# delivery analytics. The cycle data itself captures total time away
+# from home, which is the more meaningful metric.
+TRACK_HOME_AS_VISIT = False
+
 # Logger
 _log = logging.getLogger('cartrack_poll')
 if not _log.handlers:
@@ -508,8 +526,53 @@ def run_poll(app=None, log=None):
                                   TruckCycle.ended_at.is_(None))
                           .first())
 
-            # ── Open new SiteVisits ──
+            # ── 5b.1 CYCLE TRACKING (home entry/exit) ──────────────────
+            # We use cycle state — not SiteVisits — as the source of truth
+            # for "is this truck currently away from home?" This way the
+            # logic works even when TRACK_HOME_AS_VISIT=False (we don't
+            # create SiteVisit rows for the home geofence).
+            home_gf = CartrackGeofence.query.filter_by(is_home=True).first()
+            is_at_home_now  = bool(home_gf and home_gf.cartrack_id in current_geofence_uuids)
+            was_at_home_prev = open_cycle is None   # no open cycle ⇒ was at home
+
+            if is_at_home_now and not was_at_home_prev and open_cycle is not None:
+                # Truck just RETURNED home → close the open cycle.
+                open_cycle.ended_at = now
+                open_cycle.duration_minutes = max(
+                    1, int((now - open_cycle.started_at).total_seconds() / 60))
+                h = open_cycle.duration_minutes / 60.0
+                open_cycle.category = (
+                    'short'    if h < 12 else
+                    'standard' if h < 24 else
+                    'long'
+                )
+                summary['cycles_closed'] += 1
+                log.info('[CYCLE-END] %s: cycle #%s duration=%.1fh (%s)',
+                         plate.display, open_cycle.id, h, open_cycle.category)
+                open_cycle = None
+            elif not is_at_home_now and was_at_home_prev:
+                # Truck just LEFT home → open a new cycle.
+                new_cycle = TruckCycle(
+                    plate_id   = plate.id,
+                    started_at = now,
+                    category   = 'ongoing',
+                )
+                db.session.add(new_cycle)
+                db.session.flush()   # need cycle.id for subsequent SiteVisit links
+                open_cycle = new_cycle
+                summary['cycles_opened'] += 1
+                log.info('[CYCLE-START] %s: cycle #%s', plate.display, new_cycle.id)
+
+            # ── 5b.2 SITE VISITS for non-home geofences only ──────────
+            # Home enter/exit is fully handled above; we explicitly skip
+            # home in the loops below so trucks parked at the depot don't
+            # generate phantom 18-hour "visits" cluttering the UI.
+            home_id = home_gf.id if home_gf else None
+
+            # Open new SiteVisits (skip home)
             for gf_id in gf_new_enters:
+                if gf_id == home_id and not TRACK_HOME_AS_VISIT:
+                    continue
                 gf = gf_by_id.get(gf_id)
                 if gf is None:
                     continue
@@ -526,23 +589,8 @@ def run_poll(app=None, log=None):
                          plate.display, gf.name,
                          open_cycle.id if open_cycle else '-')
 
-                # If entering HOME, close any open cycle for this plate.
-                if gf.is_home and open_cycle is not None:
-                    open_cycle.ended_at = now
-                    open_cycle.duration_minutes = max(
-                        1, int((now - open_cycle.started_at).total_seconds() / 60))
-                    h = open_cycle.duration_minutes / 60.0
-                    open_cycle.category = (
-                        'short'    if h < 12 else
-                        'standard' if h < 24 else
-                        'long'
-                    )
-                    summary['cycles_closed'] += 1
-                    log.info('[CYCLE-END] %s: cycle #%s duration=%.1fh (%s)',
-                             plate.display, open_cycle.id, h, open_cycle.category)
-                    open_cycle = None   # this plate no longer has an open cycle
-
-            # ── Close exited SiteVisits ──
+            # Close exited SiteVisits (drive-by flagged if too short)
+            min_seconds = MIN_VISIT_MINUTES * 60
             for visit in open_visits:
                 if visit.geofence_id not in gf_new_exits:
                     continue
@@ -552,24 +600,13 @@ def run_poll(app=None, log=None):
                 if duration > 0:
                     visit.idling_pct = round(
                         100.0 * (visit.idling_seconds or 0) / duration, 1)
+                visit.is_drive_by = duration < min_seconds
                 summary['site_visits_closed'] += 1
+                if visit.is_drive_by:
+                    log.info('[VISIT-OUT] drive-by (%ds < %dmin threshold) %s',
+                             duration, MIN_VISIT_MINUTES, plate.display)
 
-                # If LEAVING home, open a new TruckCycle for this plate.
-                left_gf = (CartrackGeofence.query
-                           .filter_by(id=visit.geofence_id).first())
-                if left_gf and left_gf.is_home and open_cycle is None:
-                    new_cycle = TruckCycle(
-                        plate_id   = plate.id,
-                        started_at = now,
-                        category   = 'ongoing',
-                    )
-                    db.session.add(new_cycle)
-                    db.session.flush()   # need cycle.id for next iteration's links
-                    open_cycle = new_cycle
-                    summary['cycles_opened'] += 1
-                    log.info('[CYCLE-START] %s: cycle #%s', plate.display, new_cycle.id)
-
-            # ── Accumulate idling time for currently-inside visits ──
+            # Accumulate idling time for currently-inside visits
             if is_idling and gf_still_in:
                 for visit in open_visits:
                     if visit.geofence_id in gf_still_in:

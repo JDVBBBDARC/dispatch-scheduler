@@ -13,6 +13,9 @@
         <small class="text-muted">
           Round-trip duration from <span id="homeLabel" class="fw-semibold">home base</span>,
           and per-truck idling rate at geofences.
+          <span class="ms-2 badge bg-light text-dark" id="thresholdBadge" title="Visits shorter than this are treated as drive-bys (not real stops)">
+            Min dwell: <span id="minDwellMin">5</span> min
+          </span>
         </small>
       </div>
     </div>
@@ -274,6 +277,9 @@ async function loadSummary() {
 
     if (j.home_geofence) {
       document.getElementById('homeLabel').textContent = j.home_geofence;
+    }
+    if (j.min_visit_minutes != null) {
+      document.getElementById('minDwellMin').textContent = j.min_visit_minutes;
     }
 
     // Open cycles list
