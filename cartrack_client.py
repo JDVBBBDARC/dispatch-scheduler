@@ -155,42 +155,96 @@ class CartrackClient:
         return body.get('data', []), None
 
     def list_geofences(self):
-        """Return all geofences in the account."""
-        status, body = self._call('/rest/geofences')
-        if status != 200 or not isinstance(body, dict):
-            return None, f'list_geofences HTTP {status}: {body}'
-        return body.get('data', []), None
+        """Return all geofences in the account — handles pagination.
+
+        Like /rest/vehicles, Cartrack paginates /rest/geofences at 10 records
+        per page and exposes pagination via a 'meta' object. We loop through
+        all pages and concatenate.
+
+        Returns:
+            (list_of_geofence_dicts, None) on success
+            (None, error_string) on failure
+        """
+        all_geofences = []
+        page = 1
+        while True:
+            status, body = self._call('/rest/geofences', params={'page': page})
+            if status != 200 or not isinstance(body, dict):
+                return None, f'list_geofences HTTP {status}: {body}'
+            data = body.get('data', [])
+            all_geofences.extend(data)
+            meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
+            current_page = meta.get('current_page', page)
+            last_page    = meta.get('last_page', 1)
+            if current_page >= last_page:
+                break
+            page += 1
+            if page > 100:   # safety guard
+                break
+        return all_geofences, None
 
     def list_trips(self, start_dt=None, end_dt=None):
-        """Return trip records in the date range (defaults to last 24h).
+        """Return trip records in the date range — handles pagination.
 
         Cartrack expects timestamps as 'Y-m-d H:i:s' (NOT ISO 8601).
+        Defaults to last 24h. Loops through all pages of results.
         """
         now = datetime.now()
         start_dt = start_dt or (now - timedelta(days=1))
         end_dt   = end_dt or now
-        params = {
+        base_params = {
             'start_timestamp': start_dt.strftime('%Y-%m-%d %H:%M:%S'),
             'end_timestamp':   end_dt.strftime('%Y-%m-%d %H:%M:%S'),
         }
-        status, body = self._call('/rest/trips', params=params)
-        if status != 200 or not isinstance(body, dict):
-            return None, f'list_trips HTTP {status}: {body}'
-        return body.get('data', []), None
+        all_trips = []
+        page = 1
+        while True:
+            params = dict(base_params, page=page)
+            status, body = self._call('/rest/trips', params=params)
+            if status != 200 or not isinstance(body, dict):
+                return None, f'list_trips HTTP {status}: {body}'
+            data = body.get('data', [])
+            all_trips.extend(data)
+            meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
+            current_page = meta.get('current_page', page)
+            last_page    = meta.get('last_page', 1)
+            if current_page >= last_page:
+                break
+            page += 1
+            if page > 100:   # safety guard
+                break
+        return all_trips, None
 
     def get_events(self, start_dt=None, end_dt=None):
-        """Return vehicle events in the date range (defaults to last hour)."""
+        """Return vehicle events in the date range — handles pagination.
+
+        Defaults to last hour. Loops through all pages of results.
+        """
         now = datetime.now()
         start_dt = start_dt or (now - timedelta(hours=1))
         end_dt   = end_dt or now
-        params = {
+        base_params = {
             'start_timestamp': start_dt.strftime('%Y-%m-%d %H:%M:%S'),
             'end_timestamp':   end_dt.strftime('%Y-%m-%d %H:%M:%S'),
         }
-        status, body = self._call('/rest/vehicles/events', params=params)
-        if status != 200 or not isinstance(body, dict):
-            return None, f'get_events HTTP {status}: {body}'
-        return body.get('data', []), None
+        all_events = []
+        page = 1
+        while True:
+            params = dict(base_params, page=page)
+            status, body = self._call('/rest/vehicles/events', params=params)
+            if status != 200 or not isinstance(body, dict):
+                return None, f'get_events HTTP {status}: {body}'
+            data = body.get('data', [])
+            all_events.extend(data)
+            meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
+            current_page = meta.get('current_page', page)
+            last_page    = meta.get('last_page', 1)
+            if current_page >= last_page:
+                break
+            page += 1
+            if page > 100:   # safety guard
+                break
+        return all_events, None
 
     # ─────────────────────────────────────────────────────────────
     # Convenience helpers
