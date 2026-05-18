@@ -2798,6 +2798,25 @@ def init_db():
                 print("  Migrated: added can_delete column to users")
         except Exception:
             pass  # users table may not exist yet on first run
+
+        # Migrate: add is_drive_by column to site_visits if missing.
+        # site_visits was first introduced without this column (commit 3052dbf);
+        # is_drive_by was added in 644c005. db.create_all() doesn't ALTER
+        # existing tables, so this guarded ALTER is needed for the polling
+        # worker to query SiteVisit successfully on accounts that picked up
+        # the first version of the table.
+        try:
+            if 'site_visits' in inspector.get_table_names():
+                svcols = [c['name'] for c in inspector.get_columns('site_visits')]
+                if 'is_drive_by' not in svcols:
+                    with db.engine.connect() as conn:
+                        conn.execute(text(
+                            'ALTER TABLE site_visits ADD COLUMN is_drive_by BOOLEAN DEFAULT 0'
+                        ))
+                        conn.commit()
+                    print("  Migrated: added is_drive_by column to site_visits")
+        except Exception as _mig_err:
+            print(f"  Migration warning (site_visits.is_drive_by): {_mig_err}")
         # Import DeleteRequest so db.create_all() picks it up
         from auth.models import DeleteRequest  # noqa: F401
         db.create_all()  # create delete_requests table if new
