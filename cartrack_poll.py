@@ -43,6 +43,55 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 
+def _bootstrap_env_from_wsgi():
+    """Populate os.environ with `os.environ[...] = ...` lines from the WSGI file.
+
+    On PythonAnywhere, env vars defined in the WSGI config file are only
+    visible to the web-app process. Always-On Tasks run as a *separate*
+    process with a fresh environment, so they don't see CARTRACK_USERNAME,
+    CARTRACK_PASSWORD, etc. — which makes CartrackClient.from_env() fail
+    with 'not configured'.
+
+    To make tasks self-sufficient, we parse the WSGI file at module load
+    time and copy any `os.environ['KEY'] = 'value'` statements into our
+    own environment. Already-set env vars are NOT overwritten, so this
+    is safe to run in any context (Flask web app, console, task).
+
+    Looks for the WSGI file at the conventional PythonAnywhere path:
+        /var/www/<username>_pythonanywhere_com_wsgi.py
+
+    Silently skipped if the file isn't found (e.g., running locally).
+    """
+    try:
+        # Find the WSGI file. PA convention: /var/www/<user>_pythonanywhere_com_wsgi.py
+        import glob
+        candidates = glob.glob('/var/www/*_pythonanywhere_com_wsgi.py')
+        if not candidates:
+            return   # not on PA, or unconventional location
+        with open(candidates[0]) as f:
+            for line in f:
+                stripped = line.strip()
+                # Only execute lines that look like `os.environ['X'] = '...'`
+                # Skip anything else (imports, comments, sys.path manipulation, etc.)
+                # to keep the bootstrap surface small and safe.
+                if stripped.startswith('os.environ[') and '=' in stripped:
+                    try:
+                        # Execute the assignment in a controlled namespace
+                        local_env = {'os': os}
+                        exec(stripped, local_env)
+                    except Exception:
+                        pass   # ignore malformed lines
+    except Exception:
+        # Never let env bootstrap kill the task — fall back to whatever
+        # env vars are already set.
+        pass
+
+
+# Run env bootstrap at module import time so it's ready before any
+# CartrackClient.from_env() call.
+_bootstrap_env_from_wsgi()
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Configuration
 # ─────────────────────────────────────────────────────────────────────
