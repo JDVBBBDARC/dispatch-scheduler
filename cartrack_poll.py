@@ -501,11 +501,23 @@ def run_poll(app=None, log=None):
             new_enters = current_set - previous_set
             new_exits  = previous_set - current_set
 
-            # Update last position (always)
+            # Update last position + live status fields (always, every poll).
+            # Powers the live "where is this truck and what's it doing" cards
+            # on /truck-cycle-time without re-hitting Cartrack on page load.
             if lat is not None and lng is not None:
                 state.last_lat = lat
                 state.last_lng = lng
                 state.last_position_at = now
+            state.last_position_description = (loc.get('position_description') or '')[:295]
+            state.last_idling   = bool(status.get('idling', False))
+            state.last_ignition = bool(status.get('ignition', False))
+            try:
+                state.last_speed = int(status.get('speed') or 0)
+            except (TypeError, ValueError):
+                state.last_speed = 0
+            # Snapshot which Cartrack geofences the truck is currently in,
+            # so the API can show "Currently at: AHNEX" without re-querying.
+            state.last_geofence_uuids = ','.join(sorted(loc.get('geofence_ids') or []))
 
             # ── Handle ENTER events ──
             for plaza_name in new_enters:

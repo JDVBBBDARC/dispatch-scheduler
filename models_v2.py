@@ -350,12 +350,34 @@ class CartrackTruckState(db.Model):
     last_lat        = db.Column(db.Float)
     last_lng        = db.Column(db.Float)
     last_position_at= db.Column(db.DateTime)
+    # Live status fields — written every poll so the dispatcher UI can show
+    # where a truck is and what it's doing without hitting Cartrack on every
+    # page refresh. All fields refresh on every poll, even if state hasn't
+    # changed (so 'last seen' age can be computed from updated_at).
+    last_position_description = db.Column(db.String(300))   # "Dolores Rd, Porac, Pampanga"
+    last_idling     = db.Column(db.Boolean, default=False)
+    last_ignition   = db.Column(db.Boolean, default=False)
+    last_speed      = db.Column(db.Integer, default=0)       # km/h
+    # Comma-separated Cartrack geofence UUIDs currently inside (for the
+    # "currently at SITE-X" badge in the Open Cycles list).
+    last_geofence_uuids = db.Column(db.Text, default='')
     # Which TripRecord this state maps to (for auto-fill). Set when entry detected.
     open_trip_id    = db.Column(db.Integer, db.ForeignKey('trip_records.id'), nullable=True)
     # Bookkeeping
     updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     plate = db.relationship('Plate')
+
+    @property
+    def live_status(self):
+        """Computed status code from ignition/idling/speed."""
+        if not self.last_ignition:
+            return 'OFF'
+        if self.last_speed and self.last_speed > 5:   # >5 km/h = actually moving
+            return 'DRIVING'
+        if self.last_idling:
+            return 'IDLING'
+        return 'STOPPED'
 
 
 class CartrackEvent(db.Model):

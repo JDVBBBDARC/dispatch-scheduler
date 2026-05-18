@@ -2012,9 +2012,46 @@ def api_cycle_time_summary():
         }
 
     open_cycles = TruckCycle.query.filter(TruckCycle.ended_at.is_(None)).all()
+
+    # Pre-fetch live state rows for all open cycles in one query (avoids N+1).
+    plate_ids = [c.plate_id for c in open_cycles]
+    state_map = {}
+    if plate_ids:
+        states = CartrackTruckState.query.filter(
+            CartrackTruckState.plate_id.in_(plate_ids)
+        ).all()
+        state_map = {s.plate_id: s for s in states}
+
+    # Pre-fetch geofence names so the "Currently at: X" badge can resolve
+    # UUID -> name without one query per cycle.
+    all_gf_uuids = set()
+    for s in state_map.values():
+        for u in (s.last_geofence_uuids or '').split(','):
+            if u:
+                all_gf_uuids.add(u)
+    gf_name_map = {}
+    if all_gf_uuids:
+        for g in CartrackGeofence.query.filter(
+            CartrackGeofence.cartrack_id.in_(all_gf_uuids)
+        ).all():
+            gf_name_map[g.cartrack_id] = g.name
+
     open_summary = []
     for c in open_cycles[:50]:   # cap to keep payload small
         elapsed_min = int((datetime.utcnow() - c.started_at).total_seconds() / 60)
+        state = state_map.get(c.plate_id)
+        # Resolve current geofence name(s) — usually just one, but the truck
+        # could be in nested zones (e.g., customer site inside an industrial park).
+        current_gf_names = []
+        if state and state.last_geofence_uuids:
+            for u in state.last_geofence_uuids.split(','):
+                if u and u in gf_name_map:
+                    current_gf_names.append(gf_name_map[u])
+        # Compute "last seen" age in minutes so UI can flag stale data
+        last_seen_age_min = None
+        if state and state.last_position_at:
+            last_seen_age_min = int(
+                (datetime.utcnow() - state.last_position_at).total_seconds() / 60)
         open_summary.append({
             'cycle_id':    c.id,
             'plate_id':    c.plate_id,
@@ -2022,6 +2059,12 @@ def api_cycle_time_summary():
             'started_at':  c.started_at.isoformat() if c.started_at else None,
             'elapsed_minutes': elapsed_min,
             'elapsed_hours':   round(elapsed_min / 60, 1),
+            # NEW: live state (from CartrackTruckState, refreshed every poll)
+            'location':         (state.last_position_description if state else '') or '—',
+            'current_geofences': current_gf_names,
+            'status':           (state.live_status if state else 'UNKNOWN'),
+            'speed':            (state.last_speed if state else 0),
+            'last_seen_min_ago': last_seen_age_min,
         })
 
     # Expose the threshold so the UI can show "Min dwell: 5 min"
@@ -2087,6 +2130,28 @@ def api_cycle_time_cycles():
 
     cycles = q.order_by(TruckCycle.started_at.desc()).limit(limit).all()
 
+    # Pre-fetch live state for OPEN cycles only — no point joining for closed
+    # cycles since the truck has long since moved on.
+    open_plate_ids = [c.plate_id for c in cycles if c.ended_at is None]
+    state_map = {}
+    gf_name_map = {}
+    if open_plate_ids:
+        states = CartrackTruckState.query.filter(
+            CartrackTruckState.plate_id.in_(open_plate_ids)
+        ).all()
+        state_map = {s.plate_id: s for s in states}
+        # Resolve geofence names for the "Currently at" column
+        all_gf_uuids = set()
+        for s in states:
+            for u in (s.last_geofence_uuids or '').split(','):
+                if u:
+                    all_gf_uuids.add(u)
+        if all_gf_uuids:
+            for g in CartrackGeofence.query.filter(
+                CartrackGeofence.cartrack_id.in_(all_gf_uuids)
+            ).all():
+                gf_name_map[g.cartrack_id] = g.name
+
     rows = []
     for c in cycles:
         # Count only REAL visits (exclude drive-bys) in this cycle.
@@ -2094,6 +2159,19 @@ def api_cycle_time_cycles():
                        .filter_by(cycle_id=c.id)
                        .filter(SiteVisit.is_drive_by == False)   # noqa: E712
                        .count())
+        is_open = c.ended_at is None
+        # Resolve live fields (only meaningful for open cycles).
+        live = {'location': '', 'current_geofences': [], 'status': '', 'speed': 0}
+        if is_open:
+            state = state_map.get(c.plate_id)
+            if state:
+                live['location'] = state.last_position_description or ''
+                live['status']   = state.live_status
+                live['speed']    = state.last_speed or 0
+                if state.last_geofence_uuids:
+                    for u in state.last_geofence_uuids.split(','):
+                        if u and u in gf_name_map:
+                            live['current_geofences'].append(gf_name_map[u])
         rows.append({
             'id':          c.id,
             'plate_id':    c.plate_id,
@@ -2104,7 +2182,12 @@ def api_cycle_time_cycles():
             'duration_hours':   (round(c.duration_minutes / 60, 1) if c.duration_minutes else None),
             'category':    c.category,
             'visit_count': visit_count,
-            'is_open':     c.ended_at is None,
+            'is_open':     is_open,
+            # Live state (populated only when is_open=True)
+            'location':         live['location'],
+            'current_geofences': live['current_geofences'],
+            'status':           live['status'],
+            'speed':            live['speed'],
         })
     return jsonify({'cycles': rows, 'count': len(rows), 'limit': limit})
 
@@ -2820,6 +2903,34 @@ def init_db():
                     print("  Migrated: added is_drive_by column to site_visits")
         except Exception as _mig_err:
             print(f"  Migration warning (site_visits.is_drive_by): {_mig_err}")
+
+        # Migrate: add live-status columns to cartrack_truck_state.
+        # These power the "where is each truck right now" view on the
+        # Truck Cycle Time page. Older databases will have cartrack_truck_state
+        # without these columns and the polling worker will crash on update.
+        try:
+            if 'cartrack_truck_state' in inspector.get_table_names():
+                ctscols = [c['name'] for c in inspector.get_columns('cartrack_truck_state')]
+                migrations = [
+                    ('last_position_description', 'VARCHAR(300)'),
+                    ('last_idling',               'BOOLEAN DEFAULT 0'),
+                    ('last_ignition',             'BOOLEAN DEFAULT 0'),
+                    ('last_speed',                'INTEGER DEFAULT 0'),
+                    ('last_geofence_uuids',       'TEXT DEFAULT \'\''),
+                ]
+                added = []
+                for col_name, col_type in migrations:
+                    if col_name not in ctscols:
+                        with db.engine.connect() as conn:
+                            conn.execute(text(
+                                f'ALTER TABLE cartrack_truck_state ADD COLUMN {col_name} {col_type}'
+                            ))
+                            conn.commit()
+                        added.append(col_name)
+                if added:
+                    print(f"  Migrated: added {len(added)} columns to cartrack_truck_state: {', '.join(added)}")
+        except Exception as _mig_err:
+            print(f"  Migration warning (cartrack_truck_state live fields): {_mig_err}")
         # Import DeleteRequest so db.create_all() picks it up
         from auth.models import DeleteRequest  # noqa: F401
         db.create_all()  # create delete_requests table if new

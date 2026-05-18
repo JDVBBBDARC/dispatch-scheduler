@@ -208,11 +208,14 @@
               <th class="small text-muted text-uppercase">Duration</th>
               <th class="small text-muted text-uppercase">Category</th>
               <th class="small text-muted text-uppercase">Visits</th>
-              <th class="small text-muted text-uppercase">Status</th>
+              <th class="small text-muted text-uppercase">Live Status</th>
+              <th class="small text-muted text-uppercase">Currently At</th>
+              <th class="small text-muted text-uppercase">Location</th>
+              <th class="small text-muted text-uppercase">Cycle</th>
             </tr>
           </thead>
           <tbody id="cyclesTbody">
-            <tr><td colspan="7" class="text-center py-5 text-muted">
+            <tr><td colspan="10" class="text-center py-5 text-muted">
               <div class="spinner-border spinner-border-sm me-2"></div>Loading…
             </td></tr>
           </tbody>
@@ -260,6 +263,17 @@ const CATEGORY_BADGE = {
   ongoing:  '<span class="badge bg-info">ONGOING</span>',
 };
 
+// Live status of a truck — computed by CartrackTruckState.live_status from
+// ignition + idling + speed. Colors mirror the typical 'is this productive?'
+// scale: green = good, yellow = warning, red = bad, grey = inactive.
+const STATUS_BADGE = {
+  DRIVING:  { label: 'DRIVING', cls: 'bg-success',         icon: 'bi-truck'           },
+  IDLING:   { label: 'IDLING',  cls: 'bg-warning text-dark', icon: 'bi-hourglass-split' },
+  STOPPED:  { label: 'STOPPED', cls: 'bg-info text-dark',  icon: 'bi-pause-circle'    },
+  OFF:      { label: 'OFF',     cls: 'bg-secondary',       icon: 'bi-power'           },
+  UNKNOWN:  { label: 'NO DATA', cls: 'bg-light text-muted',icon: 'bi-question-circle' },
+};
+
 // ── Loaders ───────────────────────────────────────────────────────────
 async function loadSummary() {
   try {
@@ -288,17 +302,28 @@ async function loadSummary() {
     if (j.open.length === 0) {
       list.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-house-check fs-3 d-block opacity-50"></i>No trucks currently away from home base.</div>';
     } else {
-      list.innerHTML = '<div class="row g-2">' + j.open.map(c => `
-        <div class="col-md-4 col-sm-6">
-          <div class="d-flex align-items-center gap-2 p-2 border rounded">
-            <i class="bi bi-truck text-info"></i>
-            <div class="flex-grow-1">
-              <div class="fw-semibold small">${escHtml(c.plate_no)}</div>
-              <small class="text-muted">Out for ${formatHours(c.elapsed_hours)}</small>
+      list.innerHTML = '<div class="row g-2">' + j.open.map(c => {
+        const sInfo = STATUS_BADGE[c.status] || {label: c.status || '—', cls: 'bg-secondary', icon: 'bi-question-circle'};
+        const inGf = (c.current_geofences && c.current_geofences.length)
+          ? `<small class="text-success d-block"><i class="bi bi-geo-alt-fill"></i> ${escHtml(c.current_geofences.join(', '))}</small>`
+          : `<small class="text-muted d-block"><i class="bi bi-signpost-split"></i> In transit</small>`;
+        const loc = c.location && c.location !== '—'
+          ? `<small class="text-muted d-block text-truncate" title="${escHtml(c.location)}"><i class="bi bi-pin-map"></i> ${escHtml(c.location)}</small>`
+          : '';
+        const speedTxt = (c.status === 'DRIVING' && c.speed) ? ` · ${c.speed} km/h` : '';
+        return `
+        <div class="col-md-6 col-lg-4">
+          <div class="p-2 border rounded h-100" style="background:#fafafa;">
+            <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
+              <span class="fw-semibold small"><i class="bi bi-truck text-info me-1"></i>${escHtml(c.plate_no)}</span>
+              <span class="badge ${sInfo.cls}" style="font-size:.7rem;"><i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}</span>
             </div>
+            ${inGf}
+            ${loc}
+            <small class="text-muted d-block mt-1"><i class="bi bi-clock"></i> Out for ${formatHours(c.elapsed_hours)}</small>
           </div>
-        </div>
-      `).join('') + '</div>';
+        </div>`;
+      }).join('') + '</div>';
     }
   } catch (e) {
     console.error('loadSummary error:', e);
@@ -395,23 +420,49 @@ async function loadCycles() {
     document.getElementById('cycleCount').textContent = j.count;
 
     if (j.cycles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
         <i class="bi bi-inbox fs-2 d-block opacity-30"></i>
         <small>No cycles match the filters yet. Data accumulates as trucks leave + return to home base.</small>
       </td></tr>`;
       return;
     }
-    tbody.innerHTML = j.cycles.map(c => `
-      <tr>
+    tbody.innerHTML = j.cycles.map(c => {
+      // Build live-status cells (only meaningful while cycle is open)
+      let liveStatusCell = '<td class="text-muted small">—</td>';
+      let geofenceCell   = '<td class="text-muted small">—</td>';
+      let locationCell   = '<td class="text-muted small">—</td>';
+      if (c.is_open) {
+        const sInfo = STATUS_BADGE[c.status] || STATUS_BADGE.UNKNOWN;
+        const speedTxt = (c.status === 'DRIVING' && c.speed) ? ` ${c.speed} km/h` : '';
+        liveStatusCell = `<td><span class="badge ${sInfo.cls}" style="font-size:.7rem;">
+          <i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}
+        </span></td>`;
+        geofenceCell = (c.current_geofences && c.current_geofences.length)
+          ? `<td class="small"><span class="text-success">
+               <i class="bi bi-geo-alt-fill"></i> ${escHtml(c.current_geofences.join(', '))}
+             </span></td>`
+          : `<td class="small text-muted">
+               <i class="bi bi-signpost-split"></i> In transit
+             </td>`;
+        locationCell = c.location
+          ? `<td class="small text-truncate" style="max-width:240px;" title="${escHtml(c.location)}">
+               <i class="bi bi-pin-map text-muted me-1"></i>${escHtml(c.location)}
+             </td>`
+          : `<td class="text-muted small">—</td>`;
+      }
+      return `<tr>
         <td class="small">${formatDT(c.started_at)}</td>
         <td class="small">${c.ended_at ? formatDT(c.ended_at) : '<em class="text-muted">ongoing</em>'}</td>
         <td class="fw-semibold small">${escHtml(c.plate_no)}</td>
         <td class="small">${c.duration_hours != null ? formatHours(c.duration_hours) : '—'}</td>
         <td>${CATEGORY_BADGE[c.category] || c.category}</td>
         <td class="text-center small">${c.visit_count}</td>
+        ${liveStatusCell}
+        ${geofenceCell}
+        ${locationCell}
         <td>${c.is_open ? '<span class="badge bg-info">OPEN</span>' : '<span class="badge bg-secondary">CLOSED</span>'}</td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   } catch (e) {
     console.error('loadCycles error:', e);
   }
