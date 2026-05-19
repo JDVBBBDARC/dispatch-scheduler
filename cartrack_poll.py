@@ -44,46 +44,61 @@ if _HERE not in sys.path:
 
 
 def _bootstrap_env_from_wsgi():
-    """Populate os.environ with `os.environ[...] = ...` lines from the WSGI file.
+    """Populate os.environ from two possible sources, in priority order:
 
-    On PythonAnywhere, env vars defined in the WSGI config file are only
-    visible to the web-app process. Always-On Tasks run as a *separate*
-    process with a fresh environment, so they don't see CARTRACK_USERNAME,
-    CARTRACK_PASSWORD, etc. — which makes CartrackClient.from_env() fail
-    with 'not configured'.
+      1. A `.env` file at the project root (KEY=VALUE format, one per line).
+         Lines starting with `#` are comments; blank lines are ignored.
+         Values can be optionally wrapped in single or double quotes.
+         This is the preferred mechanism — works on PA, locally, and in
+         any CI/dev environment.
 
-    To make tasks self-sufficient, we parse the WSGI file at module load
-    time and copy any `os.environ['KEY'] = 'value'` statements into our
-    own environment. Already-set env vars are NOT overwritten, so this
-    is safe to run in any context (Flask web app, console, task).
+      2. The PythonAnywhere WSGI config file at
+         /var/www/<username>_pythonanywhere_com_wsgi.py.
+         Specifically, we parse `os.environ['KEY'] = 'VALUE'` lines.
+         Useful as a fallback when env vars are already wired into the
+         web app and we don't want to duplicate them in a .env file.
 
-    Looks for the WSGI file at the conventional PythonAnywhere path:
-        /var/www/<username>_pythonanywhere_com_wsgi.py
-
-    Silently skipped if the file isn't found (e.g., running locally).
+    Already-set process env vars are NEVER overwritten — values from .env
+    or WSGI only fill in missing keys. This makes the bootstrap safe to
+    call from any context (Flask app, always-on task, bash console).
     """
+    # ── Source 1: .env file at project root ─────────────────────────
     try:
-        # Find the WSGI file. PA convention: /var/www/<user>_pythonanywhere_com_wsgi.py
+        env_path = os.path.join(_HERE, '.env')
+        if os.path.exists(env_path):
+            with open(env_path, encoding='utf-8') as f:
+                for line in f:
+                    s = line.strip()
+                    if not s or s.startswith('#') or '=' not in s:
+                        continue
+                    key, _, val = s.partition('=')
+                    key = key.strip()
+                    val = val.strip()
+                    # Strip surrounding quotes if present.
+                    if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                        val = val[1:-1]
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+    except Exception:
+        pass   # never let .env parsing kill the task
+
+    # ── Source 2: PythonAnywhere WSGI file ──────────────────────────
+    try:
         import glob
         candidates = glob.glob('/var/www/*_pythonanywhere_com_wsgi.py')
         if not candidates:
-            return   # not on PA, or unconventional location
+            return
         with open(candidates[0]) as f:
             for line in f:
                 stripped = line.strip()
-                # Only execute lines that look like `os.environ['X'] = '...'`
-                # Skip anything else (imports, comments, sys.path manipulation, etc.)
-                # to keep the bootstrap surface small and safe.
                 if stripped.startswith('os.environ[') and '=' in stripped:
                     try:
-                        # Execute the assignment in a controlled namespace
-                        local_env = {'os': os}
-                        exec(stripped, local_env)
+                        # Execute the assignment in an isolated namespace
+                        # to keep the bootstrap surface small and safe.
+                        exec(stripped, {'os': os})
                     except Exception:
-                        pass   # ignore malformed lines
+                        pass
     except Exception:
-        # Never let env bootstrap kill the task — fall back to whatever
-        # env vars are already set.
         pass
 
 

@@ -30,14 +30,33 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
-def _bootstrap_env_from_wsgi():
-    """On PythonAnywhere, the WSGI config sets env vars that the bash
-    console doesn't inherit. Parse the WSGI file and copy CARTRACK_*
-    assignments into our environment so the script runs cleanly from
-    the bash console too. Silently skipped if not on PA.
+def _bootstrap_env():
+    """Load env vars from .env file (project root) then from the PA WSGI
+    file. Identical to the helper in cartrack_poll.py — duplicated here
+    so the script runs as a standalone tool without importing the
+    polling module.
 
-    Mirrors the same helper used by cartrack_poll.py for always-on tasks.
-    """
+    Already-set env vars are never overwritten."""
+    # 1. .env file at project root
+    try:
+        env_path = ROOT / '.env'
+        if env_path.exists():
+            with open(env_path, encoding='utf-8') as f:
+                for line in f:
+                    s = line.strip()
+                    if not s or s.startswith('#') or '=' not in s:
+                        continue
+                    key, _, val = s.partition('=')
+                    key = key.strip()
+                    val = val.strip()
+                    if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                        val = val[1:-1]
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+    except Exception:
+        pass
+
+    # 2. PA WSGI fallback
     try:
         import glob
         candidates = glob.glob('/var/www/*_pythonanywhere_com_wsgi.py')
@@ -55,7 +74,7 @@ def _bootstrap_env_from_wsgi():
         pass
 
 
-_bootstrap_env_from_wsgi()
+_bootstrap_env()
 
 
 def load_expected_plazas():
