@@ -123,7 +123,44 @@ CYCLE_HARD_CLOSE_DAYS = 14
 #   - GPS jitter that briefly puts a truck inside a fence
 # Set to 5 min based on real-world observation; raise to 10 min if you
 # want to be stricter, or 1-2 min if your geofences are tightly drawn.
+#
+# EXCEPTION: toll-plaza geofences (category='toll') are EXEMPT from this
+# filter. Toll transits are expected to be 30-90 seconds — flagging them
+# as drive-by would drop them from the auto-fill logic and break the
+# whole point of having toll geofences in Cartrack. See _close_visit().
 MIN_VISIT_MINUTES = 5
+
+
+def _strip_toll_prefix(geofence_name):
+    """Convert a Cartrack toll geofence name to the canonical plaza name
+    used in toll_rates.json.
+
+    Examples:
+        "Toll - Mexico"        -> "Mexico"
+        "Toll - Sta. Rita"     -> "Sta. Rita"
+        "Toll - Tipo/SFEX"     -> "Tipo/SFEX"
+        "Toll - Parañaque"     -> "Parañaque"
+        "TOLLBOOTH Karuhatan"  -> "Karuhatan"
+        "Mexico Toll Plaza"    -> "Mexico"       (fallback split)
+
+    Returns the input unchanged if no recognisable prefix is present.
+    """
+    if not geofence_name:
+        return ''
+    s = geofence_name.strip()
+    upper = s.upper()
+    # Standard pattern: "Toll - <Plaza>"
+    if upper.startswith('TOLL -') or upper.startswith('TOLL- '):
+        return s.split('-', 1)[1].strip()
+    # Alternate "TOLLBOOTH <Plaza>" / "TOLL <Plaza>"
+    for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
+        if upper.startswith(prefix):
+            return s[len(prefix):].strip()
+    # Trailing " Toll Plaza" suffix
+    for suffix in (' TOLL PLAZA', ' TOLL'):
+        if upper.endswith(suffix):
+            return s[: -len(suffix)].strip()
+    return s
 
 # Whether to create SiteVisit rows for the HOME geofence (BIG BEN SCM).
 # When False (recommended), the polling worker uses home enter/exit
@@ -159,31 +196,86 @@ def haversine_meters(lat1, lng1, lat2, lng2):
 
 
 def load_plaza_coords():
-    """Return list of {plaza, expressway, lat, lng, radius_m} from toll_rates.json."""
+    """Return list of {plaza, expressway, [lat], [lng], [radius_m]}.
+
+    Historically this loaded GPS coordinates from the `coordinates` block
+    in static/toll_rates.json, used by the coordinate-based plaza
+    detection. That detection has been retired in favour of Cartrack-side
+    geofences; the coordinates block was removed from the JSON in May 2026.
+
+    The function is retained because the Cartrack-side toll detection
+    still needs the plaza→expressway mapping (for labelling each
+    CartrackEvent with which expressway the plaza belongs to). The
+    mapping is now derived from the fee matrix structure: every plaza
+    that appears as a source in a `Class N` block is associated with
+    that block's expressway.
+
+    If the `coordinates` block is still present (legacy), its lat/lng/
+    radius_m fields are included for backward compatibility.
+    """
     path = os.path.join(_HERE, 'static', 'toll_rates.json')
     with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
+
     plazas = []
+    seen = set()
     for exp_key, exp_data in data.items():
+        if not isinstance(exp_data, dict):
+            continue
+
+        # Legacy: pick up coordinates if the block is still in the JSON.
         coords = exp_data.get('coordinates') or {}
         for plaza, c in coords.items():
+            key = (exp_key, plaza)
+            if key in seen:
+                continue
+            seen.add(key)
             plazas.append({
                 'plaza':      plaza,
                 'expressway': exp_key,
-                'lat':        c['lat'],
-                'lng':        c['lng'],
+                'lat':        c.get('lat'),
+                'lng':        c.get('lng'),
                 'radius_m':   c.get('radius_m', 200),
             })
+
+        # Primary: derive plaza names from the fee matrix. Every source
+        # plaza in any Class N block belongs to this expressway.
+        for k, v in exp_data.items():
+            if not (isinstance(k, str) and k.startswith('Class ')
+                    and isinstance(v, dict)):
+                continue
+            for plaza in v.keys():
+                key = (exp_key, plaza)
+                if key in seen:
+                    continue
+                seen.add(key)
+                plazas.append({
+                    'plaza':      plaza,
+                    'expressway': exp_key,
+                })
+
     return plazas
 
 
 def find_plazas_at_position(lat, lng, plazas):
-    """Return list of plaza dicts the position is currently inside."""
+    """DEPRECATED: coordinate-based toll plaza detection.
+
+    Retained only for backward compatibility with any external callers /
+    debugging utilities. The polling worker no longer uses this — toll
+    plaza detection is now done entirely via Cartrack-side geofences
+    (category='toll') as of May 2026. The `coordinates` block was
+    stripped from static/toll_rates.json at the same time, so this
+    function returns an empty list for plazas that have no lat/lng.
+
+    Will be removed in a future release.
+    """
     if lat is None or lng is None:
         return []
     inside = []
     for p in plazas:
-        if haversine_meters(lat, lng, p['lat'], p['lng']) <= p['radius_m']:
+        if p.get('lat') is None or p.get('lng') is None:
+            continue   # plaza has no coordinates (post-strip)
+        if haversine_meters(lat, lng, p['lat'], p['lng']) <= p.get('radius_m', 200):
             inside.append(p)
     return inside
 
@@ -484,10 +576,6 @@ def run_poll(app=None, log=None):
             lat = loc.get('latitude')
             lng = loc.get('longitude')
 
-            # Find current plazas using GPS distance (NOT Cartrack geofence_ids)
-            inside = find_plazas_at_position(lat, lng, plazas)
-            current_set = {p['plaza'] for p in inside}
-
             # Load or create state row
             state = CartrackTruckState.query.filter_by(plate_id=plate.id).first()
             if state is None:
@@ -496,10 +584,6 @@ def run_poll(app=None, log=None):
                 db.session.flush()
 
             summary['plates_tracked'] += 1
-            previous_set = set(filter(None, (state.current_plazas or '').split(',')))
-
-            new_enters = current_set - previous_set
-            new_exits  = previous_set - current_set
 
             # Update last position + live status fields (always, every poll).
             # Powers the live "where is this truck and what's it doing" cards
@@ -519,39 +603,31 @@ def run_poll(app=None, log=None):
             # so the API can show "Currently at: AHNEX" without re-querying.
             state.last_geofence_uuids = ','.join(sorted(loc.get('geofence_ids') or []))
 
-            # ── Handle ENTER events ──
-            for plaza_name in new_enters:
-                plaza_info = next((p for p in inside if p['plaza'] == plaza_name), None)
-                expressway = plaza_info['expressway'] if plaza_info else None
-                summary['enters_detected'] += 1
+            # NOTE: Coordinate-based toll plaza detection has been REMOVED.
+            #
+            # Previously this section ran find_plazas_at_position() against
+            # the haversine distances stored in static/toll_rates.json. The
+            # approach was unreliable in practice — trucks at highway speed
+            # traverse a 200-500m plaza zone in seconds, well under the
+            # 60-second polling cadence, so most transits were missed. It
+            # also produced false positives where plaza coordinates
+            # overlapped with nearby parking, gas stations, or the BIG BEN
+            # SCM yard.
+            #
+            # All toll-plaza detection now comes from Cartrack-side
+            # geofences (categorised by name match in _categorize_geofence).
+            # The visit-OPEN block below writes CartrackEvent rows and
+            # updates state.entry_plaza / state.last_plaza whenever a
+            # truck enters a 'toll' geofence — the same downstream
+            # idle-close + compute_toll_fee path then auto-fills the trip.
+            #
+            # The fee matrix in toll_rates.json is still used by
+            # compute_toll_fee(); only the coordinate-based detection
+            # is removed.
 
-                # Update trip-tracking state
-                if not state.entry_plaza:
-                    state.entry_plaza = plaza_name
-                state.last_plaza = plaza_name
-                state.last_event_ts = now
-
-                db.session.add(CartrackEvent(
-                    plate_id=plate.id, event_type='enter',
-                    plaza_name=plaza_name, expressway=expressway,
-                    lat=lat, lng=lng,
-                ))
-                log.info('[ENTER] %s -> %s', plate.display, plaza_name)
-
-            # ── Handle EXIT events ──
-            for plaza_name in new_exits:
-                summary['exits_detected'] += 1
-                state.last_event_ts = now
-
-                db.session.add(CartrackEvent(
-                    plate_id=plate.id, event_type='exit',
-                    plaza_name=plaza_name, expressway=None,
-                    lat=lat, lng=lng,
-                ))
-                log.info('[EXIT]  %s -> %s', plate.display, plaza_name)
-
-            # Save updated plaza membership
-            state.current_plazas = ','.join(sorted(current_set))
+            # Clear any stale coord-based plaza state from previous polls.
+            if state.current_plazas:
+                state.current_plazas = ''
 
             # ── 5b. CARTRACK-SIDE GEOFENCE TRACKING (sites + cycles) ──
             # Cartrack reports geofence_ids per truck in get_status, so we
@@ -650,7 +726,53 @@ def run_poll(app=None, log=None):
                          plate.display, gf.name,
                          open_cycle.id if open_cycle else '-')
 
+                # ── Cartrack-side toll detection ──────────────────────
+                # When a truck enters a 'toll' category geofence, feed
+                # the canonical plaza name into the same entry/last
+                # plaza state that the coord-based detector uses, AND
+                # emit a CartrackEvent so the transit appears in the
+                # Toll Log UI. The downstream 30-min idle-close logic
+                # + compute_toll_fee then handles fee computation
+                # without modification.
+                #
+                # This is a drop-in upgrade for the coord-based path:
+                # more reliable, no polling gaps, updates immediately
+                # on geofence entry rather than depending on a poll
+                # catching the truck mid-zone.
+                if gf.category == 'toll':
+                    plaza_name = _strip_toll_prefix(gf.name)
+                    if plaza_name:
+                        if not state.entry_plaza:
+                            state.entry_plaza = plaza_name
+                        state.last_plaza    = plaza_name
+                        state.last_event_ts = now
+                        # Best-effort expressway lookup. `plazas` is a flat
+                        # list of {plaza, expressway, lat, lng, radius_m}.
+                        expressway = None
+                        for p in (plazas or []):
+                            if p.get('plaza') == plaza_name:
+                                expressway = p.get('expressway')
+                                break
+                        db.session.add(CartrackEvent(
+                            plate_id=plate.id, event_type='enter',
+                            plaza_name=plaza_name, expressway=expressway,
+                            lat=lat, lng=lng,
+                        ))
+                        summary['enters_detected'] += 1
+                        log.info('[TOLL-GEO] %s entered Cartrack plaza %s '
+                                 '(entry=%s, last=%s, exp=%s)',
+                                 plate.display, plaza_name,
+                                 state.entry_plaza, state.last_plaza,
+                                 expressway or '?')
+
             # Close exited SiteVisits (drive-by flagged if too short)
+            #
+            # EXCEPTION: toll-plaza geofences (category='toll') are never
+            # flagged as drive-by. A truck transiting a toll booth typically
+            # spends only 30-90 seconds inside the geofence — well under
+            # MIN_VISIT_MINUTES (5 min). Applying the drive-by filter to
+            # tolls would silently discard every real toll transit, which
+            # is the opposite of what we want.
             min_seconds = MIN_VISIT_MINUTES * 60
             for visit in open_visits:
                 if visit.geofence_id not in gf_new_exits:
@@ -661,11 +783,33 @@ def run_poll(app=None, log=None):
                 if duration > 0:
                     visit.idling_pct = round(
                         100.0 * (visit.idling_seconds or 0) / duration, 1)
-                visit.is_drive_by = duration < min_seconds
+                # Look up the geofence category to decide drive-by exemption.
+                gf = gf_by_id.get(visit.geofence_id)
+                is_toll_gf = bool(gf and gf.category == 'toll')
+                visit.is_drive_by = (not is_toll_gf) and (duration < min_seconds)
                 summary['site_visits_closed'] += 1
                 if visit.is_drive_by:
                     log.info('[VISIT-OUT] drive-by (%ds < %dmin threshold) %s',
                              duration, MIN_VISIT_MINUTES, plate.display)
+                elif is_toll_gf and duration < min_seconds:
+                    log.info('[VISIT-OUT] toll plaza %s (%ds — drive-by exempt) %s',
+                             gf.name if gf else '?', duration, plate.display)
+
+                # For toll geofences, also emit a CartrackEvent EXIT so
+                # the transit appears symmetrically in the Toll Log.
+                if is_toll_gf:
+                    plaza_name = _strip_toll_prefix(gf.name)
+                    if plaza_name:
+                        state.last_event_ts = now
+                        db.session.add(CartrackEvent(
+                            plate_id=plate.id, event_type='exit',
+                            plaza_name=plaza_name, expressway=None,
+                            lat=lat, lng=lng,
+                        ))
+                        summary['exits_detected'] += 1
+                        log.info('[TOLL-GEO] %s exited Cartrack plaza %s '
+                                 '(duration=%ds)', plate.display,
+                                 plaza_name, duration)
 
             # Accumulate idling time for currently-inside visits
             if is_idling and gf_still_in:
