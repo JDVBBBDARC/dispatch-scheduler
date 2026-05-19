@@ -701,15 +701,28 @@ def run_poll(app=None, log=None):
             # Compute toll fee
             fee, expressway = compute_toll_fee(entry, exit_plaza, 'Class 3')
 
-            # Find matching open TripRecord (today, this truck, no toll yet)
-            today = now.date()
+            # Find matching open TripRecord. Wave.date is stored in Philippine
+            # local time, but `now` is UTC — so we convert before matching, and
+            # we also widen the window to cover trips that started yesterday
+            # PHT but only finished now (multi-day trips, or trips that close
+            # after UTC midnight rollover).
+            try:
+                from zoneinfo import ZoneInfo
+                _ph_now = datetime.now(ZoneInfo('Asia/Manila'))
+                today_pht = _ph_now.date()
+            except Exception:
+                # Fallback: UTC+8 manual offset
+                today_pht = (now + timedelta(hours=8)).date()
+            yesterday_pht = today_pht - timedelta(days=1)
+
             matching_trip = (
                 db.session.query(TripRecord).join(Wave)
-                .filter(Wave.date == today,
+                .filter(Wave.date >= yesterday_pht,
+                        Wave.date <= today_pht,
                         TripRecord.plate_id == state.plate_id,
                         TripRecord.status != 'Canceled',
                         (TripRecord.toll_fee.is_(None) | (TripRecord.toll_fee == 0)))
-                .order_by(TripRecord.id)
+                .order_by(TripRecord.id.desc())   # newest first — prefer today's trips
                 .first()
             )
 
