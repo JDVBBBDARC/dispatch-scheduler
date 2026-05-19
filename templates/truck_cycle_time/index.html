@@ -148,13 +148,19 @@
               <input type="date" class="form-control form-control-sm" id="filterDateTo" onchange="loadAll()">
             </div>
             <div class="col-6">
+              <label class="form-label small text-muted">Truck Type</label>
+              <select class="form-select form-select-sm" id="filterTruckType" onchange="onTruckTypeChange()">
+                <option value="">All types</option>
+              </select>
+            </div>
+            <div class="col-6">
               <label class="form-label small text-muted">Plate</label>
               <select class="form-select form-select-sm" id="filterPlate" onchange="loadCycles()">
                 <option value="">All</option>
               </select>
             </div>
             <div class="col-6">
-              <label class="form-label small text-muted">Category</label>
+              <label class="form-label small text-muted">Cycle Length</label>
               <select class="form-select form-select-sm" id="filterCategory" onchange="loadCycles()">
                 <option value="">All</option>
                 <option value="short">Short (&lt;12h)</option>
@@ -171,9 +177,9 @@
                 <option value="open">Open only</option>
               </select>
             </div>
-            <div class="col-6 d-flex align-items-end">
+            <div class="col-12 d-flex align-items-end">
               <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()">
-                <i class="bi bi-x-circle"></i> Clear
+                <i class="bi bi-x-circle"></i> Clear filters
               </button>
             </div>
           </div>
@@ -330,28 +336,68 @@ async function loadSummary() {
   }
 }
 
+// All plates returned by /filters — kept in memory so we can re-filter
+// the Plate dropdown when the user picks a truck type.
+let _allPlates = [];
+
 async function loadFilters() {
   try {
     const r = await fetch('/api/cycle-time/filters');
     const j = await r.json();
-    const sel = document.getElementById('filterPlate');
-    j.plates.forEach(p => {
+    _allPlates = j.plates || [];
+
+    // Truck Type dropdown — e.g., "DT — Dump Truck", "TH — Trailer Hauler"
+    const ttSel = document.getElementById('filterTruckType');
+    (j.truck_types || []).forEach(t => {
       const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.plate_no;
-      sel.appendChild(opt);
+      opt.value = t.id;
+      opt.textContent = `${t.code} — ${t.name}`;
+      ttSel.appendChild(opt);
     });
+
+    // Plate dropdown — initially shows all plates with cycle history
+    rebuildPlateOptions('');
   } catch (e) {
     console.error('loadFilters error:', e);
   }
 }
 
+// Rebuild the Plate dropdown, optionally restricted to a single truck type.
+// Preserves the current selection if it still matches the active type.
+function rebuildPlateOptions(truckTypeId) {
+  const sel = document.getElementById('filterPlate');
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="">All</option>';
+  const ttId = truckTypeId ? String(truckTypeId) : '';
+  let stillValid = false;
+  _allPlates
+    .filter(p => !ttId || String(p.truck_type_id || '') === ttId)
+    .forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.plate_no;   // already "DT15 / NHF9508" format
+      if (String(p.id) === prevValue) stillValid = true;
+      sel.appendChild(opt);
+    });
+  sel.value = stillValid ? prevValue : '';
+}
+
+// User picked a truck type → narrow the Plate dropdown to that type,
+// then reload the table + chart with both filters applied.
+function onTruckTypeChange() {
+  const ttId = document.getElementById('filterTruckType').value;
+  rebuildPlateOptions(ttId);
+  loadAll();
+}
+
 async function loadIdling() {
   const df = document.getElementById('filterDateFrom').value;
   const dt = document.getElementById('filterDateTo').value;
+  const tt = document.getElementById('filterTruckType').value;
   const params = new URLSearchParams();
   if (df) params.set('date_from', df);
   if (dt) params.set('date_to', dt);
+  if (tt) params.set('truck_type_id', tt);
 
   try {
     const r = await fetch('/api/cycle-time/idling?' + params.toString());
@@ -404,11 +450,13 @@ async function loadCycles() {
   const params = new URLSearchParams();
   const df = document.getElementById('filterDateFrom').value;
   const dt = document.getElementById('filterDateTo').value;
+  const tt = document.getElementById('filterTruckType').value;
   const pl = document.getElementById('filterPlate').value;
   const ca = document.getElementById('filterCategory').value;
   const st = document.getElementById('filterStatus').value;
   if (df) params.set('date_from', df);
   if (dt) params.set('date_to', dt);
+  if (tt) params.set('truck_type_id', tt);
   if (pl) params.set('plate_id', pl);
   if (ca) params.set('category', ca);
   if (st && st !== 'all') params.set('status', st);
@@ -483,9 +531,12 @@ function loadAll() {
 function clearFilters() {
   document.getElementById('filterDateFrom').value = '';
   document.getElementById('filterDateTo').value = '';
-  document.getElementById('filterPlate').value = '';
+  document.getElementById('filterTruckType').value = '';
   document.getElementById('filterCategory').value = '';
   document.getElementById('filterStatus').value = 'all';
+  // Rebuild plate dropdown to show everyone again, and clear its selection.
+  rebuildPlateOptions('');
+  document.getElementById('filterPlate').value = '';
   loadAll();
 }
 
@@ -503,10 +554,12 @@ function exportToExcel() {
   const params = new URLSearchParams();
   const df = document.getElementById('filterDateFrom').value;
   const dt = document.getElementById('filterDateTo').value;
+  const tt = document.getElementById('filterTruckType').value;
   const pl = document.getElementById('filterPlate').value;
   const ca = document.getElementById('filterCategory').value;
   if (df) params.set('date_from', df);
   if (dt) params.set('date_to', dt);
+  if (tt) params.set('truck_type_id', tt);
   if (pl) params.set('plate_id', pl);
   if (ca) params.set('category', ca);
   window.location.href = '/api/cycle-time/export?' + params.toString();

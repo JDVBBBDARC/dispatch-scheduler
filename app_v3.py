@@ -2094,6 +2094,7 @@ def api_cycle_time_cycles():
     Query params:
         date_from, date_to  — ISO dates, filter by started_at
         plate_id            — single plate
+        truck_type_id       — filter by truck type (DT / TH / MDT / ...)
         category            — short / standard / long / ongoing
         status              — 'open' / 'closed' / 'all'
         limit               — max rows (default 200)
@@ -2101,6 +2102,7 @@ def api_cycle_time_cycles():
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
     plate_id  = request.args.get('plate_id', '')
+    truck_type_id = request.args.get('truck_type_id', '')
     category  = request.args.get('category', '')
     status    = request.args.get('status', 'all')
     limit     = min(int(request.args.get('limit', 200)), 1000)
@@ -2119,6 +2121,13 @@ def api_cycle_time_cycles():
     if plate_id:
         try:
             q = q.filter(TruckCycle.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if truck_type_id:
+        try:
+            # TruckCycle has no direct truck_type_id — join through Plate.
+            q = q.join(Plate, TruckCycle.plate_id == Plate.id) \
+                 .filter(Plate.truck_type_id == int(truck_type_id))
         except ValueError:
             pass
     if category:
@@ -2205,6 +2214,7 @@ def api_cycle_time_idling():
     """
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
+    truck_type_id = request.args.get('truck_type_id', '')
 
     # Build query — excludes drive-by visits by default since they're
     # transient touches, not real delivery stops. Use ?include_drive_by=1
@@ -2234,6 +2244,12 @@ def api_cycle_time_idling():
             q = q.filter(SiteVisit.enter_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
         except ValueError:
             pass
+    if truck_type_id:
+        try:
+            q = q.join(Plate, SiteVisit.plate_id == Plate.id) \
+                 .filter(Plate.truck_type_id == int(truck_type_id))
+        except ValueError:
+            pass
 
     results = q.all()
     plate_map = {p.id: p for p in Plate.query.all()}
@@ -2261,14 +2277,26 @@ def api_cycle_time_idling():
 @app.route('/api/cycle-time/filters')
 @login_required
 def api_cycle_time_filters():
-    """Dropdown options: plates with cycle data, available categories."""
+    """Dropdown options: plates with cycle data, truck types, cycle categories."""
     plate_ids = [pid for (pid,) in
                  db.session.query(TruckCycle.plate_id).distinct().all()
                  if pid is not None]
     plates = (Plate.query.filter(Plate.id.in_(plate_ids))
-                       .order_by(Plate.plate_no).all() if plate_ids else [])
+                       .order_by(Plate.body_no, Plate.plate_no).all() if plate_ids else [])
+    # Only surface truck types that actually have plates with cycle history —
+    # avoids cluttering the dropdown with empty options.
+    truck_type_ids = {p.truck_type_id for p in plates if p.truck_type_id}
+    truck_types = (TruckTypeDef.query.filter(TruckTypeDef.id.in_(truck_type_ids))
+                                    .order_by(TruckTypeDef.sort_order,
+                                              TruckTypeDef.code).all()
+                   if truck_type_ids else [])
     return jsonify({
-        'plates':     [{'id': p.id, 'plate_no': p.plate_no} for p in plates],
+        'plates': [{'id': p.id,
+                    'plate_no': p.display,
+                    'truck_type_id': p.truck_type_id}
+                   for p in plates],
+        'truck_types': [{'id': t.id, 'code': t.code, 'name': t.name,
+                         'color': t.color} for t in truck_types],
         'categories': ['short', 'standard', 'long', 'ongoing'],
     })
 
@@ -2287,6 +2315,7 @@ def api_cycle_time_export():
     date_from = request.args.get('date_from', '')
     date_to   = request.args.get('date_to', '')
     plate_id  = request.args.get('plate_id', '')
+    truck_type_id = request.args.get('truck_type_id', '')
     category  = request.args.get('category', '')
 
     q = TruckCycle.query
@@ -2303,6 +2332,12 @@ def api_cycle_time_export():
     if plate_id:
         try:
             q = q.filter(TruckCycle.plate_id == int(plate_id))
+        except ValueError:
+            pass
+    if truck_type_id:
+        try:
+            q = q.join(Plate, TruckCycle.plate_id == Plate.id) \
+                 .filter(Plate.truck_type_id == int(truck_type_id))
         except ValueError:
             pass
     if category:
