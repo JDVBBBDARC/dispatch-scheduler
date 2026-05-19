@@ -30,6 +30,34 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
+def _bootstrap_env_from_wsgi():
+    """On PythonAnywhere, the WSGI config sets env vars that the bash
+    console doesn't inherit. Parse the WSGI file and copy CARTRACK_*
+    assignments into our environment so the script runs cleanly from
+    the bash console too. Silently skipped if not on PA.
+
+    Mirrors the same helper used by cartrack_poll.py for always-on tasks.
+    """
+    try:
+        import glob
+        candidates = glob.glob('/var/www/*_pythonanywhere_com_wsgi.py')
+        if not candidates:
+            return
+        with open(candidates[0]) as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith('os.environ[') and '=' in stripped:
+                    try:
+                        exec(stripped, {'os': os})
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+
+_bootstrap_env_from_wsgi()
+
+
 def load_expected_plazas():
     """Return {plaza_name: expressway_key} from the fee matrix."""
     with open(ROOT / 'static' / 'toll_rates.json', encoding='utf-8') as f:
