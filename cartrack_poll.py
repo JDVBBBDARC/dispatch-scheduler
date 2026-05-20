@@ -277,6 +277,93 @@ def _load_plaza_keys():
     return _PLAZA_CANONICAL_KEYS, _PLAZA_NORM_TO_CANONICAL
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Manual home geofences (coord-based workaround for hidden Cartrack
+# geofences). Loaded from manual_homes.json at the project root.
+# ─────────────────────────────────────────────────────────────────────
+
+_MANUAL_HOMES_CACHE = None
+_MANUAL_HOMES_MTIME = None
+
+
+def _load_manual_homes():
+    """Load manual home geofences from manual_homes.json (project root).
+
+    Format (JSON array of objects):
+        [
+          {
+            "name": "Parking Plant 1",
+            "lat": 14.812345,
+            "lng": 120.987654,
+            "radius_m": 200
+          },
+          ...
+        ]
+
+    Used when a real Cartrack geofence exists but is hidden from the
+    /rest/geofences API (visibility bug). Trucks whose GPS is within
+    `radius_m` meters of `lat`/`lng` are treated as 'at home' for
+    cycle tracking — bypassing the Cartrack-side detection entirely.
+
+    Cached and re-read on file modification time changes, so admins
+    can edit the JSON file live without restarting the polling worker.
+
+    Returns a list (possibly empty) of validated manual-home dicts.
+    Malformed entries are skipped silently.
+    """
+    global _MANUAL_HOMES_CACHE, _MANUAL_HOMES_MTIME
+    path = os.path.join(_HERE, 'manual_homes.json')
+    try:
+        mtime = os.path.getmtime(path) if os.path.exists(path) else None
+    except OSError:
+        mtime = None
+    if mtime == _MANUAL_HOMES_MTIME and _MANUAL_HOMES_CACHE is not None:
+        return _MANUAL_HOMES_CACHE
+    if mtime is None:
+        _MANUAL_HOMES_CACHE = []
+        _MANUAL_HOMES_MTIME = None
+        return _MANUAL_HOMES_CACHE
+    homes = []
+    try:
+        with open(path, encoding='utf-8') as f:
+            raw = json.load(f)
+        if isinstance(raw, list):
+            for entry in raw:
+                if not isinstance(entry, dict):
+                    continue
+                try:
+                    name = str(entry.get('name', '')).strip()
+                    lat  = float(entry['lat'])
+                    lng  = float(entry['lng'])
+                    radius_m = int(entry.get('radius_m', 200))
+                    if name and -90 <= lat <= 90 and -180 <= lng <= 180:
+                        homes.append({'name': name, 'lat': lat,
+                                       'lng': lng, 'radius_m': radius_m})
+                except (KeyError, TypeError, ValueError):
+                    continue
+    except Exception:
+        pass
+    _MANUAL_HOMES_CACHE = homes
+    _MANUAL_HOMES_MTIME = mtime
+    return homes
+
+
+def _check_manual_homes(lat, lng, log=None):
+    """Return the name of the FIRST manual home geofence that contains
+    the given GPS point, or None if not inside any.
+
+    Cheap haversine check against the cached list — typically 1-5
+    entries, so the loop runs in microseconds per poll.
+    """
+    if lat is None or lng is None:
+        return None
+    for mh in _load_manual_homes():
+        d = haversine_meters(lat, lng, mh['lat'], mh['lng'])
+        if d <= mh['radius_m']:
+            return mh['name']
+    return None
+
+
 def _resolve_plaza(cleaned_name, threshold=0.85):
     """Resolve a cleaned plaza name to its canonical fee-matrix key.
 
@@ -848,6 +935,18 @@ def run_poll(app=None, log=None):
             home_cartrack_ids = {h.cartrack_id for h in home_gfs}
             home_db_ids       = {h.id for h in home_gfs}
             is_at_home_now    = bool(home_cartrack_ids & current_geofence_uuids)
+
+            # Manual-home fallback — for geofences hidden from the
+            # Cartrack /rest/geofences API. Loaded from manual_homes.json
+            # at the project root. If the truck's GPS is within radius_m
+            # of any entry, treat as at-home. See _load_manual_homes().
+            if not is_at_home_now and lat is not None and lng is not None:
+                manual_home_name = _check_manual_homes(lat, lng, log=log)
+                if manual_home_name:
+                    is_at_home_now = True
+                    log.debug('[MANUAL-HOME] %s inside %s (coord-based)',
+                              plate.display, manual_home_name)
+
             was_at_home_prev  = open_cycle is None   # no open cycle ⇒ was at home
 
             if is_at_home_now and not was_at_home_prev and open_cycle is not None:
