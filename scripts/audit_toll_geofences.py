@@ -92,46 +92,18 @@ def load_expected_plazas():
     return plaza_to_exp
 
 
-def strip_toll_prefix(name):
-    """Local copy of cartrack_poll._strip_toll_prefix so this script
-    works even if the polling module fails to import. Kept in sync
-    with the polling worker — same prefix/suffix/direction-tag
-    stripping and Sta/Sto punctuation normalisation."""
-    import re
-    if not name:
-        return ''
-    s = name.strip()
-    upper = s.upper()
-
-    # Prefix strip
-    if upper.startswith('TOLL -') or upper.startswith('TOLL- '):
-        s = s.split('-', 1)[1].strip()
-    else:
-        prefix_matched = False
-        for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
-            if upper.startswith(prefix):
-                s = s[len(prefix):].strip()
-                prefix_matched = True
-                break
-        if not prefix_matched:
-            for suffix in (' TOLL PLAZA', ' TOLL'):
-                if upper.endswith(suffix):
-                    s = s[:-len(suffix)].strip()
-                    break
-
-    # Direction tag strip
-    s = re.sub(r'\s+\d+$', '', s)
-    s = re.sub(r'\s+(NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|N|S|E|W)$',
-                '', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s*\((NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|ENTRY|EXIT)\)$',
-                '', s, flags=re.IGNORECASE)
-    s = s.strip()
-
-    # Punctuation normalisation
-    s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
-    s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
-
-    return s
+def _clean_and_resolve(name):
+    """Use cartrack_poll's own helpers so audit and runtime stay in
+    perfect lockstep. Returns (canonical, confidence) where confidence
+    is 1.0 for exact, 0.95 for accent/case match, 0.85-0.94 for fuzzy."""
+    try:
+        from cartrack_poll import (_clean_plaza_name, _resolve_plaza)
+    except Exception:
+        # Should never happen — fail loud if it does.
+        raise
+    cleaned = _clean_plaza_name(name)
+    canonical, conf = _resolve_plaza(cleaned)
+    return cleaned, canonical, conf
 
 
 def is_toll_named(name):
@@ -177,24 +149,32 @@ def main():
     expected = load_expected_plazas()
     expected_names = sorted(expected.keys())
 
-    # Classify each Cartrack geofence.
-    ok, near, unknown, non_toll = [], [], [], []
+    # Classify each Cartrack geofence using the same resolver the
+    # polling worker uses, so the audit reflects exactly what would
+    # auto-fill at runtime.
+    ok_exact, ok_fuzzy, unknown, non_toll = [], [], [], []
     seen_plazas = set()
     for g in (geofences or []):
         name = (g.get('name') or '').strip()
         if not is_toll_named(name):
             non_toll.append(name)
             continue
-        plaza = strip_toll_prefix(name)
-        if plaza in expected:
-            ok.append((name, plaza, expected[plaza]))
-            seen_plazas.add(plaza)
+        cleaned, canonical, conf = _clean_and_resolve(name)
+        if canonical is None:
+            # No match even with fuzzy — manual rename needed.
+            # Still show closest suggestion based on cleaned name.
+            suggestion = get_close_matches(cleaned, expected_names, n=1, cutoff=0.5)
+            unknown.append((name, cleaned,
+                            suggestion[0] if suggestion else None,
+                            expected.get(suggestion[0]) if suggestion else None))
+            continue
+        # Resolved — bucket by confidence
+        seen_plazas.add(canonical)
+        if conf >= 0.95:
+            ok_exact.append((name, canonical, expected.get(canonical, '?'), conf))
         else:
-            matches = get_close_matches(plaza, expected_names, n=1, cutoff=0.7)
-            if matches:
-                near.append((name, plaza, matches[0], expected[matches[0]]))
-            else:
-                unknown.append((name, plaza))
+            ok_fuzzy.append((name, cleaned, canonical,
+                             expected.get(canonical, '?'), conf))
 
     # Compute missing — group by expressway and prioritise NLEX/SCTEX.
     missing_by_exp = {}
@@ -208,40 +188,47 @@ def main():
     ]
 
     # ── Report ────────────────────────────────────────────────────────
+    total_ok = len(ok_exact) + len(ok_fuzzy)
     print('=' * 76)
     print(f'CARTRACK GEOFENCE AUDIT — {len(geofences or [])} total geofences')
     print('=' * 76)
-    print(f'  [OK]       {len(ok):>3}  Recognised toll plazas (will auto-fill)')
-    print(f'  [NEAR]     {len(near):>3}  Possible typos (close to a known plaza)')
-    print(f'  [UNKNOWN]  {len(unknown):>3}  "Toll" name but not in fee matrix')
+    print(f'  [OK-EXACT] {len(ok_exact):>3}  Exact/normalised match — will auto-fill')
+    print(f'  [OK-FUZZY] {len(ok_fuzzy):>3}  Fuzzy match — will auto-fill (review suggested)')
+    print(f'  [UNKNOWN]  {len(unknown):>3}  No match — manual rename needed')
     print(f'  [NON-TOLL] {len(non_toll):>3}  Non-toll geofences (skipped)')
     print(f'  [MISSING]  {sum(len(v) for v in missing_by_exp.values()):>3}  Plazas with no Cartrack geofence')
     print()
 
-    if ok:
+    if ok_exact:
         print('─' * 76)
-        print('[OK] These geofences are correctly named and will trigger toll auto-fill:')
+        print('[OK-EXACT] These geofences resolve cleanly and auto-fill will fire:')
         print('─' * 76)
-        for name, plaza, exp in sorted(ok, key=lambda x: x[2]):
-            print(f'  ✓ {name:<35} -> {plaza:<25} ({exp})')
+        for name, canonical, exp, conf in sorted(ok_exact, key=lambda x: x[1]):
+            marker = '=' if conf == 1.0 else '~'
+            print(f'  ✓ {name:<35} {marker}> {canonical:<25} ({exp})')
         print()
 
-    if near:
+    if ok_fuzzy:
         print('─' * 76)
-        print('[NEAR] These may be misspelled. Rename to the suggested match to enable auto-fill:')
+        print('[OK-FUZZY] These resolved via fuzzy match. Auto-fill works, but consider')
+        print('           renaming for cleaner audit trails:')
         print('─' * 76)
-        for name, plaza, suggestion, exp in near:
-            print(f'  ! {name!r}')
-            print(f'      plaza part:  {plaza!r}')
-            print(f'      did you mean "Toll - {suggestion}"?  ({exp})')
+        for name, cleaned, canonical, exp, conf in ok_fuzzy:
+            print(f'  ~ {name!r}')
+            print(f'      cleaned -> {cleaned!r}')
+            print(f'      matched -> "{canonical}" ({exp}) at confidence {conf:.2f}')
         print()
 
     if unknown:
         print('─' * 76)
-        print('[UNKNOWN] Toll-named but no fee matrix entry. Typo or new plaza?')
+        print('[UNKNOWN] Could not match against any fee-matrix plaza. Rename in Cartrack:')
         print('─' * 76)
-        for name, plaza in unknown:
-            print(f'  ? {name!r}  (plaza part: {plaza!r})')
+        for name, cleaned, suggestion, exp in unknown:
+            print(f'  ? {name!r}  (cleaned: {cleaned!r})')
+            if suggestion:
+                print(f'      closest guess: "Toll - {suggestion}" ({exp})')
+            else:
+                print(f'      no suggestion — verify this is actually a toll plaza')
         print()
 
     if missing_by_exp:
@@ -270,9 +257,9 @@ def main():
 
     print('=' * 76)
     print('SUMMARY:')
-    print(f'  Toll auto-fill will fire for the {len(ok)} OK plazas.')
-    if near:
-        print(f'  Rename {len(near)} near-matches in Cartrack to enable them.')
+    print(f'  Toll auto-fill will fire for {total_ok} geofences ({len(ok_exact)} exact + {len(ok_fuzzy)} fuzzy).')
+    if unknown:
+        print(f'  {len(unknown)} unmatched geofences — manual rename needed.')
     if missing_by_exp:
         total_missing = sum(len(v) for v in missing_by_exp.values())
         print(f'  Create {total_missing} more for full coverage.')

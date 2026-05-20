@@ -147,43 +147,50 @@ MIN_VISIT_MINUTES = 5
 
 
 def _strip_toll_prefix(geofence_name):
-    """Convert a Cartrack toll geofence name to the canonical plaza name
-    used in toll_rates.json. Handles common naming variations so users
-    don't have to rename geofences after the fact.
+    """Convert a Cartrack toll geofence name to a cleaned plaza name
+    suitable for matching against the toll_rates.json fee matrix.
 
-    Transformations applied (in order):
-        1. Strip prefix:   "Toll - X"       -> "X"
-                           "TOLLBOOTH X"    -> "X"
-                           "Toll Plaza X"   -> "X"
-        2. Strip suffix:   "X Toll Plaza"   -> "X"
-                           "X Toll"         -> "X"
-        3. Strip direction tags so per-direction geofences match the
-           single fee-matrix entry:
-                           "Meycauayan 1"   -> "Meycauayan"
-                           "Marilao NB"     -> "Marilao"
-                           "Pulilan (North)"-> "Pulilan"
-        4. Normalise punctuation so "Sta Rita" matches "Sta. Rita":
-                           "Sta Rita"       -> "Sta. Rita"
-                           "Sto Domingo"    -> "Sto. Domingo"
+    Two-step strategy:
+      1. Light surface cleanup — strip "Toll - " prefix, drop direction
+         tags (1, NB, SB, (Entry), etc.), normalise Sta/Sto punctuation.
+      2. Aggressive resolution via _resolve_plaza — exact match first,
+         then accent/punctuation/case-insensitive match, then fuzzy
+         (SequenceMatcher) match with a high threshold.
+
+    Returns the CANONICAL fee-matrix key when a resolution succeeds, so
+    downstream compute_toll_fee() lookups always succeed. Returns the
+    cleaned (but unresolved) name as a fallback when nothing matches —
+    in that case, the polling worker still logs the event but the toll
+    fee won't auto-fill until the geofence is renamed.
 
     Examples:
-        "Toll - Mexico"          -> "Mexico"
-        "Toll - Meycauayan 2"    -> "Meycauayan"
-        "Toll - Sta Rita 1"      -> "Sta. Rita"
-        "Toll - San Fernando 3"  -> "San Fernando"
-        "Toll - Tipo/SFEX"       -> "Tipo/SFEX"
-        "Toll - Parañaque"       -> "Parañaque"
-        "Toll - Marilao (NB)"    -> "Marilao"
-
-    Returns the input unchanged if no recognisable prefix is present.
+        "Toll - Mexico"           -> "Mexico"             (exact)
+        "Toll - Meycauayan 2"     -> "Meycauayan"         (direction strip + exact)
+        "Toll - Sta Rita 1"       -> "Sta. Rita"          (Sta normalisation + exact)
+        "Toll - Parañaque"        -> "Parañaque"          (exact)
+        "Toll - PARANAQUE"        -> "Parañaque"          (accent-insensitive)
+        "Toll - Sto Tomas"        -> "Sto. Tomas"         (Sto normalisation)
+        "Toll - san fernndo"      -> "San Fernando"       (fuzzy, typo tolerant)
+        "Toll - C-5 Road"         -> "C-5"                (fuzzy)
     """
+    cleaned = _clean_plaza_name(geofence_name)
+    if not cleaned:
+        return ''
+    canonical, _conf = _resolve_plaza(cleaned)
+    return canonical if canonical else cleaned
+
+
+def _clean_plaza_name(geofence_name):
+    """Light surface cleanup — does NOT consult the fee matrix. Returns
+    a normalised string ready to be passed into _resolve_plaza for the
+    actual matching."""
     import re
     if not geofence_name:
         return ''
     s = geofence_name.strip()
     upper = s.upper()
 
-    # ── Step 1: prefix strip ────────────────────────────────────────
+    # Prefix strip — try the most specific patterns first.
     if upper.startswith('TOLL -') or upper.startswith('TOLL- '):
         s = s.split('-', 1)[1].strip()
     else:
@@ -191,31 +198,121 @@ def _strip_toll_prefix(geofence_name):
             if upper.startswith(prefix):
                 s = s[len(prefix):].strip()
                 break
-        else:
-            # ── Step 2: suffix strip (only if no prefix matched) ────
-            for suffix in (' TOLL PLAZA', ' TOLL'):
-                if upper.endswith(suffix):
-                    s = s[: -len(suffix)].strip()
-                    break
 
-    # ── Step 3: direction tag strip ─────────────────────────────────
-    # Trailing single digit: "Meycauayan 1" -> "Meycauayan"
+    # Suffix strip — always check, even if a prefix was already stripped
+    # ("Toll - Tabang Plaza" -> "Tabang Plaza" -> "Tabang").
+    upper2 = s.upper()
+    for suffix in (' TOLL PLAZA', ' TOLL', ' PLAZA'):
+        if upper2.endswith(suffix):
+            s = s[: -len(suffix)].strip()
+            break
+
+    # Direction tag strip
     s = re.sub(r'\s+\d+$', '', s)
-    # Trailing direction code: "Marilao NB", "Pulilan SB", "X NORTH", "X SOUTH"
     s = re.sub(r'\s+(NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|N|S|E|W)$',
                 '', s, flags=re.IGNORECASE)
-    # Trailing parenthesised direction: "Marilao (NB)", "(North)", "(Exit)"
     s = re.sub(r'\s*\((NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|ENTRY|EXIT)\)$',
                 '', s, flags=re.IGNORECASE)
     s = s.strip()
 
-    # ── Step 4: punctuation normalisation ───────────────────────────
-    # Sta -> Sta. and Sto -> Sto. when followed by a word (matches fee
-    # matrix which uses the canonical Spanish abbreviation form).
+    # Sta/Sto canonical form (fee matrix uses periods)
     s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
     s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
 
     return s
+
+
+def _normalize_for_match(name):
+    """Aggressive normalisation for fuzzy comparison: lowercase, strip
+    accents, drop punctuation. Used only for matching — NOT for display
+    or storage."""
+    import re
+    import unicodedata
+    if not name:
+        return ''
+    s = name.strip().lower()
+    # Strip accents: Parañaque -> Paranaque, España -> Espana
+    s = ''.join(c for c in unicodedata.normalize('NFD', s)
+                if unicodedata.category(c) != 'Mn')
+    # Strip everything that isn't a letter, digit, space, hyphen, or slash
+    s = re.sub(r'[^a-z0-9\s\-/]', '', s)
+    # Collapse whitespace
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+
+# Cached lookup tables — built lazily from toll_rates.json on first use.
+_PLAZA_CANONICAL_KEYS = None
+_PLAZA_NORM_TO_CANONICAL = None
+
+
+def _load_plaza_keys():
+    """Build (and cache) the list of canonical plaza names from the fee
+    matrix plus a normalised lookup table. Reads the same JSON file as
+    compute_toll_fee()."""
+    global _PLAZA_CANONICAL_KEYS, _PLAZA_NORM_TO_CANONICAL
+    if _PLAZA_CANONICAL_KEYS is not None:
+        return _PLAZA_CANONICAL_KEYS, _PLAZA_NORM_TO_CANONICAL
+    keys = set()
+    try:
+        path = os.path.join(_HERE, 'static', 'toll_rates.json')
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        for exp_key, exp_data in data.items():
+            if not isinstance(exp_data, dict):
+                continue
+            for k, v in exp_data.items():
+                if isinstance(k, str) and k.startswith('Class ') and isinstance(v, dict):
+                    keys.update(v.keys())
+                    # Also include the destination plaza names — they
+                    # may not appear as a top-level source.
+                    for dest_dict in v.values():
+                        if isinstance(dest_dict, dict):
+                            keys.update(dest_dict.keys())
+    except Exception:
+        pass
+    _PLAZA_CANONICAL_KEYS = sorted(keys)
+    _PLAZA_NORM_TO_CANONICAL = {_normalize_for_match(k): k
+                                 for k in _PLAZA_CANONICAL_KEYS}
+    return _PLAZA_CANONICAL_KEYS, _PLAZA_NORM_TO_CANONICAL
+
+
+def _resolve_plaza(cleaned_name, threshold=0.85):
+    """Resolve a cleaned plaza name to its canonical fee-matrix key.
+
+    Three-tier matching:
+        1. Exact case-sensitive match           (confidence = 1.0)
+        2. Normalised match (accents/case/etc.) (confidence = 0.95)
+        3. Fuzzy SequenceMatcher ratio          (confidence = ratio)
+
+    Returns (canonical_key, confidence) on success. Returns (None, 0.0)
+    if even the best fuzzy match falls below `threshold`.
+    """
+    if not cleaned_name:
+        return None, 0.0
+    canonical_keys, norm_to_canonical = _load_plaza_keys()
+    if not canonical_keys:
+        return None, 0.0
+
+    # Tier 1 — exact
+    if cleaned_name in canonical_keys:
+        return cleaned_name, 1.0
+
+    # Tier 2 — normalised exact
+    norm_target = _normalize_for_match(cleaned_name)
+    if norm_target in norm_to_canonical:
+        return norm_to_canonical[norm_target], 0.95
+
+    # Tier 3 — fuzzy match against the normalised key set
+    from difflib import SequenceMatcher
+    best_key, best_ratio = None, 0.0
+    for norm_key, canon in norm_to_canonical.items():
+        r = SequenceMatcher(None, norm_target, norm_key).ratio()
+        if r > best_ratio:
+            best_key, best_ratio = canon, r
+    if best_ratio >= threshold:
+        return best_key, best_ratio
+    return None, 0.0
 
 # Whether to create SiteVisit rows for the HOME geofence (BIG BEN SCM).
 # When False (recommended), the polling worker uses home enter/exit
