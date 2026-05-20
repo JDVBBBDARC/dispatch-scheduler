@@ -94,19 +94,43 @@ def load_expected_plazas():
 
 def strip_toll_prefix(name):
     """Local copy of cartrack_poll._strip_toll_prefix so this script
-    works even if the polling module fails to import."""
+    works even if the polling module fails to import. Kept in sync
+    with the polling worker — same prefix/suffix/direction-tag
+    stripping and Sta/Sto punctuation normalisation."""
+    import re
     if not name:
         return ''
     s = name.strip()
     upper = s.upper()
+
+    # Prefix strip
     if upper.startswith('TOLL -') or upper.startswith('TOLL- '):
-        return s.split('-', 1)[1].strip()
-    for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
-        if upper.startswith(prefix):
-            return s[len(prefix):].strip()
-    for suffix in (' TOLL PLAZA', ' TOLL'):
-        if upper.endswith(suffix):
-            return s[:-len(suffix)].strip()
+        s = s.split('-', 1)[1].strip()
+    else:
+        prefix_matched = False
+        for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
+            if upper.startswith(prefix):
+                s = s[len(prefix):].strip()
+                prefix_matched = True
+                break
+        if not prefix_matched:
+            for suffix in (' TOLL PLAZA', ' TOLL'):
+                if upper.endswith(suffix):
+                    s = s[:-len(suffix)].strip()
+                    break
+
+    # Direction tag strip
+    s = re.sub(r'\s+\d+$', '', s)
+    s = re.sub(r'\s+(NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|N|S|E|W)$',
+                '', s, flags=re.IGNORECASE)
+    s = re.sub(r'\s*\((NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|ENTRY|EXIT)\)$',
+                '', s, flags=re.IGNORECASE)
+    s = s.strip()
+
+    # Punctuation normalisation
+    s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
+    s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
+
     return s
 
 

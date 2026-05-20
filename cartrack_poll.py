@@ -148,33 +148,73 @@ MIN_VISIT_MINUTES = 5
 
 def _strip_toll_prefix(geofence_name):
     """Convert a Cartrack toll geofence name to the canonical plaza name
-    used in toll_rates.json.
+    used in toll_rates.json. Handles common naming variations so users
+    don't have to rename geofences after the fact.
+
+    Transformations applied (in order):
+        1. Strip prefix:   "Toll - X"       -> "X"
+                           "TOLLBOOTH X"    -> "X"
+                           "Toll Plaza X"   -> "X"
+        2. Strip suffix:   "X Toll Plaza"   -> "X"
+                           "X Toll"         -> "X"
+        3. Strip direction tags so per-direction geofences match the
+           single fee-matrix entry:
+                           "Meycauayan 1"   -> "Meycauayan"
+                           "Marilao NB"     -> "Marilao"
+                           "Pulilan (North)"-> "Pulilan"
+        4. Normalise punctuation so "Sta Rita" matches "Sta. Rita":
+                           "Sta Rita"       -> "Sta. Rita"
+                           "Sto Domingo"    -> "Sto. Domingo"
 
     Examples:
-        "Toll - Mexico"        -> "Mexico"
-        "Toll - Sta. Rita"     -> "Sta. Rita"
-        "Toll - Tipo/SFEX"     -> "Tipo/SFEX"
-        "Toll - Parañaque"     -> "Parañaque"
-        "TOLLBOOTH Karuhatan"  -> "Karuhatan"
-        "Mexico Toll Plaza"    -> "Mexico"       (fallback split)
+        "Toll - Mexico"          -> "Mexico"
+        "Toll - Meycauayan 2"    -> "Meycauayan"
+        "Toll - Sta Rita 1"      -> "Sta. Rita"
+        "Toll - San Fernando 3"  -> "San Fernando"
+        "Toll - Tipo/SFEX"       -> "Tipo/SFEX"
+        "Toll - Parañaque"       -> "Parañaque"
+        "Toll - Marilao (NB)"    -> "Marilao"
 
     Returns the input unchanged if no recognisable prefix is present.
     """
+    import re
     if not geofence_name:
         return ''
     s = geofence_name.strip()
     upper = s.upper()
-    # Standard pattern: "Toll - <Plaza>"
+
+    # ── Step 1: prefix strip ────────────────────────────────────────
     if upper.startswith('TOLL -') or upper.startswith('TOLL- '):
-        return s.split('-', 1)[1].strip()
-    # Alternate "TOLLBOOTH <Plaza>" / "TOLL <Plaza>"
-    for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
-        if upper.startswith(prefix):
-            return s[len(prefix):].strip()
-    # Trailing " Toll Plaza" suffix
-    for suffix in (' TOLL PLAZA', ' TOLL'):
-        if upper.endswith(suffix):
-            return s[: -len(suffix)].strip()
+        s = s.split('-', 1)[1].strip()
+    else:
+        for prefix in ('TOLLBOOTH ', 'TOLL PLAZA ', 'TOLL '):
+            if upper.startswith(prefix):
+                s = s[len(prefix):].strip()
+                break
+        else:
+            # ── Step 2: suffix strip (only if no prefix matched) ────
+            for suffix in (' TOLL PLAZA', ' TOLL'):
+                if upper.endswith(suffix):
+                    s = s[: -len(suffix)].strip()
+                    break
+
+    # ── Step 3: direction tag strip ─────────────────────────────────
+    # Trailing single digit: "Meycauayan 1" -> "Meycauayan"
+    s = re.sub(r'\s+\d+$', '', s)
+    # Trailing direction code: "Marilao NB", "Pulilan SB", "X NORTH", "X SOUTH"
+    s = re.sub(r'\s+(NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|N|S|E|W)$',
+                '', s, flags=re.IGNORECASE)
+    # Trailing parenthesised direction: "Marilao (NB)", "(North)", "(Exit)"
+    s = re.sub(r'\s*\((NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|ENTRY|EXIT)\)$',
+                '', s, flags=re.IGNORECASE)
+    s = s.strip()
+
+    # ── Step 4: punctuation normalisation ───────────────────────────
+    # Sta -> Sta. and Sto -> Sto. when followed by a word (matches fee
+    # matrix which uses the canonical Spanish abbreviation form).
+    s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
+    s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
+
     return s
 
 # Whether to create SiteVisit rows for the HOME geofence (BIG BEN SCM).
