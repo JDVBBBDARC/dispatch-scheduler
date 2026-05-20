@@ -101,20 +101,8 @@
     </div>
   </div>
 
-  <!-- Open cycles snapshot -->
-  <div class="card shadow-sm border-0 rounded-4 mb-4">
-    <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
-      <h6 class="mb-0 fw-bold text-muted text-uppercase small">
-        <i class="bi bi-broadcast me-1"></i> Currently Open Cycles
-        <span class="badge bg-secondary ms-2" id="openCount">0</span>
-      </h6>
-    </div>
-    <div class="card-body p-0">
-      <div id="openCyclesList" class="p-3 small text-muted">
-        <div class="spinner-border spinner-border-sm me-2"></div>Loading…
-      </div>
-    </div>
-  </div>
+  <!-- (Open cycles snapshot removed — replaced by Plate Status table below
+       which shows open cycles inline as the top rows.) -->
 
   <!-- Two-column: idling chart + filters -->
   <div class="row g-3 mb-4">
@@ -155,13 +143,13 @@
             </div>
             <div class="col-6">
               <label class="form-label small text-muted">Plate</label>
-              <select class="form-select form-select-sm" id="filterPlate" onchange="loadCycles()">
+              <select class="form-select form-select-sm" id="filterPlate" onchange="loadPlates()">
                 <option value="">All</option>
               </select>
             </div>
             <div class="col-6">
               <label class="form-label small text-muted">Cycle Length</label>
-              <select class="form-select form-select-sm" id="filterCategory" onchange="loadCycles()">
+              <select class="form-select form-select-sm" id="filterCategory" onchange="loadPlates()">
                 <option value="">All</option>
                 <option value="short">Short (&lt;12h)</option>
                 <option value="standard">Standard (12–24h)</option>
@@ -171,7 +159,7 @@
             </div>
             <div class="col-6">
               <label class="form-label small text-muted">Status</label>
-              <select class="form-select form-select-sm" id="filterStatus" onchange="loadCycles()">
+              <select class="form-select form-select-sm" id="filterStatus" onchange="loadPlates()">
                 <option value="all">All</option>
                 <option value="closed">Closed only</option>
                 <option value="open">Open only</option>
@@ -188,16 +176,17 @@
     </div>
   </div>
 
-  <!-- Cycles table -->
+  <!-- Plate Status table (plate-centric live view; click to expand) -->
   <div class="card shadow-sm border-0 rounded-4">
     <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center"
          style="border-radius:1rem 1rem 0 0;">
       <h6 class="mb-0 fw-bold text-muted text-uppercase small">
-        <i class="bi bi-list-check me-1"></i> Cycle History
-        <span class="badge bg-secondary ms-2" id="cycleCount">0</span>
+        <i class="bi bi-truck me-1"></i> Plate Status
+        <span class="badge bg-info ms-2" id="plateOpenCount" title="Trucks currently on the road">0 active</span>
+        <span class="badge bg-secondary ms-1" id="plateParkedCount" title="Trucks at a home base">0 at home</span>
       </h6>
       <div class="d-flex align-items-center gap-2">
-        <small class="text-muted">Auto-refresh (60s)</small>
+        <small class="text-muted">Click any row to expand · Auto-refresh (60s)</small>
         <div class="form-check form-switch mb-0">
           <input class="form-check-input" type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
         </div>
@@ -205,23 +194,21 @@
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 align-middle">
           <thead style="background:#f8f9fa;">
             <tr>
-              <th class="small text-muted text-uppercase">Started</th>
-              <th class="small text-muted text-uppercase">Ended</th>
+              <th class="small text-muted text-uppercase" style="width:38px;"></th>
               <th class="small text-muted text-uppercase">Plate</th>
-              <th class="small text-muted text-uppercase">Duration</th>
-              <th class="small text-muted text-uppercase">Category</th>
-              <th class="small text-muted text-uppercase">Visits</th>
-              <th class="small text-muted text-uppercase">Live Status</th>
+              <th class="small text-muted text-uppercase">Status</th>
               <th class="small text-muted text-uppercase">Currently At</th>
+              <th class="small text-muted text-uppercase">Last Departure</th>
+              <th class="small text-muted text-uppercase">Out For</th>
+              <th class="small text-muted text-uppercase text-center">Stops</th>
               <th class="small text-muted text-uppercase">Location</th>
-              <th class="small text-muted text-uppercase">Cycle</th>
             </tr>
           </thead>
-          <tbody id="cyclesTbody">
-            <tr><td colspan="10" class="text-center py-5 text-muted">
+          <tbody id="platesTbody">
+            <tr><td colspan="8" class="text-center py-5 text-muted">
               <div class="spinner-border spinner-border-sm me-2"></div>Loading…
             </td></tr>
           </tbody>
@@ -302,35 +289,8 @@ async function loadSummary() {
       document.getElementById('minDwellMin').textContent = j.min_visit_minutes;
     }
 
-    // Open cycles list
-    const list = document.getElementById('openCyclesList');
-    document.getElementById('openCount').textContent = j.open_count;
-    if (j.open.length === 0) {
-      list.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-house-check fs-3 d-block opacity-50"></i>No trucks currently away from home base.</div>';
-    } else {
-      list.innerHTML = '<div class="row g-2">' + j.open.map(c => {
-        const sInfo = STATUS_BADGE[c.status] || {label: c.status || '—', cls: 'bg-secondary', icon: 'bi-question-circle'};
-        const inGf = (c.current_geofences && c.current_geofences.length)
-          ? `<small class="text-success d-block"><i class="bi bi-geo-alt-fill"></i> ${escHtml(c.current_geofences.join(', '))}</small>`
-          : `<small class="text-muted d-block"><i class="bi bi-signpost-split"></i> In transit</small>`;
-        const loc = c.location && c.location !== '—'
-          ? `<small class="text-muted d-block text-truncate" title="${escHtml(c.location)}"><i class="bi bi-pin-map"></i> ${escHtml(c.location)}</small>`
-          : '';
-        const speedTxt = (c.status === 'DRIVING' && c.speed) ? ` · ${c.speed} km/h` : '';
-        return `
-        <div class="col-md-6 col-lg-4">
-          <div class="p-2 border rounded h-100" style="background:#fafafa;">
-            <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
-              <span class="fw-semibold small"><i class="bi bi-truck text-info me-1"></i>${escHtml(c.plate_no)}</span>
-              <span class="badge ${sInfo.cls}" style="font-size:.7rem;"><i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}</span>
-            </div>
-            ${inGf}
-            ${loc}
-            <small class="text-muted d-block mt-1"><i class="bi bi-clock"></i> Out for ${formatHours(c.elapsed_hours)}</small>
-          </div>
-        </div>`;
-      }).join('') + '</div>';
-    }
+    // (Open cycles list removed — the new Plate Status table below
+    // shows the same information inline with sortable columns.)
   } catch (e) {
     console.error('loadSummary error:', e);
   }
@@ -446,73 +406,143 @@ async function loadIdling() {
   }
 }
 
-async function loadCycles() {
+// Render relative time like "4h 23m"
+function formatElapsed(hours) {
+  if (hours == null) return '—';
+  const totalMin = Math.round(hours * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+// Plate-centric loader — replaces the old cycle-history view.
+// Returns one row per active Plate, sorted: open cycles first (longest
+// elapsed first), then parked plates alphabetically at the bottom.
+async function loadPlates() {
   const params = new URLSearchParams();
-  const df = document.getElementById('filterDateFrom').value;
-  const dt = document.getElementById('filterDateTo').value;
   const tt = document.getElementById('filterTruckType').value;
-  const pl = document.getElementById('filterPlate').value;
-  const ca = document.getElementById('filterCategory').value;
-  const st = document.getElementById('filterStatus').value;
-  if (df) params.set('date_from', df);
-  if (dt) params.set('date_to', dt);
   if (tt) params.set('truck_type_id', tt);
-  if (pl) params.set('plate_id', pl);
-  if (ca) params.set('category', ca);
-  if (st && st !== 'all') params.set('status', st);
 
   try {
-    const r = await fetch('/api/cycle-time/cycles?' + params.toString());
+    const r = await fetch('/api/cycle-time/plates?' + params.toString());
     const j = await r.json();
-    const tbody = document.getElementById('cyclesTbody');
-    document.getElementById('cycleCount').textContent = j.count;
+    const tbody = document.getElementById('platesTbody');
+    document.getElementById('plateOpenCount').textContent = `${j.open_count} active`;
+    document.getElementById('plateParkedCount').textContent = `${j.parked_count} at home`;
 
-    if (j.cycles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
+    if (!j.plates || j.plates.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">
         <i class="bi bi-inbox fs-2 d-block opacity-30"></i>
-        <small>No cycles match the filters yet. Data accumulates as trucks leave + return to home base.</small>
+        <small>No plates match the truck-type filter.</small>
       </td></tr>`;
       return;
     }
-    tbody.innerHTML = j.cycles.map(c => {
-      // Build live-status cells (only meaningful while cycle is open)
-      let liveStatusCell = '<td class="text-muted small">—</td>';
-      let geofenceCell   = '<td class="text-muted small">—</td>';
-      let locationCell   = '<td class="text-muted small">—</td>';
-      if (c.is_open) {
-        const sInfo = STATUS_BADGE[c.status] || STATUS_BADGE.UNKNOWN;
-        const speedTxt = (c.status === 'DRIVING' && c.speed) ? ` ${c.speed} km/h` : '';
-        liveStatusCell = `<td><span class="badge ${sInfo.cls}" style="font-size:.7rem;">
-          <i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}
-        </span></td>`;
-        geofenceCell = (c.current_geofences && c.current_geofences.length)
-          ? `<td class="small"><span class="text-success">
-               <i class="bi bi-geo-alt-fill"></i> ${escHtml(c.current_geofences.join(', '))}
-             </span></td>`
-          : `<td class="small text-muted">
-               <i class="bi bi-signpost-split"></i> In transit
-             </td>`;
-        locationCell = c.location
-          ? `<td class="small text-truncate" style="max-width:240px;" title="${escHtml(c.location)}">
-               <i class="bi bi-pin-map text-muted me-1"></i>${escHtml(c.location)}
-             </td>`
-          : `<td class="text-muted small">—</td>`;
+
+    tbody.innerHTML = j.plates.map(p => {
+      const isOpen = !!p.is_open;
+      const sInfo  = STATUS_BADGE[p.live_status] || STATUS_BADGE.UNKNOWN;
+      const speedTxt = (p.live_status === 'DRIVING' && p.speed) ? ` ${p.speed} km/h` : '';
+
+      // Currently At cell — geofence name or "in transit" or "at home"
+      let currentAtHtml;
+      if (p.current_geofences && p.current_geofences.length) {
+        currentAtHtml = `<span class="text-success">
+          <i class="bi bi-geo-alt-fill"></i> ${escHtml(p.current_geofences.join(', '))}
+        </span>`;
+      } else if (isOpen) {
+        currentAtHtml = `<span class="text-muted">
+          <i class="bi bi-signpost-split"></i> In transit
+        </span>`;
+      } else {
+        currentAtHtml = `<span class="text-muted fst-italic">
+          <i class="bi bi-house-check"></i> At home
+        </span>`;
       }
-      return `<tr>
-        <td class="small">${formatDT(c.started_at)}</td>
-        <td class="small">${c.ended_at ? formatDT(c.ended_at) : '<em class="text-muted">ongoing</em>'}</td>
-        <td class="fw-semibold small">${escHtml(c.plate_no)}</td>
-        <td class="small">${c.duration_hours != null ? formatHours(c.duration_hours) : '—'}</td>
-        <td>${CATEGORY_BADGE[c.category] || c.category}</td>
-        <td class="text-center small">${c.visit_count}</td>
-        ${liveStatusCell}
-        ${geofenceCell}
-        ${locationCell}
-        <td>${c.is_open ? '<span class="badge bg-info">OPEN</span>' : '<span class="badge bg-secondary">CLOSED</span>'}</td>
-      </tr>`;
+
+      // Last Departure cell
+      let lastDepHtml;
+      if (isOpen && p.open_cycle && p.open_cycle.started_at) {
+        const depTime = formatDT(p.open_cycle.started_at);
+        const fromLoc = p.last_departure && p.last_departure.location
+          ? p.last_departure.location
+          : 'Home base';
+        lastDepHtml = `<small>
+          <i class="bi bi-arrow-up-right-circle text-info"></i>
+          <span class="fw-semibold">${depTime}</span>
+          <span class="text-muted d-block ms-3">from ${escHtml(fromLoc)}</span>
+        </small>`;
+      } else {
+        lastDepHtml = `<small class="text-muted">—</small>`;
+      }
+
+      // Out For (cycle elapsed)
+      const outForHtml = isOpen && p.open_cycle
+        ? `<span class="fw-semibold ${p.open_cycle.elapsed_hours > 24 ? 'text-warning' : 'text-info'}">
+             ${formatElapsed(p.open_cycle.elapsed_hours)}
+           </span>`
+        : `<small class="text-muted">—</small>`;
+
+      // Stops count
+      const stopsHtml = isOpen
+        ? `<span class="badge bg-light text-dark">${p.visit_count}</span>`
+        : `<small class="text-muted">—</small>`;
+
+      // Location address
+      const locHtml = p.location
+        ? `<small class="text-truncate d-block" style="max-width:240px;" title="${escHtml(p.location)}">
+             <i class="bi bi-pin-map text-muted me-1"></i>${escHtml(p.location)}
+           </small>`
+        : `<small class="text-muted">—</small>`;
+
+      const rowClass = isOpen ? '' : 'text-muted';
+      const rowStyle = isOpen ? '' : 'background:#fafafa;opacity:0.75;';
+
+      return `
+        <tr class="plate-row ${rowClass}" style="cursor:pointer;${rowStyle}"
+            data-plate-id="${p.plate_id}"
+            onclick="togglePlateExpand(${p.plate_id}, this)">
+          <td class="text-center"><i class="bi bi-chevron-right plate-chevron"></i></td>
+          <td class="fw-semibold small">${escHtml(p.display)}</td>
+          <td><span class="badge ${sInfo.cls}" style="font-size:.7rem;">
+            <i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}
+          </span></td>
+          <td>${currentAtHtml}</td>
+          <td>${lastDepHtml}</td>
+          <td>${outForHtml}</td>
+          <td class="text-center">${stopsHtml}</td>
+          <td>${locHtml}</td>
+        </tr>
+        <tr class="plate-expand-row d-none" data-plate-id="${p.plate_id}">
+          <td colspan="8" class="bg-light">
+            <div class="p-3 text-muted small" id="plateExpand-${p.plate_id}">
+              <i class="bi bi-hourglass-split me-1"></i>
+              Loading cycle history… <em>(Phase 2 — coming next)</em>
+            </div>
+          </td>
+        </tr>
+      `;
     }).join('');
   } catch (e) {
-    console.error('loadCycles error:', e);
+    console.error('loadPlates error:', e);
+  }
+}
+
+// Toggle expand/collapse of a plate row.
+// In Phase 2 this will also fetch the plate's cycle list and render
+// the cycle picker + timeline. For now, just shows a placeholder.
+function togglePlateExpand(plateId, rowEl) {
+  const expandRow = document.querySelector(
+    `tr.plate-expand-row[data-plate-id="${plateId}"]`);
+  if (!expandRow) return;
+  const chevron = rowEl.querySelector('.plate-chevron');
+  if (expandRow.classList.contains('d-none')) {
+    expandRow.classList.remove('d-none');
+    if (chevron) chevron.classList.replace('bi-chevron-right', 'bi-chevron-down');
+  } else {
+    expandRow.classList.add('d-none');
+    if (chevron) chevron.classList.replace('bi-chevron-down', 'bi-chevron-right');
   }
 }
 
@@ -520,12 +550,12 @@ async function loadCycles() {
 function refreshAll() {
   loadSummary();
   loadIdling();
-  loadCycles();
+  loadPlates();
 }
 
 function loadAll() {
   loadIdling();
-  loadCycles();
+  loadPlates();
 }
 
 function clearFilters() {

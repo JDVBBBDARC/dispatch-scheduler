@@ -2201,6 +2201,162 @@ def api_cycle_time_cycles():
     return jsonify({'cycles': rows, 'count': len(rows), 'limit': limit})
 
 
+@app.route('/api/cycle-time/plates')
+@login_required
+def api_cycle_time_plates():
+    """Plate-centric live view. One entry per active plate, with:
+      - live status (DRIVING / IDLING / STOPPED / OFF / NO DATA)
+      - currently at  (list of geofence names; empty = in transit)
+      - last GPS position address
+      - open cycle info (if any) — id, started_at, elapsed_hours
+      - visit_count (real visits, not drive-bys, in the open cycle)
+      - last_departure / last_arrival  (recent SiteVisit pair)
+
+    Sorting:
+      1. Plates with open cycles first, longest-elapsed first.
+      2. Then parked plates (no open cycle), alphabetically.
+
+    Powers the new TCT Plate Status table that replaces the per-cycle
+    history view. Closed cycles per plate are fetched on demand by
+    /api/cycle-time/plate/<id>/cycles.
+
+    Filters:
+        truck_type_id  — restrict to one truck type
+    """
+    truck_type_id = request.args.get('truck_type_id', '')
+
+    plates_q = Plate.query.filter(Plate.active == True)   # noqa: E712
+    if truck_type_id:
+        try:
+            plates_q = plates_q.filter(Plate.truck_type_id == int(truck_type_id))
+        except ValueError:
+            pass
+    plates = plates_q.order_by(Plate.body_no, Plate.plate_no).all()
+
+    if not plates:
+        return jsonify({'plates': [], 'open_count': 0, 'parked_count': 0})
+
+    plate_ids = [p.id for p in plates]
+
+    # Batch-fetch CartrackTruckState rows for these plates
+    states = CartrackTruckState.query.filter(
+        CartrackTruckState.plate_id.in_(plate_ids)).all()
+    state_map = {s.plate_id: s for s in states}
+
+    # Batch-fetch open cycles (one per plate at most)
+    open_cycles = (TruckCycle.query
+                   .filter(TruckCycle.plate_id.in_(plate_ids),
+                           TruckCycle.ended_at.is_(None))
+                   .all())
+    open_cycle_map = {c.plate_id: c for c in open_cycles}
+
+    # Build a set of geofence UUIDs referenced by any of the live states,
+    # so we can resolve names in a single batch query.
+    all_gf_uuids = set()
+    for s in states:
+        for u in (s.last_geofence_uuids or '').split(','):
+            if u:
+                all_gf_uuids.add(u)
+    gf_name_map = {}
+    if all_gf_uuids:
+        for g in CartrackGeofence.query.filter(
+            CartrackGeofence.cartrack_id.in_(all_gf_uuids)).all():
+            gf_name_map[g.cartrack_id] = g.name
+
+    # For each open cycle, fetch the most recent closed SiteVisit (last
+    # arrival/departure) and the count of real visits.
+    visit_aggregates = {}
+    last_arrival_map = {}
+    last_departure_map = {}
+    for c in open_cycles:
+        # Real-visit count
+        from sqlalchemy import func
+        cnt = (db.session.query(func.count(SiteVisit.id))
+               .filter(SiteVisit.cycle_id == c.id,
+                       SiteVisit.is_drive_by == False)   # noqa: E712
+               .scalar() or 0)
+        visit_aggregates[c.plate_id] = int(cnt)
+
+        # Most recent SiteVisit in this cycle (closed or open)
+        latest = (SiteVisit.query
+                  .filter(SiteVisit.cycle_id == c.id,
+                          SiteVisit.is_drive_by == False)   # noqa: E712
+                  .order_by(SiteVisit.enter_at.desc())
+                  .first())
+        if latest:
+            gf = (CartrackGeofence.query
+                  .filter_by(id=latest.geofence_id).first())
+            gf_name = gf.name if gf else None
+            last_arrival_map[c.plate_id] = {
+                'time': latest.enter_at.isoformat() if latest.enter_at else None,
+                'location': gf_name,
+                'still_here': latest.exit_at is None,
+            }
+            if latest.exit_at:
+                last_departure_map[c.plate_id] = {
+                    'time': latest.exit_at.isoformat(),
+                    'location': gf_name,
+                }
+
+    rows = []
+    now = datetime.utcnow()
+    for p in plates:
+        state = state_map.get(p.id)
+        oc = open_cycle_map.get(p.id)
+        # Live status
+        live_status = state.live_status if state else 'UNKNOWN'
+        speed = state.last_speed if state else 0
+        location = (state.last_position_description if state else '') or ''
+        # Currently-at geofence names
+        current_gfs = []
+        if state and state.last_geofence_uuids:
+            for u in state.last_geofence_uuids.split(','):
+                if u and u in gf_name_map:
+                    current_gfs.append(gf_name_map[u])
+        # Open cycle details
+        open_cycle_info = None
+        if oc:
+            elapsed_s = (now - oc.started_at).total_seconds() if oc.started_at else 0
+            open_cycle_info = {
+                'id':           oc.id,
+                'started_at':   oc.started_at.isoformat() if oc.started_at else None,
+                'elapsed_hours': round(elapsed_s / 3600.0, 2),
+            }
+
+        rows.append({
+            'plate_id':      p.id,
+            'plate_no':      p.plate_no,
+            'body_no':       p.body_no or '',
+            'display':       p.display,
+            'truck_type':    p.truck_type.code if p.truck_type else '',
+            'truck_type_name': p.truck_type.name if p.truck_type else '',
+            'live_status':   live_status,
+            'speed':         speed,
+            'location':      location,
+            'current_geofences': current_gfs,
+            'is_open':       oc is not None,
+            'open_cycle':    open_cycle_info,
+            'visit_count':   visit_aggregates.get(p.id, 0) if oc else 0,
+            'last_arrival':  last_arrival_map.get(p.id) if oc else None,
+            'last_departure': last_departure_map.get(p.id) if oc else None,
+        })
+
+    # Sort: open cycles first (longest elapsed first), then parked alphabetically
+    def sort_key(r):
+        if r['is_open']:
+            return (0, -(r['open_cycle']['elapsed_hours'] or 0), r['display'])
+        return (1, 0, r['display'])
+    rows.sort(key=sort_key)
+
+    open_count = sum(1 for r in rows if r['is_open'])
+    return jsonify({
+        'plates':       rows,
+        'count':        len(rows),
+        'open_count':   open_count,
+        'parked_count': len(rows) - open_count,
+    })
+
+
 @app.route('/api/cycle-time/idling')
 @login_required
 def api_cycle_time_idling():
