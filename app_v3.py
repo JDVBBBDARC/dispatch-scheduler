@@ -2641,61 +2641,63 @@ def api_cycle_time_clear_logs():
       - CartrackTruckState (per-plate live state — reset position/stop
                             tracking so the next poll starts clean)
 
-    Optional body params:
-      { "before": "2026-05-20" }   ISO date; only delete rows before this.
-                                    Omit to wipe ALL tracking data.
+    Required body params (both — for safety, no full-wipe is allowed):
+      {
+        "before":  "2026-05-20",   # ISO date; only delete rows before this
+        "confirm": "CLEAR"         # exact string match — case sensitive
+      }
+
+    The confirm token and date are both required at the API layer, so
+    even a misclick in the UI or a stray curl can't accidentally wipe
+    everything. Rows on or after `before` are preserved.
     """
     from sqlalchemy import func
     data = request.get_json(silent=True) or {}
-    cutoff = None
-    if data.get('before'):
-        try:
-            cutoff = datetime.strptime(data['before'], '%Y-%m-%d')
-        except ValueError:
-            return jsonify({'error': 'before must be ISO date YYYY-MM-DD'}), 400
+
+    # Safety gate 1 — explicit confirmation token
+    if data.get('confirm') != 'CLEAR':
+        return jsonify({
+            'error': 'Confirmation token required',
+            'hint':  'Send {"confirm": "CLEAR", "before": "YYYY-MM-DD"}.',
+        }), 400
+
+    # Safety gate 2 — explicit date cutoff (no full wipe)
+    if not data.get('before'):
+        return jsonify({
+            'error': 'Cutoff date required',
+            'hint':  'Send a "before" ISO date so post-cutoff records are kept.',
+        }), 400
+
+    try:
+        cutoff = datetime.strptime(data['before'], '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'before must be ISO date YYYY-MM-DD'}), 400
 
     # Count before delete (for reporting)
     def count(model, ts_attr):
-        q = db.session.query(func.count(model.id))
-        if cutoff is not None and ts_attr:
-            q = q.filter(getattr(model, ts_attr) < cutoff)
-        return q.scalar() or 0
+        return (db.session.query(func.count(model.id))
+                .filter(getattr(model, ts_attr) < cutoff)
+                .scalar() or 0)
 
-    sv_count = count(SiteVisit, 'enter_at')
-    cyc_count = count(TruckCycle, 'started_at')
-    ev_count  = count(CartrackEvent, 'created_at')
+    sv_count  = count(SiteVisit,    'enter_at')
+    cyc_count = count(TruckCycle,   'started_at')
+    ev_count  = count(CartrackEvent,'created_at')
 
     # Delete in dependency-safe order: SiteVisit (refs cycle, geofence)
-    # first, then TruckCycle, then CartrackEvent.
-    sv_q = db.session.query(SiteVisit)
-    if cutoff is not None:
-        sv_q = sv_q.filter(SiteVisit.enter_at < cutoff)
-    sv_q.delete(synchronize_session=False)
+    # first, then TruckCycle, then CartrackEvent. All scoped to `before`
+    # so post-cutoff records are preserved.
+    (db.session.query(SiteVisit)
+     .filter(SiteVisit.enter_at < cutoff)
+     .delete(synchronize_session=False))
+    (db.session.query(TruckCycle)
+     .filter(TruckCycle.started_at < cutoff)
+     .delete(synchronize_session=False))
+    (db.session.query(CartrackEvent)
+     .filter(CartrackEvent.created_at < cutoff)
+     .delete(synchronize_session=False))
 
-    cyc_q = db.session.query(TruckCycle)
-    if cutoff is not None:
-        cyc_q = cyc_q.filter(TruckCycle.started_at < cutoff)
-    cyc_q.delete(synchronize_session=False)
-
-    ev_q = db.session.query(CartrackEvent)
-    if cutoff is not None:
-        ev_q = ev_q.filter(CartrackEvent.created_at < cutoff)
-    ev_q.delete(synchronize_session=False)
-
-    # Reset per-plate tracking state so the next poll starts clean
-    # (no ghost open cycles, no stale "in geofence" state from deleted rows).
-    if cutoff is None:
-        for s in CartrackTruckState.query.all():
-            s.current_plazas       = ''
-            s.entry_plaza          = None
-            s.last_plaza           = None
-            s.last_event_ts        = None
-            s.open_trip_id         = None
-            s.last_geofence_uuids  = ''
-            s.last_stop_started_at = None
-            s.last_stop_lat        = None
-            s.last_stop_lng        = None
-            s.last_stop_address    = None
+    # Per-plate live state is NOT reset (partial wipe leaves the live
+    # tracking intact — we're only purging history before the cutoff).
 
     db.session.commit()
     return jsonify({
@@ -2705,7 +2707,7 @@ def api_cycle_time_clear_logs():
             'truck_cycles':   cyc_count,
             'cartrack_events': ev_count,
         },
-        'cutoff': data.get('before') or 'all',
+        'cutoff': data['before'],
     })
 
 

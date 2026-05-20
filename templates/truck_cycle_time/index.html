@@ -76,19 +76,45 @@
 
           <hr>
 
-          <!-- Admin-only: Clear Logs — destructive action with confirmation -->
+          <!-- Admin-only: Clear Logs — destructive action with
+               multi-gate confirmation. Requires both a cutoff date AND
+               typing the word CLEAR. Full wipes are NOT allowed at the
+               API layer — every clear must specify a 'before' date. -->
           <div id="settingsAdminSection" class="d-none">
             <h6 class="text-danger mb-2">
               <i class="bi bi-exclamation-triangle"></i> Danger zone — Admin only
             </h6>
-            <p class="small text-muted">
-              Wipes all tracking records (site visits, cycles, GPS events)
-              from the database. Master data, trip records, and toll fees
-              are preserved. Use to clear out trial-period noise before
-              going fully live.
+            <p class="small text-muted mb-2">
+              Purges <strong>tracking records older than the cutoff
+              date</strong>: site visits, truck cycles, GPS plaza events.
+              Records on or after the cutoff are kept. Master data, trip
+              records, and toll fees are <strong>always preserved</strong>.
             </p>
-            <button class="btn btn-outline-danger btn-sm" onclick="clearTrackingLogs()">
-              <i class="bi bi-trash"></i> Clear all tracking logs
+
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1">
+                Delete records BEFORE this date
+              </label>
+              <input type="date" id="clearBeforeDate" class="form-control form-control-sm"
+                     onchange="updateClearButtonState()">
+              <div class="form-text">
+                e.g., pick today's date to wipe everything up to yesterday.
+                Future-dated records are never touched.
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1">
+                Type <code class="text-danger">CLEAR</code> to confirm
+              </label>
+              <input type="text" id="clearConfirmText" class="form-control form-control-sm"
+                     placeholder="CLEAR" autocomplete="off"
+                     oninput="updateClearButtonState()">
+            </div>
+
+            <button class="btn btn-outline-danger btn-sm" id="clearLogsBtn"
+                    onclick="clearTrackingLogs()" disabled>
+              <i class="bi bi-trash"></i> <span id="clearLogsBtnLabel">Clear logs before [pick a date]</span>
             </button>
           </div>
         </div>
@@ -739,30 +765,69 @@ async function saveSettings() {
   }
 }
 
+// Enable the Clear button only when a valid date is picked AND
+// the user has typed CLEAR exactly. Called on input change of either.
+function updateClearButtonState() {
+  const dateEl = document.getElementById('clearBeforeDate');
+  const textEl = document.getElementById('clearConfirmText');
+  const btn    = document.getElementById('clearLogsBtn');
+  const label  = document.getElementById('clearLogsBtnLabel');
+  const date   = dateEl.value;
+  const txt    = textEl.value;
+
+  const dateOk = !!date;
+  const txtOk  = txt === 'CLEAR';
+
+  if (dateOk && txtOk) {
+    btn.disabled = false;
+    label.textContent = `Clear logs before ${date}`;
+  } else {
+    btn.disabled = true;
+    if (!dateOk) {
+      label.textContent = 'Clear logs before [pick a date]';
+    } else if (!txtOk) {
+      label.textContent = `Type CLEAR to enable (before ${date})`;
+    }
+  }
+}
+
 async function clearTrackingLogs() {
+  const date = document.getElementById('clearBeforeDate').value;
+  const txt  = document.getElementById('clearConfirmText').value;
+  // Defensive — should be blocked by disabled state, but double-check.
+  if (!date || txt !== 'CLEAR') {
+    alert('Pick a cutoff date and type CLEAR first.');
+    return;
+  }
   if (!confirm(
-    'Wipe ALL tracking logs?\n\n' +
-    'Deletes: site visits, truck cycles, GPS plaza events.\n' +
-    'Keeps: master data, trip records, toll fees, geofence cache.\n\n' +
-    'This cannot be undone. Continue?'
+    `This will delete tracking records BEFORE ${date}.\n\n` +
+    `On-or-after records are preserved.\n` +
+    `Master data, trip records, and toll fees are untouched.\n\n` +
+    `Continue?`
   )) return;
-  if (!confirm(
-    'Last confirmation — this will erase all trial-period tracking data. ' +
-    'Are you absolutely sure?'
-  )) return;
+
   try {
     const r = await fetch('/api/cycle-time/clear-logs', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({}),   // no `before` = wipe all
+      body: JSON.stringify({ before: date, confirm: 'CLEAR' }),
     });
     const j = await r.json();
     if (j.error) {
-      alert('Clear failed: ' + j.error);
+      alert('Clear failed: ' + j.error + (j.hint ? '\n\n' + j.hint : ''));
       return;
     }
     const d = j.deleted || {};
-    alert(`Cleared:\n  • ${d.site_visits||0} site visits\n  • ${d.truck_cycles||0} truck cycles\n  • ${d.cartrack_events||0} GPS events\n\nNext poll starts clean.`);
+    alert(
+      `Cleared records before ${j.cutoff}:\n` +
+      `  • ${d.site_visits||0} site visits\n` +
+      `  • ${d.truck_cycles||0} truck cycles\n` +
+      `  • ${d.cartrack_events||0} GPS events\n\n` +
+      `Records from ${j.cutoff} onward are preserved.`
+    );
+    // Reset the confirmation fields so it can't be re-fired by accident
+    document.getElementById('clearConfirmText').value = '';
+    updateClearButtonState();
     _settingsModal.hide();
     refreshAll();
   } catch (e) {
