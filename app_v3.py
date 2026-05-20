@@ -2357,6 +2357,193 @@ def api_cycle_time_plates():
     })
 
 
+@app.route('/api/cycle-time/plate/<int:plate_id>/cycles')
+@login_required
+def api_cycle_time_plate_cycles(plate_id):
+    """Return all cycles (open + closed) for a single plate, ordered
+    most-recent-first. Used by the cycle-picker dropdown when a plate
+    row is expanded on the TCT page.
+
+    Query params:
+        date_from, date_to  — ISO dates, filter by started_at
+        limit               — max rows (default 50)
+    """
+    plate = Plate.query.get_or_404(plate_id)
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    limit     = min(int(request.args.get('limit', 50)), 200)
+
+    q = TruckCycle.query.filter(TruckCycle.plate_id == plate.id)
+    if date_from:
+        try:
+            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+
+    # Order: open cycles first (ended_at IS NULL → sorted as "newest"),
+    # then closed cycles by started_at desc.
+    cycles = (q.order_by(TruckCycle.ended_at.is_(None).desc(),
+                          TruckCycle.started_at.desc())
+              .limit(limit).all())
+
+    from sqlalchemy import func
+    rows = []
+    now = datetime.utcnow()
+    for c in cycles:
+        # Real-visit count (exclude drive-bys; INCLUDE ad-hoc stops)
+        vc = (db.session.query(func.count(SiteVisit.id))
+              .filter(SiteVisit.cycle_id == c.id,
+                      SiteVisit.is_drive_by == False)   # noqa: E712
+              .scalar() or 0)
+        is_open = c.ended_at is None
+        duration_min = c.duration_minutes
+        if is_open and c.started_at:
+            duration_min = int((now - c.started_at).total_seconds() / 60)
+        rows.append({
+            'id':              c.id,
+            'started_at':      c.started_at.isoformat() if c.started_at else None,
+            'ended_at':        c.ended_at.isoformat() if c.ended_at else None,
+            'duration_minutes': duration_min,
+            'duration_hours':  round(duration_min / 60, 2) if duration_min else None,
+            'category':        c.category,
+            'visit_count':     int(vc),
+            'is_open':         is_open,
+        })
+
+    return jsonify({
+        'plate_id':   plate.id,
+        'plate_no':   plate.plate_no,
+        'display':    plate.display,
+        'cycles':     rows,
+        'count':      len(rows),
+    })
+
+
+@app.route('/api/cycle-time/cycle/<int:cycle_id>/timeline')
+@login_required
+def api_cycle_time_cycle_timeline(cycle_id):
+    """Return the full chronological audit trail of a single cycle.
+
+    Merges two data sources:
+      1. SiteVisit rows linked via cycle_id (geofence visits +
+         ad-hoc stops). Each row produces TWO events: ARRIVED (enter_at)
+         and DEPARTED (exit_at if set).
+      2. CartrackEvent rows within the cycle's time range (plaza
+         enter/exit/trip_closed events from the toll-tracking layer).
+
+    Events are sorted by timestamp ascending so the user reads the
+    truck's journey top-to-bottom.
+
+    Each event has:
+        ts          — ISO timestamp
+        kind        — 'departed' | 'arrived' | 'stopped' | 'plaza_enter'
+                       | 'plaza_exit' | 'trip_closed'
+        location    — display name (geofence name / plaza / address)
+        duration_minutes  — for visit close events
+        idling_pct        — for visit close events (if computed)
+        is_ad_hoc         — for stops outside any geofence
+        notes             — free-text extras
+    """
+    cycle = TruckCycle.query.get_or_404(cycle_id)
+
+    # ── Source 1: SiteVisits within this cycle ──
+    visits = (SiteVisit.query
+              .filter(SiteVisit.cycle_id == cycle.id,
+                      SiteVisit.is_drive_by == False)   # noqa: E712
+              .order_by(SiteVisit.enter_at.asc())
+              .all())
+
+    events = []
+    # The cycle's own start/end events
+    if cycle.started_at:
+        events.append({
+            'ts':       cycle.started_at.isoformat(),
+            'kind':     'departed',
+            'location': 'Home base',
+            'is_ad_hoc': False,
+            'notes':    'Cycle started — truck left home',
+        })
+    if cycle.ended_at:
+        events.append({
+            'ts':       cycle.ended_at.isoformat(),
+            'kind':     'arrived',
+            'location': 'Home base',
+            'is_ad_hoc': False,
+            'duration_minutes': cycle.duration_minutes,
+            'notes':    'Cycle ended — truck returned home',
+        })
+
+    for v in visits:
+        gf_name = v.geofence.name if v.geofence else (v.address or '(unknown location)')
+        is_ad_hoc = v.geofence_id is None
+        # Arrived event (enter)
+        if v.enter_at:
+            events.append({
+                'ts':         v.enter_at.isoformat(),
+                'kind':       'stopped' if is_ad_hoc else 'arrived',
+                'location':   gf_name,
+                'is_ad_hoc':  is_ad_hoc,
+                'lat':        v.lat,
+                'lng':        v.lng,
+                'notes':      '',
+            })
+        # Departed event (exit, only if closed)
+        if v.exit_at:
+            events.append({
+                'ts':              v.exit_at.isoformat(),
+                'kind':            'departed',
+                'location':        gf_name,
+                'is_ad_hoc':       is_ad_hoc,
+                'duration_minutes': (v.duration_seconds or 0) // 60,
+                'idling_pct':      v.idling_pct,
+                'notes':           '',
+            })
+
+    # ── Source 2: CartrackEvents within the cycle's time range ──
+    plate_id = cycle.plate_id
+    start_ts = cycle.started_at
+    end_ts   = cycle.ended_at or datetime.utcnow()
+    cev_q = (CartrackEvent.query
+             .filter(CartrackEvent.plate_id == plate_id,
+                     CartrackEvent.created_at >= start_ts,
+                     CartrackEvent.created_at <= end_ts)
+             .order_by(CartrackEvent.created_at.asc()))
+    for e in cev_q.all():
+        kind = {
+            'enter':       'plaza_enter',
+            'exit':        'plaza_exit',
+            'trip_closed': 'trip_closed',
+        }.get(e.event_type, e.event_type)
+        events.append({
+            'ts':       e.created_at.isoformat(),
+            'kind':     kind,
+            'location': e.plaza_name or '?',
+            'is_ad_hoc': False,
+            'expressway': e.expressway,
+            'toll_fee':   e.toll_fee,
+            'notes':      '',
+        })
+
+    # Final chronological sort
+    events.sort(key=lambda x: x['ts'])
+
+    return jsonify({
+        'cycle_id':   cycle.id,
+        'plate_id':   cycle.plate_id,
+        'started_at': cycle.started_at.isoformat() if cycle.started_at else None,
+        'ended_at':   cycle.ended_at.isoformat() if cycle.ended_at else None,
+        'duration_minutes': cycle.duration_minutes,
+        'is_open':    cycle.ended_at is None,
+        'events':     events,
+        'count':      len(events),
+    })
+
+
 @app.route('/api/cycle-time/idling')
 @login_required
 def api_cycle_time_idling():

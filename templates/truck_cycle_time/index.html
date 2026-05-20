@@ -627,20 +627,217 @@ async function loadPlates() {
   }
 }
 
-// Toggle expand/collapse of a plate row.
-// In Phase 2 this will also fetch the plate's cycle list and render
-// the cycle picker + timeline. For now, just shows a placeholder.
-function togglePlateExpand(plateId, rowEl) {
+// Toggle expand/collapse of a plate row. On expand, fetches the
+// plate's cycle list and renders the cycle-picker chips. Selecting
+// a chip loads that cycle's audit-trail timeline below.
+async function togglePlateExpand(plateId, rowEl) {
   const expandRow = document.querySelector(
     `tr.plate-expand-row[data-plate-id="${plateId}"]`);
   if (!expandRow) return;
   const chevron = rowEl.querySelector('.plate-chevron');
-  if (expandRow.classList.contains('d-none')) {
+  const isExpanding = expandRow.classList.contains('d-none');
+  if (isExpanding) {
     expandRow.classList.remove('d-none');
     if (chevron) chevron.classList.replace('bi-chevron-right', 'bi-chevron-down');
+    await loadPlateCycles(plateId);
   } else {
     expandRow.classList.add('d-none');
     if (chevron) chevron.classList.replace('bi-chevron-down', 'bi-chevron-right');
+  }
+}
+
+// Fetch and render the cycle-picker chips for one plate.
+// Called when a plate row is expanded.
+async function loadPlateCycles(plateId) {
+  const container = document.getElementById(`plateExpand-${plateId}`);
+  if (!container) return;
+  container.innerHTML = `
+    <div class="text-muted small">
+      <div class="spinner-border spinner-border-sm me-2"></div>
+      Loading cycle history…
+    </div>`;
+  try {
+    // Honour the date range filter on the page so the picker shows
+    // only cycles within the same window.
+    const df = document.getElementById('filterDateFrom').value;
+    const dt = document.getElementById('filterDateTo').value;
+    const params = new URLSearchParams();
+    if (df) params.set('date_from', df);
+    if (dt) params.set('date_to', dt);
+    const r = await fetch(`/api/cycle-time/plate/${plateId}/cycles?` + params.toString());
+    const j = await r.json();
+    if (!j.cycles || j.cycles.length === 0) {
+      container.innerHTML = `
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-inbox d-block fs-3 opacity-30"></i>
+          No cycles recorded for this plate yet.
+        </div>`;
+      return;
+    }
+    // Build cycle-chip row + an empty timeline holder
+    const chips = j.cycles.map((c, idx) => {
+      const isOpen = c.is_open;
+      const dur = c.duration_hours
+        ? (c.duration_hours < 1 ? `${Math.round(c.duration_hours * 60)}m`
+                                : `${c.duration_hours}h`)
+        : '—';
+      const dateLabel = c.started_at
+        ? new Date(c.started_at).toLocaleDateString('en-PH',
+            {month: 'short', day: '2-digit'})
+        : '?';
+      const cls = isOpen
+        ? 'btn-info'
+        : 'btn-outline-secondary';
+      const badge = isOpen
+        ? '<span class="badge bg-light text-info ms-1">OPEN</span>'
+        : '';
+      return `
+        <button class="btn btn-sm ${cls} cycle-chip"
+                data-cycle-id="${c.id}"
+                data-plate-id="${plateId}"
+                onclick="loadCycleTimeline(${plateId}, ${c.id}, this)">
+          #${c.id} · ${dateLabel} · ${dur}${badge}
+          <small class="ms-1 opacity-75">(${c.visit_count} stops)</small>
+        </button>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="mb-2 small text-muted fw-semibold">
+        <i class="bi bi-list-task me-1"></i> Cycle history (${j.count})
+        <span class="ms-2 text-info">— click a chip below to view the audit trail</span>
+      </div>
+      <div class="d-flex flex-wrap gap-1 mb-3" id="cycleChips-${plateId}">
+        ${chips}
+      </div>
+      <div id="cycleTimeline-${plateId}" class="border-top pt-3 mt-2">
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-arrow-up-circle d-block fs-4 opacity-30"></i>
+          Pick a cycle above to load its full timeline.
+        </div>
+      </div>`;
+
+    // Auto-load the first cycle (which is the open one if any, else newest closed)
+    if (j.cycles.length > 0) {
+      const firstBtn = container.querySelector('.cycle-chip');
+      if (firstBtn) firstBtn.click();
+    }
+  } catch (e) {
+    container.innerHTML = `<div class="text-danger small">Error loading cycles: ${e.message}</div>`;
+  }
+}
+
+// Render the audit-trail timeline for one cycle.
+// Called when a cycle chip is clicked.
+async function loadCycleTimeline(plateId, cycleId, chipBtn) {
+  // Highlight the active chip
+  const chipsRow = document.getElementById(`cycleChips-${plateId}`);
+  if (chipsRow) {
+    chipsRow.querySelectorAll('.cycle-chip').forEach(b => {
+      b.classList.add('btn-outline-secondary');
+      b.classList.remove('btn-secondary');
+    });
+    if (chipBtn) {
+      chipBtn.classList.remove('btn-outline-secondary');
+      chipBtn.classList.add('btn-secondary');
+    }
+  }
+  const holder = document.getElementById(`cycleTimeline-${plateId}`);
+  if (!holder) return;
+  holder.innerHTML = `
+    <div class="text-muted small">
+      <div class="spinner-border spinner-border-sm me-2"></div>
+      Loading timeline…
+    </div>`;
+  try {
+    const r = await fetch(`/api/cycle-time/cycle/${cycleId}/timeline`);
+    const j = await r.json();
+    if (!j.events || j.events.length === 0) {
+      holder.innerHTML = `
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-inbox d-block fs-3 opacity-30"></i>
+          No events recorded for this cycle. Did polling miss it?
+        </div>`;
+      return;
+    }
+    const lines = j.events.map((ev, idx) => {
+      const ts = formatDT(ev.ts);
+      const kind = ev.kind;
+      const adHoc = ev.is_ad_hoc;
+
+      // Icon + colour per event kind
+      const iconMap = {
+        'departed':     { ic: 'bi-arrow-up-right-circle-fill', cls: 'text-success'  },
+        'arrived':      { ic: 'bi-geo-alt-fill',               cls: 'text-info'     },
+        'stopped':      { ic: 'bi-pause-circle-fill',          cls: 'text-warning'  },
+        'plaza_enter':  { ic: 'bi-sign-merge-left',            cls: 'text-primary'  },
+        'plaza_exit':   { ic: 'bi-sign-merge-right',           cls: 'text-primary'  },
+        'trip_closed':  { ic: 'bi-cash-coin',                  cls: 'text-success'  },
+      };
+      const meta = iconMap[kind] || { ic: 'bi-dot', cls: 'text-muted' };
+
+      let label;
+      switch (kind) {
+        case 'departed':  label = 'DEPARTED'; break;
+        case 'arrived':   label = 'ARRIVED';  break;
+        case 'stopped':   label = 'STOPPED';  break;
+        case 'plaza_enter': label = 'PLAZA IN'; break;
+        case 'plaza_exit':  label = 'PLAZA OUT'; break;
+        case 'trip_closed': label = 'TOLL FILLED'; break;
+        default: label = kind.toUpperCase();
+      }
+
+      // Compose extras
+      const extras = [];
+      if (ev.duration_minutes != null && ev.duration_minutes > 0) {
+        extras.push(`${ev.duration_minutes}m dwell`);
+      }
+      if (ev.idling_pct != null) {
+        extras.push(`${ev.idling_pct.toFixed ? ev.idling_pct.toFixed(0) : ev.idling_pct}% idle`);
+      }
+      if (ev.toll_fee != null) {
+        extras.push(`₱${Number(ev.toll_fee).toFixed(2)}`);
+      }
+      if (ev.expressway) {
+        extras.push(ev.expressway);
+      }
+      if (adHoc) {
+        extras.push('ad-hoc stop');
+      }
+      const extrasHtml = extras.length
+        ? `<small class="text-muted ms-2">${extras.map(escHtml).join(' · ')}</small>`
+        : '';
+
+      return `
+        <div class="timeline-item d-flex align-items-start mb-2">
+          <div class="me-2" style="font-size:1.1rem;">
+            <i class="bi ${meta.ic} ${meta.cls}"></i>
+          </div>
+          <div class="flex-grow-1 small">
+            <span class="text-muted me-2">${ts}</span>
+            <span class="fw-bold ${meta.cls}">${label}</span>
+            <span class="ms-2">${escHtml(ev.location || '')}</span>
+            ${extrasHtml}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Header
+    const totalDur = j.duration_minutes;
+    const header = `
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold small text-muted text-uppercase">
+          <i class="bi bi-stopwatch me-1"></i> Cycle #${j.cycle_id} timeline
+          <span class="badge bg-light text-dark ms-1">${j.count} events</span>
+          ${j.is_open
+            ? '<span class="badge bg-info ms-1">OPEN</span>'
+            : `<span class="badge bg-secondary ms-1">CLOSED · ${
+                totalDur ? (totalDur < 60 ? totalDur + 'm' : (totalDur/60).toFixed(1)+'h') : '?'
+              }</span>`}
+        </h6>
+      </div>`;
+    holder.innerHTML = header + lines;
+  } catch (e) {
+    holder.innerHTML = `<div class="text-danger small">Error loading timeline: ${e.message}</div>`;
   }
 }
 
