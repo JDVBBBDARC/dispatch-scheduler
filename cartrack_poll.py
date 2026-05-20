@@ -469,9 +469,13 @@ def compute_toll_fee(entry_plaza, exit_plaza, toll_class='Class 3'):
 # Order matters: first match wins, so put more-specific keywords first.
 # All comparisons are case-insensitive against the geofence name.
 _GEOFENCE_CATEGORY_PATTERNS = [
-    # Home base — special case, the only one that sets is_home=True.
+    # Home base — special case, the only category that sets is_home=True.
+    # Multiple homes are supported: a truck returning to ANY home closes
+    # its open cycle, and leaving ANY home opens a new cycle. Add more
+    # entries here as the fleet grows.
     ('home', [
         'BIG BEN SCM',
+        'PLANT 1',     # 2nd home — Big Ben Plant 1 dispatch yard
     ]),
     # Toll plazas — user manually drew geofences around booths in Cartrack.
     # Anything starting with "Toll" or containing common booth names.
@@ -619,6 +623,20 @@ def sync_geofences(app=None, log=None):
                         existing.category = new_cat
                         existing.is_home  = new_home
                     existing.name = name
+
+                # Promote-only home re-check: even if the name didn't
+                # change, if the home-pattern list now matches this
+                # geofence (e.g., we added 'PLANT 1' to the patterns in
+                # a code release), mark it home so cycle tracking picks
+                # it up on the next poll. We only PROMOTE — never demote
+                # — so any manual is_home edits in the DB are preserved.
+                _, should_be_home = _categorize_geofence(name)
+                if should_be_home and not existing.is_home:
+                    existing.category = 'home'
+                    existing.is_home  = True
+                    summary['recategorized'] += 1
+                    log.info('[sync] PROMOTE %s -> home', name)
+
                 existing.description          = g.get('description') or existing.description
                 existing.position_description = g.get('position_description') or existing.position_description
                 existing.colour               = g.get('colour') or existing.colour
@@ -820,9 +838,17 @@ def run_poll(app=None, log=None):
             # for "is this truck currently away from home?" This way the
             # logic works even when TRACK_HOME_AS_VISIT=False (we don't
             # create SiteVisit rows for the home geofence).
-            home_gf = CartrackGeofence.query.filter_by(is_home=True).first()
-            is_at_home_now  = bool(home_gf and home_gf.cartrack_id in current_geofence_uuids)
-            was_at_home_prev = open_cycle is None   # no open cycle ⇒ was at home
+            #
+            # Multi-home support: ANY home geofence opens/closes the
+            # cycle. Trucks moving between two homes (e.g., BIG BEN SCM
+            # -> Plant 1) will get a short cycle for that transit, which
+            # is the desired behavior — both are operational dispatch
+            # points and the trip between them is a real journey.
+            home_gfs = CartrackGeofence.query.filter_by(is_home=True).all()
+            home_cartrack_ids = {h.cartrack_id for h in home_gfs}
+            home_db_ids       = {h.id for h in home_gfs}
+            is_at_home_now    = bool(home_cartrack_ids & current_geofence_uuids)
+            was_at_home_prev  = open_cycle is None   # no open cycle ⇒ was at home
 
             if is_at_home_now and not was_at_home_prev and open_cycle is not None:
                 # Truck just RETURNED home → close the open cycle.
@@ -854,13 +880,13 @@ def run_poll(app=None, log=None):
 
             # ── 5b.2 SITE VISITS for non-home geofences only ──────────
             # Home enter/exit is fully handled above; we explicitly skip
-            # home in the loops below so trucks parked at the depot don't
-            # generate phantom 18-hour "visits" cluttering the UI.
-            home_id = home_gf.id if home_gf else None
+            # ALL home geofences in the loops below so trucks parked at
+            # any depot don't generate phantom 18-hour "visits"
+            # cluttering the UI.
 
-            # Open new SiteVisits (skip home)
+            # Open new SiteVisits (skip every home geofence)
             for gf_id in gf_new_enters:
-                if gf_id == home_id and not TRACK_HOME_AS_VISIT:
+                if gf_id in home_db_ids and not TRACK_HOME_AS_VISIT:
                     continue
                 gf = gf_by_id.get(gf_id)
                 if gf is None:
