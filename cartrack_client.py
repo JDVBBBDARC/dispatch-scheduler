@@ -155,24 +155,43 @@ class CartrackClient:
         return body.get('data', []), None
 
     def list_geofences(self):
-        """Return all geofences in the account — handles pagination.
+        """Return all geofences in the account — paginated with dedup.
 
-        Like /rest/vehicles, Cartrack paginates /rest/geofences at 10 records
-        per page and exposes pagination via a 'meta' object. We loop through
-        all pages and concatenate.
+        Cartrack /rest/geofences paginates and exposes pagination via a
+        'meta' object. We loop through all pages and concatenate.
+
+        Two robustness measures against Cartrack's pagination instability
+        (observed in the field: 168 records claimed total, but some items
+        appear on two consecutive pages while others are skipped entirely
+        — likely caused by an unstable sort key when records are updated
+        during the fetch window):
+
+          1. Request a large per_page so we finish before any records can
+             shift. Most Cartrack endpoints accept per_page up to 200.
+          2. Deduplicate by geofence_id on the way in, so any cross-page
+             duplicates collapse to a single row.
 
         Returns:
             (list_of_geofence_dicts, None) on success
             (None, error_string) on failure
         """
+        seen_ids = set()
         all_geofences = []
         page = 1
+        per_page = 200      # large window — usually fetches everything in 1 call
         while True:
-            status, body = self._call('/rest/geofences', params={'page': page})
+            status, body = self._call('/rest/geofences',
+                                       params={'page': page,
+                                               'per_page': per_page})
             if status != 200 or not isinstance(body, dict):
                 return None, f'list_geofences HTTP {status}: {body}'
             data = body.get('data', [])
-            all_geofences.extend(data)
+            for g in data:
+                gid = g.get('geofence_id') or g.get('id') or g.get('name')
+                if gid in seen_ids:
+                    continue
+                seen_ids.add(gid)
+                all_geofences.append(g)
             meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
             current_page = meta.get('current_page', page)
             last_page    = meta.get('last_page', 1)
