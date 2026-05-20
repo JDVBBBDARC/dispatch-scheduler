@@ -67,7 +67,7 @@ db.init_app(app)
 
 # ── AUTH BLUEPRINT ─────────────────────────────────────────────────────────
 from auth import auth_bp                              # noqa: E402
-from auth.routes import login_required, check_can_delete  # noqa: E402
+from auth.routes import login_required, admin_required, check_can_delete  # noqa: E402
 app.register_blueprint(auth_bp)
 
 
@@ -2560,6 +2560,155 @@ def api_cycle_time_sync_geofences():
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 
+# ── Truck Cycle Time settings (configurable thresholds) ──────────────────
+# Two operator-tunable thresholds backed by AppSetting:
+#   MIN_VISIT_MINUTES     — geofence dwell shorter than this is drive-by
+#   STOP_DETECTION_MINUTES — ad-hoc stops shorter than this are ignored
+#
+# Polling worker reads these on every iteration, so changes take effect
+# on the next poll (no restart needed).
+SETTING_MIN_VISIT = 'TCT_MIN_VISIT_MINUTES'
+SETTING_STOP_MIN  = 'TCT_STOP_DETECTION_MINUTES'
+DEFAULT_MIN_VISIT = 5
+DEFAULT_STOP_MIN  = 10
+
+
+def _get_int_setting(key, default):
+    raw = AppSetting.get(key, '')
+    try:
+        return max(1, int(raw)) if raw else default
+    except (TypeError, ValueError):
+        return default
+
+
+@app.route('/api/cycle-time/settings', methods=['GET'])
+@login_required
+def api_cycle_time_settings_get():
+    """Return current operator-tunable thresholds. Read-only for any
+    authenticated user — only admins can update via the POST below."""
+    is_admin = session.get('user_role') == 'admin'
+    return jsonify({
+        'min_visit_minutes':       _get_int_setting(SETTING_MIN_VISIT, DEFAULT_MIN_VISIT),
+        'stop_detection_minutes':  _get_int_setting(SETTING_STOP_MIN,  DEFAULT_STOP_MIN),
+        'is_admin':                is_admin,
+    })
+
+
+@app.route('/api/cycle-time/settings', methods=['POST'])
+@admin_required
+def api_cycle_time_settings_post():
+    """Admin-only: update operator thresholds.
+
+    Body (JSON):
+        {
+          "min_visit_minutes":      5,
+          "stop_detection_minutes": 10
+        }
+    """
+    data = request.get_json(silent=True) or {}
+    saved = {}
+    for key, setting in (
+        ('min_visit_minutes',      SETTING_MIN_VISIT),
+        ('stop_detection_minutes', SETTING_STOP_MIN),
+    ):
+        if key in data:
+            try:
+                n = max(1, int(data[key]))
+                AppSetting.set(setting, str(n))
+                saved[key] = n
+            except (TypeError, ValueError):
+                return jsonify({'error': f'Invalid value for {key}'}), 400
+    db.session.commit()
+    return jsonify({'ok': True, 'saved': saved})
+
+
+@app.route('/api/cycle-time/clear-logs', methods=['POST'])
+@admin_required
+def api_cycle_time_clear_logs():
+    """Admin-only: wipe trial-period tracking data.
+
+    Deletes:
+      - SiteVisit         (geofence visits + ad-hoc stops)
+      - TruckCycle        (cycle round-trip records)
+      - CartrackEvent     (plaza ENTER / EXIT / trip_closed events)
+
+    Preserves:
+      - Plate, Driver, Helper, Product, Client, Dispatcher, TruckTypeDef
+      - TripRecord, Wave  (all real operational data, including auto-filled
+                           toll fees — those stay on the trip record)
+      - BreakdownLog
+      - CartrackGeofence  (geofence cache — synced from Cartrack)
+      - CartrackTruckState (per-plate live state — reset position/stop
+                            tracking so the next poll starts clean)
+
+    Optional body params:
+      { "before": "2026-05-20" }   ISO date; only delete rows before this.
+                                    Omit to wipe ALL tracking data.
+    """
+    from sqlalchemy import func
+    data = request.get_json(silent=True) or {}
+    cutoff = None
+    if data.get('before'):
+        try:
+            cutoff = datetime.strptime(data['before'], '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'before must be ISO date YYYY-MM-DD'}), 400
+
+    # Count before delete (for reporting)
+    def count(model, ts_attr):
+        q = db.session.query(func.count(model.id))
+        if cutoff is not None and ts_attr:
+            q = q.filter(getattr(model, ts_attr) < cutoff)
+        return q.scalar() or 0
+
+    sv_count = count(SiteVisit, 'enter_at')
+    cyc_count = count(TruckCycle, 'started_at')
+    ev_count  = count(CartrackEvent, 'created_at')
+
+    # Delete in dependency-safe order: SiteVisit (refs cycle, geofence)
+    # first, then TruckCycle, then CartrackEvent.
+    sv_q = db.session.query(SiteVisit)
+    if cutoff is not None:
+        sv_q = sv_q.filter(SiteVisit.enter_at < cutoff)
+    sv_q.delete(synchronize_session=False)
+
+    cyc_q = db.session.query(TruckCycle)
+    if cutoff is not None:
+        cyc_q = cyc_q.filter(TruckCycle.started_at < cutoff)
+    cyc_q.delete(synchronize_session=False)
+
+    ev_q = db.session.query(CartrackEvent)
+    if cutoff is not None:
+        ev_q = ev_q.filter(CartrackEvent.created_at < cutoff)
+    ev_q.delete(synchronize_session=False)
+
+    # Reset per-plate tracking state so the next poll starts clean
+    # (no ghost open cycles, no stale "in geofence" state from deleted rows).
+    if cutoff is None:
+        for s in CartrackTruckState.query.all():
+            s.current_plazas       = ''
+            s.entry_plaza          = None
+            s.last_plaza           = None
+            s.last_event_ts        = None
+            s.open_trip_id         = None
+            s.last_geofence_uuids  = ''
+            s.last_stop_started_at = None
+            s.last_stop_lat        = None
+            s.last_stop_lng        = None
+            s.last_stop_address    = None
+
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'deleted': {
+            'site_visits':    sv_count,
+            'truck_cycles':   cyc_count,
+            'cartrack_events': ev_count,
+        },
+        'cutoff': data.get('before') or 'all',
+    })
+
+
 # ── GOOGLE SHEETS SYNC ────────────────────────────────────────────────────
 @app.route('/api/sync-to-sheets', methods=['POST'])
 @login_required
@@ -3122,6 +3271,50 @@ def init_db():
                     print(f"  Migrated: added {len(added)} columns to cartrack_truck_state: {', '.join(added)}")
         except Exception as _mig_err:
             print(f"  Migration warning (cartrack_truck_state live fields): {_mig_err}")
+
+        # Migrate: add stop-tracking columns to cartrack_truck_state +
+        # ad-hoc stop fields to site_visits (lat/lng/address). Powers
+        # detection of stops outside any known geofence.
+        try:
+            if 'cartrack_truck_state' in inspector.get_table_names():
+                ctscols = [c['name'] for c in inspector.get_columns('cartrack_truck_state')]
+                stop_migrations = [
+                    ('last_stop_started_at', 'DATETIME'),
+                    ('last_stop_lat',        'FLOAT'),
+                    ('last_stop_lng',        'FLOAT'),
+                    ('last_stop_address',    'VARCHAR(300)'),
+                ]
+                added = []
+                for col_name, col_type in stop_migrations:
+                    if col_name not in ctscols:
+                        with db.engine.connect() as conn:
+                            conn.execute(text(
+                                f'ALTER TABLE cartrack_truck_state ADD COLUMN {col_name} {col_type}'
+                            ))
+                            conn.commit()
+                        added.append(col_name)
+                if added:
+                    print(f"  Migrated: added {len(added)} stop-tracking columns to cartrack_truck_state")
+            if 'site_visits' in inspector.get_table_names():
+                svcols = [c['name'] for c in inspector.get_columns('site_visits')]
+                sv_migrations = [
+                    ('address', 'VARCHAR(300)'),
+                    ('lat',     'FLOAT'),
+                    ('lng',     'FLOAT'),
+                ]
+                added = []
+                for col_name, col_type in sv_migrations:
+                    if col_name not in svcols:
+                        with db.engine.connect() as conn:
+                            conn.execute(text(
+                                f'ALTER TABLE site_visits ADD COLUMN {col_name} {col_type}'
+                            ))
+                            conn.commit()
+                        added.append(col_name)
+                if added:
+                    print(f"  Migrated: added {len(added)} ad-hoc stop columns to site_visits")
+        except Exception as _mig_err:
+            print(f"  Migration warning (stop-detection columns): {_mig_err}")
         # Import DeleteRequest so db.create_all() picks it up
         from auth.models import DeleteRequest  # noqa: F401
         db.create_all()  # create delete_requests table if new

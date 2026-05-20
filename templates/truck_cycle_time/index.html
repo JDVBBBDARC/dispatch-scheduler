@@ -26,9 +26,81 @@
       <button class="btn btn-sm btn-outline-info" onclick="syncGeofences()">
         <i class="bi bi-cloud-download"></i> Sync Geofences
       </button>
+      <button class="btn btn-sm btn-outline-dark" onclick="openSettingsModal()"
+              title="Adjust dwell + stop-detection thresholds">
+        <i class="bi bi-gear"></i> Settings
+      </button>
       <button class="btn btn-sm btn-success" onclick="exportToExcel()">
         <i class="bi bi-file-earmark-excel"></i> Export to Excel
       </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal — admin-only writes; everyone can read -->
+  <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background:#8B1A2B;color:white;">
+          <h5 class="modal-title"><i class="bi bi-gear me-1"></i> Truck Cycle Time Settings</h5>
+          <button type="button" class="btn-close btn-close-white"
+                  data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info small mb-3" id="settingsRoleNote">
+            <i class="bi bi-info-circle"></i> Loading…
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Minimum visit dwell (minutes)
+            </label>
+            <input type="number" id="settingMinVisit" class="form-control"
+                   min="1" max="120" value="5">
+            <div class="form-text">
+              Geofence visits shorter than this are marked drive-by
+              (filtered out of analytics by default).
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Stop detection (minutes)
+            </label>
+            <input type="number" id="settingStopMin" class="form-control"
+                   min="1" max="240" value="10">
+            <div class="form-text">
+              Truck stopped <strong>outside any known geofence</strong>
+              for this long gets logged as an ad-hoc stop with address.
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Admin-only: Clear Logs — destructive action with confirmation -->
+          <div id="settingsAdminSection" class="d-none">
+            <h6 class="text-danger mb-2">
+              <i class="bi bi-exclamation-triangle"></i> Danger zone — Admin only
+            </h6>
+            <p class="small text-muted">
+              Wipes all tracking records (site visits, cycles, GPS events)
+              from the database. Master data, trip records, and toll fees
+              are preserved. Use to clear out trial-period noise before
+              going fully live.
+            </p>
+            <button class="btn btn-outline-danger btn-sm" onclick="clearTrackingLogs()">
+              <i class="bi bi-trash"></i> Clear all tracking logs
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary"
+                  data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-maroon" id="settingsSaveBtn"
+                  onclick="saveSettings()" style="background:#8B1A2B;color:white;">
+            <i class="bi bi-check2"></i> Save
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -593,6 +665,109 @@ function exportToExcel() {
   if (pl) params.set('plate_id', pl);
   if (ca) params.set('category', ca);
   window.location.href = '/api/cycle-time/export?' + params.toString();
+}
+
+// ── Settings modal ────────────────────────────────────────────────────
+// One-time bootstrap modal instance.
+let _settingsModal = null;
+
+async function openSettingsModal() {
+  if (!_settingsModal) {
+    _settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+  }
+  // Pre-load current values from server
+  try {
+    const r = await fetch('/api/cycle-time/settings');
+    const j = await r.json();
+    document.getElementById('settingMinVisit').value = j.min_visit_minutes;
+    document.getElementById('settingStopMin').value  = j.stop_detection_minutes;
+
+    // Admin-only section toggle + role note + save-button enable
+    const note  = document.getElementById('settingsRoleNote');
+    const adminBox = document.getElementById('settingsAdminSection');
+    const saveBtn  = document.getElementById('settingsSaveBtn');
+    const minIn = document.getElementById('settingMinVisit');
+    const stopIn = document.getElementById('settingStopMin');
+    if (j.is_admin) {
+      note.innerHTML = '<i class="bi bi-shield-check"></i> You\'re signed in as admin — changes save instantly.';
+      note.className = 'alert alert-success small mb-3';
+      adminBox.classList.remove('d-none');
+      saveBtn.disabled = false;
+      minIn.disabled = false;
+      stopIn.disabled = false;
+    } else {
+      note.innerHTML = '<i class="bi bi-info-circle"></i> Read-only — only admins can change these values.';
+      note.className = 'alert alert-secondary small mb-3';
+      adminBox.classList.add('d-none');
+      saveBtn.disabled = true;
+      minIn.disabled = true;
+      stopIn.disabled = true;
+    }
+  } catch (e) {
+    console.error('settings load error:', e);
+  }
+  _settingsModal.show();
+}
+
+async function saveSettings() {
+  const minVisit = parseInt(document.getElementById('settingMinVisit').value);
+  const stopMin  = parseInt(document.getElementById('settingStopMin').value);
+  if (!minVisit || minVisit < 1 || !stopMin || stopMin < 1) {
+    alert('Both values must be at least 1 minute.');
+    return;
+  }
+  try {
+    const r = await fetch('/api/cycle-time/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        min_visit_minutes:      minVisit,
+        stop_detection_minutes: stopMin,
+      }),
+    });
+    const j = await r.json();
+    if (j.error) {
+      alert('Save failed: ' + j.error);
+      return;
+    }
+    alert(`Settings saved!\n\nMin visit: ${minVisit}m\nStop detection: ${stopMin}m\n\nNext poll picks them up automatically.`);
+    _settingsModal.hide();
+    // Refresh KPI cards so the threshold badge updates
+    loadSummary();
+  } catch (e) {
+    alert('Save request failed: ' + e.message);
+  }
+}
+
+async function clearTrackingLogs() {
+  if (!confirm(
+    'Wipe ALL tracking logs?\n\n' +
+    'Deletes: site visits, truck cycles, GPS plaza events.\n' +
+    'Keeps: master data, trip records, toll fees, geofence cache.\n\n' +
+    'This cannot be undone. Continue?'
+  )) return;
+  if (!confirm(
+    'Last confirmation — this will erase all trial-period tracking data. ' +
+    'Are you absolutely sure?'
+  )) return;
+  try {
+    const r = await fetch('/api/cycle-time/clear-logs', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({}),   // no `before` = wipe all
+    });
+    const j = await r.json();
+    if (j.error) {
+      alert('Clear failed: ' + j.error);
+      return;
+    }
+    const d = j.deleted || {};
+    alert(`Cleared:\n  • ${d.site_visits||0} site visits\n  • ${d.truck_cycles||0} truck cycles\n  • ${d.cartrack_events||0} GPS events\n\nNext poll starts clean.`);
+    _settingsModal.hide();
+    refreshAll();
+  } catch (e) {
+    alert('Clear request failed: ' + e.message);
+  }
 }
 
 async function syncGeofences() {

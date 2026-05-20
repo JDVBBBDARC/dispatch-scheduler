@@ -145,6 +145,46 @@ CYCLE_HARD_CLOSE_DAYS = 14
 # whole point of having toll geofences in Cartrack. See _close_visit().
 MIN_VISIT_MINUTES = 5
 
+# Stop-detection threshold for AD-HOC stops (away from any geofence).
+# A truck that stops moving (speed <= STOP_SPEED_KMH) for >= this many
+# minutes — and is NOT inside any known geofence at the time — gets
+# logged as a SiteVisit with geofence_id=NULL, address=reverse-geocode.
+# Captures real delivery stops at unmapped locations (e.g., small
+# customers, side roads, weigh stations). Configurable via AppSetting
+# 'TCT_STOP_DETECTION_MINUTES' — admins can change without code edits.
+STOP_DETECTION_MINUTES = 10
+
+# Speed threshold (km/h) for considering a truck "stopped". Cartrack's
+# speed field is GPS-derived and tends to spike up to 3-5 km/h on
+# stationary trucks due to multi-path error, so we use 5 as the cutoff.
+STOP_SPEED_KMH = 5
+
+
+def _get_runtime_settings(app=None):
+    """Read tunable thresholds from AppSetting (DB-backed). Falls back
+    to module-level defaults if the setting is missing or unparseable.
+
+    Called once per poll iteration so admin updates take effect on the
+    next poll without restarting the worker. Returns a dict.
+    """
+    if app is None:
+        import app_v3 as _app_module
+        app = _app_module.app
+    with app.app_context():
+        from models_v2 import AppSetting
+        def _get_int(key, default):
+            v = AppSetting.get(key, '')
+            try:
+                return max(1, int(v)) if v else default
+            except (TypeError, ValueError):
+                return default
+        return {
+            'min_visit_minutes':      _get_int('TCT_MIN_VISIT_MINUTES',
+                                                MIN_VISIT_MINUTES),
+            'stop_detection_minutes': _get_int('TCT_STOP_DETECTION_MINUTES',
+                                                STOP_DETECTION_MINUTES),
+        }
+
 
 def _strip_toll_prefix(geofence_name):
     """Convert a Cartrack toll geofence name to a cleaned plaza name
@@ -762,6 +802,13 @@ def run_poll(app=None, log=None):
         import app_v3
         app = app_v3.app
 
+    # Re-read tunable thresholds from AppSetting on every poll so admin
+    # edits via the Truck Cycle Time settings modal take effect within
+    # one minute, no worker restart needed.
+    settings = _get_runtime_settings(app=app)
+    rt_min_visit_minutes      = settings['min_visit_minutes']
+    rt_stop_detection_minutes = settings['stop_detection_minutes']
+
     summary = {
         'polled_at':      datetime.utcnow().isoformat() + 'Z',
         'configured':     False,
@@ -1050,7 +1097,7 @@ def run_poll(app=None, log=None):
             # MIN_VISIT_MINUTES (5 min). Applying the drive-by filter to
             # tolls would silently discard every real toll transit, which
             # is the opposite of what we want.
-            min_seconds = MIN_VISIT_MINUTES * 60
+            min_seconds = rt_min_visit_minutes * 60
             for visit in open_visits:
                 if visit.geofence_id not in gf_new_exits:
                     continue
@@ -1067,7 +1114,7 @@ def run_poll(app=None, log=None):
                 summary['site_visits_closed'] += 1
                 if visit.is_drive_by:
                     log.info('[VISIT-OUT] drive-by (%ds < %dmin threshold) %s',
-                             duration, MIN_VISIT_MINUTES, plate.display)
+                             duration, rt_min_visit_minutes, plate.display)
                 elif is_toll_gf and duration < min_seconds:
                     log.info('[VISIT-OUT] toll plaza %s (%ds — drive-by exempt) %s',
                              gf.name if gf else '?', duration, plate.display)
@@ -1094,6 +1141,66 @@ def run_poll(app=None, log=None):
                     if visit.geofence_id in gf_still_in:
                         visit.idling_seconds = (visit.idling_seconds or 0) + POLL_INTERVAL_SECONDS
                         summary['idle_seconds_logged'] += POLL_INTERVAL_SECONDS
+
+            # ── 5b.4 AD-HOC STOP DETECTION ──────────────────────────
+            # Captures stops outside any known geofence (e.g., side
+            # roads, small customers, weigh stations not in Cartrack).
+            # State machine on CartrackTruckState:
+            #   - Truck stopped + not in any geofence  -> start tracking
+            #   - Truck resumed moving + tracking      -> close visit
+            #                                            (only if dwell
+            #                                             >= stop_min)
+            stop_min_seconds = rt_stop_detection_minutes * 60
+            speed = state.last_speed or 0
+            is_stopped_now = speed <= STOP_SPEED_KMH
+            inside_any_known_gf = bool(current_geofence_uuids)
+
+            if state.last_stop_started_at is None:
+                # No active stop tracking. Start one if conditions match.
+                if is_stopped_now and not inside_any_known_gf and (lat is not None and lng is not None):
+                    state.last_stop_started_at = now
+                    state.last_stop_lat        = lat
+                    state.last_stop_lng        = lng
+                    state.last_stop_address    = (
+                        state.last_position_description or '')[:295]
+            else:
+                # Active stop in progress.
+                if is_stopped_now and not inside_any_known_gf:
+                    # Still stopped + outside any geofence — keep accumulating
+                    # (do nothing; duration computed on close).
+                    pass
+                else:
+                    # Truck moved OR entered a known geofence — close the
+                    # ad-hoc stop. Only log it if dwell >= threshold.
+                    started_at = state.last_stop_started_at
+                    stop_duration = int((now - started_at).total_seconds())
+                    if stop_duration >= stop_min_seconds:
+                        sv = SiteVisit(
+                            plate_id   = plate.id,
+                            geofence_id = None,
+                            enter_at   = started_at,
+                            exit_at    = now,
+                            duration_seconds = stop_duration,
+                            idling_seconds   = 0,
+                            idling_pct       = None,
+                            is_drive_by      = False,
+                            lat              = state.last_stop_lat,
+                            lng              = state.last_stop_lng,
+                            address          = (state.last_stop_address or '')[:295],
+                            cycle_id         = open_cycle.id if open_cycle else None,
+                        )
+                        db.session.add(sv)
+                        summary.setdefault('ad_hoc_stops_logged', 0)
+                        summary['ad_hoc_stops_logged'] += 1
+                        log.info('[STOP] %s: %dmin at %s',
+                                 plate.display,
+                                 stop_duration // 60,
+                                 (state.last_stop_address or '(unknown)')[:60])
+                    # Clear tracking either way (don't log <threshold stops)
+                    state.last_stop_started_at = None
+                    state.last_stop_lat        = None
+                    state.last_stop_lng        = None
+                    state.last_stop_address    = None
 
         db.session.commit()
 

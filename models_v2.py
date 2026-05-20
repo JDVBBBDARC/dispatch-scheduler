@@ -368,6 +368,17 @@ class CartrackTruckState(db.Model):
 
     plate = db.relationship('Plate')
 
+    # Ad-hoc stop detection — tracks the start of an ongoing stationary
+    # period so we can log it as a SiteVisit (with geofence_id=NULL)
+    # when the truck eventually resumes moving. See cartrack_poll.py.
+    last_stop_started_at = db.Column(db.DateTime)
+    last_stop_lat        = db.Column(db.Float)
+    last_stop_lng        = db.Column(db.Float)
+    # Address at the start of the stop — captured from
+    # cartrack get_status position_description so we don't need a
+    # separate reverse-geocode step.
+    last_stop_address    = db.Column(db.String(300))
+
     @property
     def live_status(self):
         """Computed status code from ignition/idling/speed."""
@@ -460,8 +471,11 @@ class SiteVisit(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     plate_id    = db.Column(db.Integer, db.ForeignKey('plates.id'),
                             nullable=False, index=True)
+    # NULLABLE: when NULL, this row represents an AD-HOC STOP — a place
+    # where the truck stopped for >= STOP_DETECTION_MINUTES outside any
+    # known geofence. address/lat/lng fields below describe the spot.
     geofence_id = db.Column(db.Integer, db.ForeignKey('cartrack_geofences.id'),
-                            nullable=False, index=True)
+                            nullable=True, index=True)
     enter_at    = db.Column(db.DateTime, nullable=False, index=True)
     exit_at     = db.Column(db.DateTime)                       # null = ongoing
     # Cached duration (seconds). Computed when exit_at is set.
@@ -475,6 +489,11 @@ class SiteVisit(db.Model):
     # touched the geofence edge. UI hides these by default since they
     # don't represent real delivery/pickup stops.
     is_drive_by = db.Column(db.Boolean, default=False, index=True)
+    # Ad-hoc stop fields (populated when geofence_id IS NULL).
+    # Captured from CartrackTruckState at the start of the stop.
+    address  = db.Column(db.String(300))   # human-readable reverse geocode
+    lat      = db.Column(db.Float)         # decimal degrees
+    lng      = db.Column(db.Float)
     # Link to the TripRecord this visit belongs to, when we can match
     # by date + driver/plate (filled by a separate matcher pass).
     trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'),
@@ -485,6 +504,18 @@ class SiteVisit(db.Model):
 
     plate    = db.relationship('Plate')
     geofence = db.relationship('CartrackGeofence')
+
+    @property
+    def is_ad_hoc(self):
+        """True if this row is an ad-hoc stop (no associated geofence)."""
+        return self.geofence_id is None
+
+    @property
+    def location_label(self):
+        """Display name for the UI: geofence name if known, address otherwise."""
+        if self.geofence is not None:
+            return self.geofence.name
+        return self.address or '(unknown location)'
 
 
 # ── Truck Cycles (home -> ... -> home round trips) ────────────────────────
