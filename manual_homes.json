@@ -1,9 +1,8 @@
 [
   {
     "name": "Parking Plant 1",
-    "lat": 0.0,
-    "lng": 0.0,
-    "radius_m": 200,
-    "_note": "REPLACE lat/lng with real Parking Plant 1 coordinates. Until then, this entry is inactive (0,0 is off the coast of Africa, no truck will ever be there)."
+    "lat": 14.905736228258116,
+    "lng": 120.83485242883499,
+    "radius_m": 200
   }
 ]
