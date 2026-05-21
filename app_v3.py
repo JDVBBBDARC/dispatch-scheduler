@@ -30,15 +30,40 @@ def firebase_notify(event='update'):
     except Exception as e:
         print(f"[Firebase] notify failed: {e}")
 
-PH_TZ = ZoneInfo('Asia/Manila')
+PH_TZ  = ZoneInfo('Asia/Manila')
+UTC_TZ = ZoneInfo('UTC')
 
 def ph_now():
-    """Current datetime in Philippine time."""
+    """Current datetime in Philippine time (tz-aware)."""
     return datetime.now(PH_TZ)
 
 def ph_today():
     """Current date in Philippine time."""
     return ph_now().date()
+
+
+def iso_ph(dt):
+    """Serialize a datetime to a PHT-aware ISO-8601 string for API
+    responses, e.g., '2026-05-21T08:09:50+08:00'.
+
+    Rationale: the database stores naive datetimes which represent UTC.
+    If we emit those raw via .isoformat(), JavaScript's `new Date()`
+    parses them as the browser's LOCAL time — for our users in
+    Manila, that produces an 8-hour display offset (UTC value rendered
+    as if it were already PHT). Wrapping every API timestamp in iso_ph
+    fixes the offset and is forward-compatible with offset-aware
+    inputs.
+
+    Behavior:
+      - None  -> None  (caller can substitute '—' on the frontend)
+      - naive -> assume UTC, convert to PHT, return offset-tagged ISO
+      - aware -> convert (already-correct PHT passes through cleanly)
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC_TZ)
+    return dt.astimezone(PH_TZ).isoformat()
 from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
@@ -404,7 +429,7 @@ def api_dashboard_fleet_utilization():
 
     return jsonify({
         'days':        [d.strftime('%b %d') for d in days],
-        'days_iso':    [d.isoformat() for d in days],
+        'days_iso':    [iso_ph(d) for d in days],
         'series':      series,
     })
 
@@ -626,7 +651,7 @@ def api_dashboard_driver_truck_ratio():
 
     return jsonify({
         'days':            [d.strftime('%b %d') for d in days],
-        'days_iso':        [d.isoformat() for d in days],
+        'days_iso':        [iso_ph(d) for d in days],
         'working_trucks':  working,
         'present_drivers': present,
         'coverage_ratio':  ratios,
@@ -637,7 +662,7 @@ def api_dashboard_driver_truck_ratio():
         # Per-day driver→truck assignments (only when filtered).
         # Deduped: a driver who did multiple trips on the same truck shows once.
         'assignments':     {
-            d.isoformat(): _dedupe_assignments(rows)
+            iso_ph(d): _dedupe_assignments(rows)
             for d, rows in assignments_per_day.items()
         },
     })
@@ -1522,7 +1547,7 @@ def api_cartrack_status():
         'tracked_trucks':      state_total,
         'open_trips':          open_trips,
         'last_event': {
-            'when':       last_event.created_at.isoformat() if last_event else None,
+            'when':       iso_ph(last_event.created_at),
             'plate_id':   last_event.plate_id if last_event else None,
             'type':       last_event.event_type if last_event else None,
             'plaza':      last_event.plaza_name if last_event else None,
@@ -1816,7 +1841,7 @@ def api_toll_log_events():
         plate = e.plate
         rows.append({
             'id':         e.id,
-            'created_at': e.created_at.isoformat() if e.created_at else None,
+            'created_at': iso_ph(e.created_at),
             'plate_id':   e.plate_id,
             # Display form ("DT06 / LAK8098") so the UI doesn't need the
             # truck code memorized — falls back to bare plate_no if
@@ -2056,7 +2081,7 @@ def api_cycle_time_summary():
             'cycle_id':    c.id,
             'plate_id':    c.plate_id,
             'plate_no':    c.plate.display if c.plate else 'N/A',
-            'started_at':  c.started_at.isoformat() if c.started_at else None,
+            'started_at':  iso_ph(c.started_at),
             'elapsed_minutes': elapsed_min,
             'elapsed_hours':   round(elapsed_min / 60, 1),
             # NEW: live state (from CartrackTruckState, refreshed every poll)
@@ -2185,8 +2210,8 @@ def api_cycle_time_cycles():
             'id':          c.id,
             'plate_id':    c.plate_id,
             'plate_no':    c.plate.display if c.plate else 'N/A',
-            'started_at':  c.started_at.isoformat() if c.started_at else None,
-            'ended_at':    c.ended_at.isoformat() if c.ended_at else None,
+            'started_at':  iso_ph(c.started_at),
+            'ended_at':    iso_ph(c.ended_at),
             'duration_minutes': c.duration_minutes,
             'duration_hours':   (round(c.duration_minutes / 60, 1) if c.duration_minutes else None),
             'category':    c.category,
@@ -2288,13 +2313,13 @@ def api_cycle_time_plates():
                   .filter_by(id=latest.geofence_id).first())
             gf_name = gf.name if gf else None
             last_arrival_map[c.plate_id] = {
-                'time': latest.enter_at.isoformat() if latest.enter_at else None,
+                'time': iso_ph(latest.enter_at),
                 'location': gf_name,
                 'still_here': latest.exit_at is None,
             }
             if latest.exit_at:
                 last_departure_map[c.plate_id] = {
-                    'time': latest.exit_at.isoformat(),
+                    'time': iso_ph(latest.exit_at),
                     'location': gf_name,
                 }
 
@@ -2319,7 +2344,7 @@ def api_cycle_time_plates():
             elapsed_s = (now - oc.started_at).total_seconds() if oc.started_at else 0
             open_cycle_info = {
                 'id':           oc.id,
-                'started_at':   oc.started_at.isoformat() if oc.started_at else None,
+                'started_at':   iso_ph(oc.started_at),
                 'elapsed_hours': round(elapsed_s / 3600.0, 2),
             }
 
@@ -2406,8 +2431,8 @@ def api_cycle_time_plate_cycles(plate_id):
             duration_min = int((now - c.started_at).total_seconds() / 60)
         rows.append({
             'id':              c.id,
-            'started_at':      c.started_at.isoformat() if c.started_at else None,
-            'ended_at':        c.ended_at.isoformat() if c.ended_at else None,
+            'started_at':      iso_ph(c.started_at),
+            'ended_at':        iso_ph(c.ended_at),
             'duration_minutes': duration_min,
             'duration_hours':  round(duration_min / 60, 2) if duration_min else None,
             'category':        c.category,
@@ -2462,7 +2487,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
     # The cycle's own start/end events
     if cycle.started_at:
         events.append({
-            'ts':       cycle.started_at.isoformat(),
+            'ts':       iso_ph(cycle.started_at),
             'kind':     'departed',
             'location': 'Home base',
             'is_ad_hoc': False,
@@ -2470,7 +2495,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
         })
     if cycle.ended_at:
         events.append({
-            'ts':       cycle.ended_at.isoformat(),
+            'ts':       iso_ph(cycle.ended_at),
             'kind':     'arrived',
             'location': 'Home base',
             'is_ad_hoc': False,
@@ -2484,7 +2509,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
         # Arrived event (enter)
         if v.enter_at:
             events.append({
-                'ts':         v.enter_at.isoformat(),
+                'ts':         iso_ph(v.enter_at),
                 'kind':       'stopped' if is_ad_hoc else 'arrived',
                 'location':   gf_name,
                 'is_ad_hoc':  is_ad_hoc,
@@ -2495,7 +2520,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
         # Departed event (exit, only if closed)
         if v.exit_at:
             events.append({
-                'ts':              v.exit_at.isoformat(),
+                'ts':              iso_ph(v.exit_at),
                 'kind':            'departed',
                 'location':        gf_name,
                 'is_ad_hoc':       is_ad_hoc,
@@ -2520,7 +2545,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
             'trip_closed': 'trip_closed',
         }.get(e.event_type, e.event_type)
         events.append({
-            'ts':       e.created_at.isoformat(),
+            'ts':       iso_ph(e.created_at),
             'kind':     kind,
             'location': e.plaza_name or '?',
             'is_ad_hoc': False,
@@ -2535,8 +2560,8 @@ def api_cycle_time_cycle_timeline(cycle_id):
     return jsonify({
         'cycle_id':   cycle.id,
         'plate_id':   cycle.plate_id,
-        'started_at': cycle.started_at.isoformat() if cycle.started_at else None,
-        'ended_at':   cycle.ended_at.isoformat() if cycle.ended_at else None,
+        'started_at': iso_ph(cycle.started_at),
+        'ended_at':   iso_ph(cycle.ended_at),
         'duration_minutes': cycle.duration_minutes,
         'is_open':    cycle.ended_at is None,
         'events':     events,
@@ -2917,7 +2942,7 @@ def api_sync_to_sheets():
     for w in Wave.query.order_by(Wave.date.desc()).all():
         for t in w.trips:
             trips_rows.append([
-                w.date.isoformat(),
+                iso_ph(w.date),
                 w.truck_type.name if w.truck_type else '',
                 w.label,
                 t.trip_number,
@@ -2939,7 +2964,7 @@ def api_sync_to_sheets():
     for a in Attendance.query.order_by(Attendance.date.desc()).all():
         att_rows.append([
             a.driver.name if a.driver else '',
-            a.date.isoformat(),
+            iso_ph(a.date),
             a.status or '',
             a.remarks or '',
         ])
@@ -2950,10 +2975,10 @@ def api_sync_to_sheets():
     for b in BreakdownLog.query.order_by(BreakdownLog.date.desc()).all():
         bd_rows.append([
             b.plate.display if b.plate else '',
-            b.date.isoformat(),
+            iso_ph(b.date),
             b.description or '',
             b.status or '',
-            b.resolved_date.isoformat() if b.resolved_date else '',
+            iso_ph(b.resolved_date) if b.resolved_date else '',
             b.remarks or '',
         ])
 
@@ -3202,7 +3227,7 @@ def api_search():
                .join(Wave)
                .order_by(Wave.date.desc())
                .limit(6).all()):
-        date_str = tr.wave.date.isoformat() if tr.wave else ''
+        date_str = iso_ph(tr.wave.date) if tr.wave else ''
         parts = [x for x in [tr.rs_no, tr.po_no, tr.dr_no] if x]
         results.append({
             'type': 'Trip',

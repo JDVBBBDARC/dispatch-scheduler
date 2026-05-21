@@ -205,10 +205,17 @@ class CartrackClient:
     def list_trips(self, start_dt=None, end_dt=None):
         """Return trip records in the date range — handles pagination.
 
-        Cartrack expects timestamps as 'Y-m-d H:i:s' (NOT ISO 8601).
-        Defaults to last 24h. Loops through all pages of results.
+        Cartrack expects timestamps as 'Y-m-d H:i:s' (NOT ISO 8601),
+        interpreted as Philippine local time. Defaults to last 24h.
+        Loops through all pages of results.
         """
-        now = datetime.now()
+        # Cartrack PH API treats timestamps as PHT. Use a PH-aware
+        # `now` so the default range covers the user's actual day.
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo('Asia/Manila'))
+        except Exception:
+            now = datetime.utcnow() + timedelta(hours=8)
         start_dt = start_dt or (now - timedelta(days=1))
         end_dt   = end_dt or now
         base_params = {
@@ -238,8 +245,14 @@ class CartrackClient:
         """Return vehicle events in the date range — handles pagination.
 
         Defaults to last hour. Loops through all pages of results.
+        Cartrack PH expects PHT-formatted timestamps (naive strings
+        interpreted as Asia/Manila wall time).
         """
-        now = datetime.now()
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo('Asia/Manila'))
+        except Exception:
+            now = datetime.utcnow() + timedelta(hours=8)
         start_dt = start_dt or (now - timedelta(hours=1))
         end_dt   = end_dt or now
         base_params = {
