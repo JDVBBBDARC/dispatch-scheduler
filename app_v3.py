@@ -2348,6 +2348,22 @@ def api_cycle_time_plates():
                 'elapsed_hours': round(elapsed_s / 3600.0, 2),
             }
 
+        # In-progress ad-hoc stop — only reported when truck has an
+        # open stop tracker AND is not currently inside any known
+        # geofence. Lets the UI render "STOPPED at <address> (Xm)"
+        # without waiting for the truck to resume moving.
+        ad_hoc_stop = None
+        if (state and state.last_stop_started_at
+                and not current_gfs):
+            stop_elapsed = int((now - state.last_stop_started_at).total_seconds() / 60)
+            ad_hoc_stop = {
+                'address':         state.last_stop_address or location,
+                'lat':             state.last_stop_lat,
+                'lng':             state.last_stop_lng,
+                'started_at':      iso_ph(state.last_stop_started_at),
+                'duration_minutes': stop_elapsed,
+            }
+
         rows.append({
             'plate_id':      p.id,
             'plate_no':      p.plate_no,
@@ -2359,6 +2375,7 @@ def api_cycle_time_plates():
             'speed':         speed,
             'location':      location,
             'current_geofences': current_gfs,
+            'ad_hoc_stop':   ad_hoc_stop,
             'is_open':       oc is not None,
             'open_cycle':    open_cycle_info,
             'visit_count':   visit_aggregates.get(p.id, 0) if oc else 0,
@@ -2527,6 +2544,31 @@ def api_cycle_time_cycle_timeline(cycle_id):
                 'duration_minutes': (v.duration_seconds or 0) // 60,
                 'idling_pct':      v.idling_pct,
                 'notes':           '',
+            })
+
+    # ── Source 1b: in-progress ad-hoc stop ──
+    # If the truck is currently in the middle of an ad-hoc stop that
+    # started during this cycle, surface it as a synthetic 'stopped'
+    # event so the timeline shows the live state without waiting for
+    # the truck to resume moving. Only relevant for OPEN cycles.
+    if cycle.ended_at is None:
+        state = (CartrackTruckState.query
+                 .filter_by(plate_id=cycle.plate_id).first())
+        if (state and state.last_stop_started_at
+                and (cycle.started_at is None
+                     or state.last_stop_started_at >= cycle.started_at)):
+            _now_utc = datetime.utcnow()
+            duration_min = int((_now_utc - state.last_stop_started_at).total_seconds() / 60)
+            events.append({
+                'ts':          iso_ph(state.last_stop_started_at),
+                'kind':        'stopped',
+                'location':    state.last_stop_address or '(unknown location)',
+                'is_ad_hoc':   True,
+                'lat':         state.last_stop_lat,
+                'lng':         state.last_stop_lng,
+                'duration_minutes': duration_min,
+                'in_progress': True,
+                'notes':       f'currently here — {duration_min}m so far',
             })
 
     # ── Source 2: CartrackEvents within the cycle's time range ──

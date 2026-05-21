@@ -543,11 +543,24 @@ async function loadPlates() {
       const sInfo  = STATUS_BADGE[p.live_status] || STATUS_BADGE.UNKNOWN;
       const speedTxt = (p.live_status === 'DRIVING' && p.speed) ? ` ${p.speed} km/h` : '';
 
-      // Currently At cell — geofence name or "in transit" or "at home"
+      // Currently At cell — geofence name, in-progress stop, in transit, or at home
       let currentAtHtml;
       if (p.current_geofences && p.current_geofences.length) {
         currentAtHtml = `<span class="text-success">
           <i class="bi bi-geo-alt-fill"></i> ${escHtml(p.current_geofences.join(', '))}
+        </span>`;
+      } else if (isOpen && p.ad_hoc_stop) {
+        // Real-time in-progress ad-hoc stop — show address + dwell so
+        // users see the truck "currently here" even before it resumes.
+        const addr = p.ad_hoc_stop.address || 'unknown location';
+        const dwell = p.ad_hoc_stop.duration_minutes || 0;
+        currentAtHtml = `<span class="text-warning fw-semibold">
+          <i class="bi bi-pause-circle-fill"></i> Stopped — ${dwell}m
+          <small class="text-muted d-block ms-3"
+                 style="font-weight:normal;font-size:0.78em;"
+                 title="${escHtml(addr)}">
+            ${escHtml(addr.length > 50 ? addr.slice(0, 50) + '…' : addr)}
+          </small>
         </span>`;
       } else if (isOpen) {
         currentAtHtml = `<span class="text-muted">
