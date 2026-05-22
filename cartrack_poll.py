@@ -1340,54 +1340,34 @@ def run_poll(app=None, log=None):
                 state.open_trip_id  = None
                 continue
 
-            # Compute toll fee
+            # Compute toll fee from the matrix. We DO NOT write this to
+            # TripRecord.toll_fee — that field is reserved for manual
+            # encoding by dispatchers based on physical receipts /
+            # RFID statements. The GPS-detected fee is logged as a
+            # CartrackEvent only, which surfaces in the Toll Log page
+            # and aggregates into a separate Dashboard KPI.
+            #
+            # This separation lets Finance compare GPS-detected tolls
+            # (what the matrix predicts) against manual entries (what
+            # the receipts actually show) — useful for catching toll
+            # exemptions, RFID glitches, or missed transits.
             fee, expressway = compute_toll_fee(entry, exit_plaza, 'Class 3')
 
-            # Find matching open TripRecord. Wave.date is stored in Philippine
-            # local time, but `now` is UTC — so we convert before matching, and
-            # we also widen the window to cover trips that started yesterday
-            # PHT but only finished now (multi-day trips, or trips that close
-            # after UTC midnight rollover).
-            try:
-                from zoneinfo import ZoneInfo
-                _ph_now = datetime.now(ZoneInfo('Asia/Manila'))
-                today_pht = _ph_now.date()
-            except Exception:
-                # Fallback: UTC+8 manual offset
-                today_pht = (now + timedelta(hours=8)).date()
-            yesterday_pht = today_pht - timedelta(days=1)
-
-            matching_trip = (
-                db.session.query(TripRecord).join(Wave)
-                .filter(Wave.date >= yesterday_pht,
-                        Wave.date <= today_pht,
-                        TripRecord.plate_id == state.plate_id,
-                        TripRecord.status != 'Canceled',
-                        (TripRecord.toll_fee.is_(None) | (TripRecord.toll_fee == 0)))
-                .order_by(TripRecord.id.desc())   # newest first — prefer today's trips
-                .first()
-            )
-
-            if matching_trip and fee is not None:
-                matching_trip.toll_fee        = fee
-                matching_trip.toll_entry      = entry
-                matching_trip.toll_exit       = exit_plaza
-                matching_trip.toll_expressway = expressway or ''
-                matching_trip.toll_class      = 'Class 3'
-                summary['toll_fees_filled'] += 1
-                log.info('[FILL]  %s: trip #%s  %s -> %s = PHP %s (%s)',
-                         state.plate.display if state.plate else state.plate_id,
-                         matching_trip.id, entry, exit_plaza, fee, expressway)
-
-            # Log trip_closed event
+            # Log the trip_closed event with the computed fee. No
+            # TripRecord lookup needed — Schedule entries are owned by
+            # the dispatcher, not the polling worker.
             db.session.add(CartrackEvent(
                 plate_id=state.plate_id, event_type='trip_closed',
                 plaza_name=None, expressway=expressway,
-                trip_id=matching_trip.id if matching_trip else None,
+                trip_id=None,                # decoupled — no trip match
                 toll_fee=fee, toll_entry=entry, toll_exit=exit_plaza,
-                notes=('no matching trip' if not matching_trip else
-                       ('no rate found' if fee is None else 'auto-filled')),
+                notes=('no rate found' if fee is None else 'gps-detected'),
             ))
+            if fee is not None:
+                summary['toll_fees_filled'] += 1
+                log.info('[TOLL-GPS] %s: %s -> %s = PHP %s (%s) — Dashboard KPI only',
+                         state.plate.display if state.plate else state.plate_id,
+                         entry, exit_plaza, fee, expressway or '?')
             summary['trips_closed'] += 1
 
             # Reset state for next trip

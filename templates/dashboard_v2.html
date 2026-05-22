@@ -42,7 +42,8 @@
     ('Total Trips',     total,                              '#8B1A2B', 'bi-truck',            '100%',  'All units'),
     ('Delivered',       by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
     ('In Transit',      by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
-    ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'excl. canceled'),
+    ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'manual entry from receipts'),
+    ('GPS Toll',        gps_toll_total|default(0),          '#7C3AED', 'bi-broadcast',         '100%',  (gps_toll_count|default(0))|string + ' auto-detected today'),
     ('Breakdown Hours', total_breakdown_hours,              '#DC2626', 'bi-tools',             '100%',  'click for J.O. details'),
     ('Pending',         by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
     ('Canceled',        by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
@@ -52,14 +53,14 @@
   {% set kpi_id = label|replace(' ','-') %}
   <div class="col-6 col-md-4 col-lg">
     <div class="card h-100 kpi-card" style="border-left: 4px solid {{ color }}; border-radius:10px; cursor:pointer;"
-         onclick="openKpiModal('{{ label }}', '{{ status_key }}', '{{ color }}')">
+         onclick="{% if label == 'GPS Toll' %}window.location.href='/toll-log'{% else %}openKpiModal('{{ label }}', '{{ status_key }}', '{{ color }}'){% endif %}">
       <div class="card-body py-3 px-3">
         <div class="d-flex align-items-start justify-content-between mb-2">
           <div>
             <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">{{ label }}</div>
             <div id="kpi-val-{{ kpi_id }}" style="font-size:2rem;font-weight:700;line-height:1.1;color:{{ color }};"
                  data-raw="{{ value }}">
-              {% if label == 'Toll Fee' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
+              {% if label == 'Toll Fee' or label == 'GPS Toll' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
             </div>
           </div>
           <div style="width:38px;height:38px;border-radius:10px;background:{{ color }}18;display:flex;align-items:center;justify-content:center;">
@@ -70,7 +71,7 @@
           <div id="kpi-bar-{{ kpi_id }}" style="height:100%;width:{{ pct }};background:{{ color }};border-radius:4px;transition:width .6s;"></div>
         </div>
         <div id="kpi-sub-{{ kpi_id }}" style="font-size:.72rem;color:var(--muted);margin-top:4px;">
-          {% if label == 'Toll Fee' %}{{ sub }}{% else %}{{ pct }} — {{ sub }}{% endif %}
+          {% if label == 'Toll Fee' or label == 'GPS Toll' %}{{ sub }}{% else %}{{ pct }} — {{ sub }}{% endif %}
         </div>
       </div>
     </div>

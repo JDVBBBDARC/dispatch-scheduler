@@ -333,11 +333,38 @@ def api_dashboard_kpis():
                        BreakdownLog.started_at <= bd_to_dt)
                .all())
     total_breakdown_hours = round(sum(b.duration_hours for b in bd_logs), 1)
+
+    # GPS-detected toll today — separate KPI sourced from CartrackEvent.
+    # This is what the polling worker auto-detected from plaza transits;
+    # it is INDEPENDENT of TripRecord.toll_fee (which is dispatcher's
+    # manual entry from physical receipts). Comparing the two helps
+    # Finance spot exemptions, RFID misses, or GPS-missed plazas.
+    from sqlalchemy import func as _func
+    today_pht_d = ph_today()
+    # Convert PHT calendar day to its UTC bounds for the CartrackEvent
+    # query — events are stored in UTC.
+    day_start_utc = datetime.combine(today_pht_d, datetime.min.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+    day_end_utc   = datetime.combine(today_pht_d, datetime.max.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+    gps_toll = (db.session.query(
+                    _func.coalesce(_func.sum(CartrackEvent.toll_fee), 0.0),
+                    _func.count(CartrackEvent.id),
+                )
+                .filter(CartrackEvent.event_type == 'trip_closed',
+                        CartrackEvent.toll_fee.isnot(None),
+                        CartrackEvent.created_at >= day_start_utc,
+                        CartrackEvent.created_at <= day_end_utc)
+                .first())
+    gps_toll_total  = float(gps_toll[0] or 0)
+    gps_toll_count  = int(gps_toll[1] or 0)
+
     return jsonify({
         'total':                 len(trips),
         'by_status':             {s: sum(1 for t in trips if t.status == s) for s in STATUSES},
         'total_toll_fee':        sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled'),
         'total_breakdown_hours': total_breakdown_hours,
+        # GPS-detected toll (independent of TripRecord.toll_fee)
+        'gps_toll_total':        gps_toll_total,
+        'gps_toll_count':        gps_toll_count,
     })
 
 
@@ -726,6 +753,25 @@ def dashboard():
     total          = len(trips)
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
     total_toll_fee = sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled')
+
+    # GPS-detected toll today — sourced from CartrackEvent (independent
+    # of TripRecord.toll_fee). Separate KPI so dispatchers and Finance
+    # can compare what the polling worker saw vs the manual entries.
+    from sqlalchemy import func as _func
+    _today_pht_d   = ph_today()
+    _day_start_utc = datetime.combine(_today_pht_d, datetime.min.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+    _day_end_utc   = datetime.combine(_today_pht_d, datetime.max.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+    _gps = (db.session.query(
+                _func.coalesce(_func.sum(CartrackEvent.toll_fee), 0.0),
+                _func.count(CartrackEvent.id),
+            )
+            .filter(CartrackEvent.event_type == 'trip_closed',
+                    CartrackEvent.toll_fee.isnot(None),
+                    CartrackEvent.created_at >= _day_start_utc,
+                    CartrackEvent.created_at <= _day_end_utc)
+            .first())
+    gps_toll_total = float(_gps[0] or 0)
+    gps_toll_count = int(_gps[1] or 0)
     # Breakdown hours within the trend range (accumulate completed J.O.s)
     _bd_from_dt = datetime.combine(trend_start_d, datetime.min.time())
     _bd_to_dt   = datetime.combine(trend_end_d,   datetime.max.time())
@@ -818,6 +864,7 @@ def dashboard():
         truck_types=truck_types, trips=trips,
         total=total, by_status=by_status, by_truck=by_truck, total_toll_fee=total_toll_fee,
         total_breakdown_hours=total_breakdown_hours,
+        gps_toll_total=gps_toll_total, gps_toll_count=gps_toll_count,
         trend_days=trend_days, trend_counts=trend_counts,
         trend_by_truck=trend_by_truck,
         recent_changes=recent_changes,
