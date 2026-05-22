@@ -120,16 +120,17 @@
               <tr data-trip-id="{{ trip.id }}">
                 <td class="center" style="padding:0 2px;">
                   {# Copy button — single click = duplicate within this wave.
-                     Bootstrap split-style dropdown carries the same icon
-                     but exposes "Duplicate to → other waves" when more
-                     than one wave exists for this truck-type/date. #}
-                  <div class="btn-group dropend" role="group">
+                     The dropdown menu is INTENTIONALLY EMPTY at render time
+                     and rebuilt on every open via the show.bs.dropdown
+                     listener below — so newly-added waves (via Add Wave
+                     without page reload) appear in the menu immediately. #}
+                  <div class="btn-group dropend copy-dup-group" role="group"
+                       data-trip-id="{{ trip.id }}" data-wave-id="{{ wave.id }}">
                     <button class="btn-dup"
                             onclick="duplicateTrip({{ trip.id }}, {{ wave.id }}, this)"
                             title="Duplicate to this wave">
                       <i class="bi bi-copy"></i>
                     </button>
-                    {% if waves|length > 1 %}
                     <button class="btn-dup-caret"
                             data-bs-toggle="dropdown"
                             aria-expanded="false"
@@ -137,26 +138,8 @@
                             style="border:none;background:none;padding:0 2px;cursor:pointer;">
                       <i class="bi bi-caret-down-fill" style="font-size:.6rem;color:#8B1A2B;"></i>
                     </button>
-                    <ul class="dropdown-menu shadow-sm" style="font-size:.85rem;">
-                      <li><h6 class="dropdown-header small">Duplicate to…</h6></li>
-                      {% for w in waves %}
-                      <li>
-                        <a class="dropdown-item small {% if w.id == wave.id %}active{% endif %}"
-                           href="#"
-                           onclick="event.preventDefault(); duplicateTrip({{ trip.id }}, {{ w.id }}, this); return false;">
-                          {% if w.id == wave.id %}
-                            <i class="bi bi-arrow-return-right me-1"></i>
-                            <strong>{{ w.label }}</strong>
-                            <span class="text-muted ms-1">(here)</span>
-                          {% else %}
-                            <i class="bi bi-arrow-right-circle me-1"></i>
-                            {{ w.label }}
-                          {% endif %}
-                        </a>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                    {% endif %}
+                    <ul class="dropdown-menu shadow-sm copy-dup-menu"
+                        style="font-size:.85rem;"></ul>
                   </div>
                 </td>
                 <td class="trip-num">{{ trip.trip_number }}</td>
@@ -597,33 +580,59 @@ function deleteTrip(tripId, btn) {
   });
 }
 
-// Build the split-style copy button HTML for a row. Single button if only
-// one wave exists; dropdown with target-wave list when 2+ waves exist on
-// the page. Used by both duplicateTrip's appended row and addTrip's
-// fresh row template — keeps the rendered output identical to the
-// server-side Jinja version.
+// Build the split-style copy button HTML for a row.
+// The dropdown menu (.copy-dup-menu) is rendered EMPTY here on purpose —
+// items are populated on every open via the show.bs.dropdown listener
+// at the bottom of this script, using the CURRENT wave list. This keeps
+// the menu fresh when users add or rename waves without a page reload.
 function buildCopyButtonHTML(tripId, waveId) {
-  // Discover other waves via the tabs row (knows the labels we want
-  // to display, e.g., "1st Wave"). Filter to same truck-type tab group
-  // by matching the tab container ancestor of the current trip row.
-  const allTabs = Array.from(document.querySelectorAll('.wave-tab[data-wave-id]'));
-  // Try to scope to the same tt group as the currently-active row, but
-  // fall back to all tabs if scoping fails (still correct, just wider).
-  let tabsForGroup = allTabs;
-  const srcRow = document.querySelector(`tr[data-trip-id="${tripId}"]`);
+  return `
+    <div class="btn-group dropend copy-dup-group" role="group"
+         data-trip-id="${tripId}" data-wave-id="${waveId}">
+      <button class="btn-dup" onclick="duplicateTrip(${tripId},${waveId},this)" title="Duplicate to this wave">
+        <i class="bi bi-copy"></i>
+      </button>
+      <button class="btn-dup-caret" data-bs-toggle="dropdown" aria-expanded="false"
+              title="Duplicate to another wave"
+              style="border:none;background:none;padding:0 2px;cursor:pointer;">
+        <i class="bi bi-caret-down-fill" style="font-size:.6rem;color:#8B1A2B;"></i>
+      </button>
+      <ul class="dropdown-menu shadow-sm copy-dup-menu"
+          style="font-size:.85rem;"></ul>
+    </div>`;
+}
+
+// Populate a copy-dup-menu with the current wave list. Called from the
+// show.bs.dropdown listener so the menu reflects ANY wave that has been
+// added since page load — including waves created via Add Wave without
+// a refresh.
+function populateCopyDropdownMenu(group) {
+  const menu     = group.querySelector('.copy-dup-menu');
+  const tripId   = group.dataset.tripId;
+  const waveId   = group.dataset.waveId;
+  if (!menu || !tripId || !waveId) return;
+  // Scope to this row's truck-type tab group (e.g., 10W's wave tabs).
+  const srcRow   = document.querySelector(`tr[data-trip-id="${tripId}"]`);
+  let tabs       = [];
   if (srcRow) {
     const wavePanel = srcRow.closest('[id^="wavePanels-"]');
     if (wavePanel) {
       const ttCode = wavePanel.id.replace('wavePanels-', '');
-      const scoped = document.querySelectorAll(`#waveTabs-${ttCode} .wave-tab[data-wave-id]`);
-      if (scoped.length > 0) tabsForGroup = Array.from(scoped);
+      tabs = Array.from(
+        document.querySelectorAll(`#waveTabs-${ttCode} .wave-tab[data-wave-id]`));
     }
   }
-  if (tabsForGroup.length <= 1) {
-    // Single wave — plain button, no dropdown needed.
-    return `<button class="btn-dup" onclick="duplicateTrip(${tripId},${waveId},this)" title="Duplicate row"><i class="bi bi-copy"></i></button>`;
+  if (tabs.length === 0) {
+    tabs = Array.from(document.querySelectorAll('.wave-tab[data-wave-id]'));
   }
-  const items = tabsForGroup.map(tab => {
+  // If still only one wave (rare race), show a hint instead of an
+  // empty menu.
+  if (tabs.length <= 1) {
+    menu.innerHTML = `
+      <li><h6 class="dropdown-header small">Only one wave on this date</h6></li>`;
+    return;
+  }
+  const itemsHtml = tabs.map(tab => {
     const wId    = tab.dataset.waveId;
     const label  = tab.textContent.trim().split('(')[0].trim();
     const active = String(wId) === String(waveId);
@@ -634,22 +643,19 @@ function buildCopyButtonHTML(tripId, waveId) {
         ${active ? `<strong>${label}</strong> <span class="text-muted ms-1">(here)</span>` : label}
       </a></li>`;
   }).join('');
-  return `
-    <div class="btn-group dropend" role="group">
-      <button class="btn-dup" onclick="duplicateTrip(${tripId},${waveId},this)" title="Duplicate to this wave">
-        <i class="bi bi-copy"></i>
-      </button>
-      <button class="btn-dup-caret" data-bs-toggle="dropdown" aria-expanded="false"
-              title="Duplicate to another wave"
-              style="border:none;background:none;padding:0 2px;cursor:pointer;">
-        <i class="bi bi-caret-down-fill" style="font-size:.6rem;color:#8B1A2B;"></i>
-      </button>
-      <ul class="dropdown-menu shadow-sm" style="font-size:.85rem;">
-        <li><h6 class="dropdown-header small">Duplicate to…</h6></li>
-        ${items}
-      </ul>
-    </div>`;
+  menu.innerHTML = `
+    <li><h6 class="dropdown-header small">Duplicate to…</h6></li>
+    ${itemsHtml}`;
 }
+
+// Listen ONCE for any copy-dup dropdown opening and populate it with the
+// current wave list right before it's shown. Works for both
+// server-rendered rows (Jinja) and JS-injected rows (buildCopyButtonHTML),
+// since the listener is on document and uses event delegation.
+document.addEventListener('show.bs.dropdown', function (ev) {
+  const group = ev.target.closest('.copy-dup-group');
+  if (group) populateCopyDropdownMenu(group);
+});
 
 // ── DUPLICATE TRIP ────────────────────────────────────────────────────────
 // tripId  — source TripRecord to copy from
