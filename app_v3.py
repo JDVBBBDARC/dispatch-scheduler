@@ -43,27 +43,37 @@ def ph_today():
 
 
 def iso_ph(dt):
-    """Serialize a datetime to a PHT-aware ISO-8601 string for API
-    responses, e.g., '2026-05-21T08:09:50+08:00'.
+    """Serialize a datetime (or date) to ISO-8601 for API responses.
 
-    Rationale: the database stores naive datetimes which represent UTC.
-    If we emit those raw via .isoformat(), JavaScript's `new Date()`
-    parses them as the browser's LOCAL time — for our users in
-    Manila, that produces an 8-hour display offset (UTC value rendered
-    as if it were already PHT). Wrapping every API timestamp in iso_ph
-    fixes the offset and is forward-compatible with offset-aware
-    inputs.
+    For datetime objects, emits a PHT-aware ISO-8601 string with
+    +08:00 offset, e.g., '2026-05-21T08:09:50+08:00'. The DB stores
+    naive UTC; this converts to PHT so JS new Date() parses correctly.
+
+    For date objects, emits the calendar date as-is (e.g.,
+    '2026-05-21'). date has no time component and no timezone, so
+    no conversion is meaningful — Wave.date is a business date in
+    PHT already.
 
     Behavior:
-      - None  -> None  (caller can substitute '—' on the frontend)
-      - naive -> assume UTC, convert to PHT, return offset-tagged ISO
-      - aware -> convert (already-correct PHT passes through cleanly)
+      - None             -> None (frontend renders '—')
+      - date (not dt)    -> 'YYYY-MM-DD'
+      - naive datetime   -> assume UTC, convert to PHT, +08:00 ISO
+      - aware datetime   -> convert to PHT, +08:00 ISO
     """
     if dt is None:
         return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC_TZ)
-    return dt.astimezone(PH_TZ).isoformat()
+    # date is the parent class of datetime, so we test datetime FIRST
+    # before the date branch. (isinstance(x, date) is True for x a
+    # datetime, but isinstance(x, datetime) is True ONLY for datetimes.)
+    from datetime import date as _date, datetime as _datetime
+    if isinstance(dt, _datetime):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC_TZ)
+        return dt.astimezone(PH_TZ).isoformat()
+    if isinstance(dt, _date):
+        return dt.isoformat()
+    # Anything else — best effort string conversion (shouldn't happen)
+    return str(dt)
 from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
 from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
