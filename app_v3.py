@@ -3628,6 +3628,86 @@ def init_db():
                     print(f"  Migrated: added {len(added)} ad-hoc stop columns to site_visits")
         except Exception as _mig_err:
             print(f"  Migration warning (stop-detection columns): {_mig_err}")
+
+        # Migrate: relax site_visits.geofence_id from NOT NULL -> nullable.
+        # Required so ad-hoc stops (truck stopped outside any geofence)
+        # can be logged as SiteVisit rows with geofence_id=NULL. SQLite
+        # does not support ALTER COLUMN to change a NOT NULL constraint,
+        # so we use the standard table-rebuild pattern: create new table
+        # with the relaxed schema, copy data, drop old, rename new.
+        # Idempotent — checks the current nullability before acting.
+        try:
+            if 'site_visits' in inspector.get_table_names():
+                cols = {c['name']: c for c in inspector.get_columns('site_visits')}
+                gf_col = cols.get('geofence_id')
+                # column metadata uses 'nullable' (bool). Older SQLAlchemy
+                # may also expose it under 'notnull' (int); handle both.
+                is_not_null = (gf_col and
+                               ((gf_col.get('nullable') is False)
+                                or gf_col.get('notnull') == 1))
+                if is_not_null:
+                    print('  Migrating site_visits.geofence_id NOT NULL '
+                           '-> nullable (table rebuild)...')
+                    with db.engine.connect() as conn:
+                        conn.execute(text('PRAGMA foreign_keys=OFF'))
+                        conn.execute(text('''
+                            CREATE TABLE site_visits_new (
+                                id INTEGER PRIMARY KEY,
+                                plate_id INTEGER NOT NULL,
+                                geofence_id INTEGER,
+                                enter_at DATETIME NOT NULL,
+                                exit_at DATETIME,
+                                duration_seconds INTEGER DEFAULT 0,
+                                idling_seconds INTEGER DEFAULT 0,
+                                idling_pct FLOAT,
+                                is_drive_by BOOLEAN DEFAULT 0,
+                                address VARCHAR(300),
+                                lat FLOAT,
+                                lng FLOAT,
+                                trip_id INTEGER,
+                                cycle_id INTEGER,
+                                FOREIGN KEY (plate_id)    REFERENCES plates(id),
+                                FOREIGN KEY (geofence_id) REFERENCES cartrack_geofences(id),
+                                FOREIGN KEY (trip_id)     REFERENCES trip_records(id),
+                                FOREIGN KEY (cycle_id)    REFERENCES truck_cycles(id)
+                            )
+                        '''))
+                        # Copy data — column list explicit so it tolerates
+                        # any ordering difference between the old and new
+                        # tables. address/lat/lng exist on both at this
+                        # point (the earlier migration created them).
+                        conn.execute(text('''
+                            INSERT INTO site_visits_new
+                                (id, plate_id, geofence_id, enter_at, exit_at,
+                                 duration_seconds, idling_seconds, idling_pct,
+                                 is_drive_by, address, lat, lng, trip_id, cycle_id)
+                            SELECT
+                                 id, plate_id, geofence_id, enter_at, exit_at,
+                                 duration_seconds, idling_seconds, idling_pct,
+                                 is_drive_by, address, lat, lng, trip_id, cycle_id
+                            FROM site_visits
+                        '''))
+                        conn.execute(text('DROP TABLE site_visits'))
+                        conn.execute(text('ALTER TABLE site_visits_new '
+                                           'RENAME TO site_visits'))
+                        # Recreate the indexes that the model declared.
+                        for idx_sql in [
+                            'CREATE INDEX ix_site_visits_plate_id     ON site_visits(plate_id)',
+                            'CREATE INDEX ix_site_visits_geofence_id  ON site_visits(geofence_id)',
+                            'CREATE INDEX ix_site_visits_enter_at     ON site_visits(enter_at)',
+                            'CREATE INDEX ix_site_visits_is_drive_by  ON site_visits(is_drive_by)',
+                            'CREATE INDEX ix_site_visits_trip_id      ON site_visits(trip_id)',
+                            'CREATE INDEX ix_site_visits_cycle_id     ON site_visits(cycle_id)',
+                        ]:
+                            try:
+                                conn.execute(text(idx_sql))
+                            except Exception:
+                                pass   # index may already exist
+                        conn.execute(text('PRAGMA foreign_keys=ON'))
+                        conn.commit()
+                    print('  Migrated: site_visits.geofence_id is now nullable')
+        except Exception as _mig_err:
+            print(f"  Migration warning (site_visits.geofence_id nullable): {_mig_err}")
         # Import DeleteRequest so db.create_all() picks it up
         from auth.models import DeleteRequest  # noqa: F401
         db.create_all()  # create delete_requests table if new
