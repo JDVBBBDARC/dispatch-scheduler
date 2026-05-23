@@ -1073,7 +1073,6 @@ def run_poll(app=None, log=None):
                                       .filter(CartrackGeofence.cartrack_id.in_(current_geofence_uuids))
                                       .all())
             current_gf_local_ids = {g.id for g in current_geofences}
-            gf_by_id = {g.id: g for g in current_geofences}
 
             # Previously inside = plate has open (unclosed) SiteVisits
             open_visits = (SiteVisit.query
@@ -1085,6 +1084,24 @@ def run_poll(app=None, log=None):
             gf_new_enters = current_gf_local_ids - previous_gf_local_ids
             gf_new_exits  = previous_gf_local_ids - current_gf_local_ids
             gf_still_in   = current_gf_local_ids & previous_gf_local_ids
+
+            # Build gf_by_id from BOTH currently-inside geofences AND any
+            # geofences referenced by open visits (i.e., geofences the
+            # truck may have just exited). Without the exit-side lookup,
+            # the close-visit loop below sees gf=None for every exit, which
+            # incorrectly flags toll transits as drive-by AND silently
+            # skips the symmetric CartrackEvent EXIT row. That's why the
+            # Toll Log shows only ENTER rows for trucks that have clearly
+            # transited multiple plazas.
+            gf_by_id = {g.id: g for g in current_geofences}
+            exit_gf_ids = previous_gf_local_ids - set(gf_by_id.keys())
+            # Filter out None (ad-hoc stop SiteVisits have geofence_id=NULL).
+            exit_gf_ids.discard(None)
+            if exit_gf_ids:
+                for g in (CartrackGeofence.query
+                           .filter(CartrackGeofence.id.in_(exit_gf_ids))
+                           .all()):
+                    gf_by_id[g.id] = g
 
             # Truck-level idle state (Cartrack returns top-level 'idling' bool).
             is_idling = bool(status.get('idling', False))
