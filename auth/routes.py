@@ -1,7 +1,7 @@
 from functools import wraps
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
-from models_v2 import db
+from models_v2 import db, utc_now
 from .models import User, DeleteRequest
 from . import auth_bp
 
@@ -63,7 +63,7 @@ def login():
             session['user_id']   = user.id
             session['user_name'] = user.display_name
             session['user_role'] = user.role
-            user.last_login = datetime.utcnow()
+            user.last_login = utc_now()
             db.session.commit()
             next_url = request.form.get('next') or '/'
             return redirect(next_url)
@@ -213,7 +213,7 @@ def admin_approve_delete(rid):
             _do_delete(req.entity_type, req.entity_id)
         req.status       = 'approved'
         req.reviewed_by  = session.get('user_name', 'Admin')
-        req.reviewed_at  = datetime.utcnow()
+        req.reviewed_at  = utc_now()
         req.review_notes = request.form.get('notes', '')
         db.session.commit()
         flash(f'Request approved — "{req.entity_info}" has been deleted.', 'success')
@@ -221,7 +221,7 @@ def admin_approve_delete(rid):
         db.session.rollback()
         req.status       = 'approved'  # mark approved even if record already gone
         req.reviewed_by  = session.get('user_name', 'Admin')
-        req.reviewed_at  = datetime.utcnow()
+        req.reviewed_at  = utc_now()
         req.review_notes = f'Auto-note: {str(e)}'
         db.session.commit()
         flash(f'Approved — record may have already been removed.', 'warning')
@@ -238,7 +238,7 @@ def admin_reject_delete(rid):
         return redirect(url_for('auth.admin_delete_requests'))
     req.status       = 'rejected'
     req.reviewed_by  = session.get('user_name', 'Admin')
-    req.reviewed_at  = datetime.utcnow()
+    req.reviewed_at  = utc_now()
     req.review_notes = request.form.get('notes', '').strip() or None
     db.session.commit()
     flash(f'Request rejected.', 'info')

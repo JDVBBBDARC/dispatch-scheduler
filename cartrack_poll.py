@@ -37,6 +37,11 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.exc import SQLAlchemyError
 
+# Naive-UTC helper used in place of datetime.utcnow() (deprecated in
+# Python 3.12+). Defined in models_v2 so all modules share one source
+# of truth for the storage convention.
+from models_v2 import utc_now
+
 # Make the module importable both standalone and from within the Flask app
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -818,7 +823,7 @@ def sync_geofences(app=None, log=None):
             return summary
 
         summary['total_fetched'] = len(geofences or [])
-        now = datetime.utcnow()
+        now = utc_now()
 
         for g in (geofences or []):
             cartrack_id = (g.get('geofence_id') or '').strip()
@@ -918,7 +923,7 @@ def run_poll(app=None, log=None):
     rt_stop_detection_minutes = settings['stop_detection_minutes']
 
     summary = {
-        'polled_at':      datetime.utcnow().isoformat() + 'Z',
+        'polled_at':      utc_now().isoformat() + 'Z',
         'configured':     False,
         'cartrack_ok':    False,
         'vehicles_seen':  0,
@@ -979,7 +984,7 @@ def run_poll(app=None, log=None):
         # Ensure CartrackGeofence rows exist for every manual entry,
         # so the visit-creation logic downstream can link via id.
         _sync_manual_geofences_to_db(app=app)
-        now = datetime.utcnow()
+        now = utc_now()
 
         # ── 5. For each mapped plate, diff state and emit events ─────
         for plate in mapped_plates:
@@ -1432,7 +1437,7 @@ def _run_loop(interval_seconds=60):
         try:
             summary = run_poll()
             elapsed = time.time() - started
-            print(f'[#{iteration}] {datetime.utcnow().isoformat()}Z '
+            print(f'[#{iteration}] {utc_now().isoformat()}Z '
                   f'elapsed={elapsed:.1f}s '
                   f'tracked={summary.get("plates_tracked", 0)} '
                   f'toll(in/out)={summary.get("enters_detected", 0)}/{summary.get("exits_detected", 0)} '

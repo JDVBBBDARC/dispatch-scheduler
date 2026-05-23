@@ -25,6 +25,11 @@ import os
 import sys
 from datetime import datetime, timedelta
 
+# Naive-UTC helper used in place of datetime.utcnow() (deprecated in
+# Python 3.12+). Defined in models_v2 so all modules share one source
+# of truth for the storage convention.
+from models_v2 import utc_now
+
 
 class CartrackClient:
     """Thin wrapper over the Cartrack Fleet REST API."""
@@ -206,7 +211,7 @@ class CartrackClient:
             from zoneinfo import ZoneInfo
             now = datetime.now(ZoneInfo('Asia/Manila'))
         except Exception:
-            now = datetime.utcnow() + timedelta(hours=8)
+            now = utc_now() + timedelta(hours=8)
         start_dt = start_dt or (now - timedelta(days=1))
         end_dt   = end_dt or now
         base_params = {
@@ -243,7 +248,7 @@ class CartrackClient:
             from zoneinfo import ZoneInfo
             now = datetime.now(ZoneInfo('Asia/Manila'))
         except Exception:
-            now = datetime.utcnow() + timedelta(hours=8)
+            now = utc_now() + timedelta(hours=8)
         start_dt = start_dt or (now - timedelta(hours=1))
         end_dt   = end_dt or now
         base_params = {

@@ -1,7 +1,30 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
+
+
+def utc_now():
+    """Return the current UTC time as a NAIVE datetime (no tzinfo).
+
+    Drop-in replacement for `datetime.utcnow()`, which Python 3.12+
+    deprecated and which is scheduled for removal in a future version.
+    The recommended modern API is `datetime.now(UTC)` — but that returns
+    a tz-aware datetime, and this codebase consistently stores naive UTC
+    in SQLite (column defaults, comparisons, etc. all assume naive). So
+    we get the current UTC moment via the new API, then strip tzinfo to
+    match the existing convention.
+
+    Use this helper anywhere you previously wrote `datetime.utcnow()`:
+
+        from models_v2 import utc_now
+
+        record.updated_at = utc_now()
+
+    The output is BYTE-IDENTICAL to the old utcnow() result. Storage,
+    indexes, and joins are unaffected.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # ── Truck type seed data ───────────────────────────────────────────────────
 # point_per_leg / daily_target_points control fleet utilization scoring.

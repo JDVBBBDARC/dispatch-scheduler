@@ -24,7 +24,7 @@ def firebase_notify(event='update'):
         return
     try:
         fb_db.reference('dispatch_updates').set({
-            'ts': int(datetime.utcnow().timestamp() * 1000),
+            'ts': int(utc_now().timestamp() * 1000),
             'event': event
         })
     except Exception as e:
@@ -76,7 +76,7 @@ def iso_ph(dt):
     return str(dt)
 from flask import (Flask, render_template, request, redirect, url_for,
                    jsonify, session, flash, send_file)
-from models_v2 import (db, TruckTypeDef, Wave, TripRecord,
+from models_v2 import (db, utc_now, TruckTypeDef, Wave, TripRecord,
                        Driver, Helper, Product, Client, Dispatcher, Plate,
                        ChangeLog, Attendance, HelperAttendance, BreakdownLog, AppSetting,
                        CartrackTruckState, CartrackEvent,
@@ -278,7 +278,7 @@ def api_trip_save():
                     setattr(trip, attr, None)
 
     trip.updated_by = get_user()
-    trip.updated_at = datetime.utcnow()
+    trip.updated_at = utc_now()
     db.session.commit()
 
     wave = Wave.query.get(trip.wave_id)
@@ -1200,7 +1200,7 @@ def api_attendance_set():
 
     record.status     = status
     record.updated_by = get_user()
-    record.updated_at = datetime.utcnow()
+    record.updated_at = utc_now()
     db.session.commit()
 
     drv = Driver.query.get(driver_id)
@@ -1273,7 +1273,7 @@ def api_helper_attendance_set():
 
     record.status     = status
     record.updated_by = get_user()
-    record.updated_at = datetime.utcnow()
+    record.updated_at = utc_now()
     db.session.commit()
 
     hlp = Helper.query.get(helper_id)
@@ -1391,7 +1391,7 @@ def api_breakdown_update(lid):
         log.remarks = data['remarks'] or None
 
     log.updated_by = get_user()
-    log.updated_at = datetime.utcnow()
+    log.updated_at = utc_now()
     db.session.commit()
 
     log_change(f"Updated breakdown #{lid}", 'breakdown')
@@ -2120,7 +2120,7 @@ def api_cycle_time_summary():
 
     open_summary = []
     for c in open_cycles[:50]:   # cap to keep payload small
-        elapsed_min = int((datetime.utcnow() - c.started_at).total_seconds() / 60)
+        elapsed_min = int((utc_now() - c.started_at).total_seconds() / 60)
         state = state_map.get(c.plate_id)
         # Resolve current geofence name(s) — usually just one, but the truck
         # could be in nested zones (e.g., customer site inside an industrial park).
@@ -2133,7 +2133,7 @@ def api_cycle_time_summary():
         last_seen_age_min = None
         if state and state.last_position_at:
             last_seen_age_min = int(
-                (datetime.utcnow() - state.last_position_at).total_seconds() / 60)
+                (utc_now() - state.last_position_at).total_seconds() / 60)
         open_summary.append({
             'cycle_id':    c.id,
             'plate_id':    c.plate_id,
@@ -2381,7 +2381,7 @@ def api_cycle_time_plates():
                 }
 
     rows = []
-    now = datetime.utcnow()
+    now = utc_now()
     for p in plates:
         state = state_map.get(p.id)
         oc = open_cycle_map.get(p.id)
@@ -2492,7 +2492,7 @@ def api_cycle_time_plate_cycles(plate_id):
 
     from sqlalchemy import func
     rows = []
-    now = datetime.utcnow()
+    now = utc_now()
     for c in cycles:
         # Real-visit count (exclude drive-bys; INCLUDE ad-hoc stops)
         vc = (db.session.query(func.count(SiteVisit.id))
@@ -2614,7 +2614,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
         if (state and state.last_stop_started_at
                 and (cycle.started_at is None
                      or state.last_stop_started_at >= cycle.started_at)):
-            _now_utc = datetime.utcnow()
+            _now_utc = utc_now()
             duration_min = int((_now_utc - state.last_stop_started_at).total_seconds() / 60)
             events.append({
                 'ts':          iso_ph(state.last_stop_started_at),
@@ -2631,7 +2631,7 @@ def api_cycle_time_cycle_timeline(cycle_id):
     # ── Source 2: CartrackEvents within the cycle's time range ──
     plate_id = cycle.plate_id
     start_ts = cycle.started_at
-    end_ts   = cycle.ended_at or datetime.utcnow()
+    end_ts   = cycle.ended_at or utc_now()
     cev_q = (CartrackEvent.query
              .filter(CartrackEvent.plate_id == plate_id,
                      CartrackEvent.created_at >= start_ts,
