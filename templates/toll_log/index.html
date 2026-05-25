@@ -1,0 +1,520 @@
+{% extends 'base.html' %}
+{% block title %}Toll Log — GPS Events{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <i class="bi bi-broadcast" style="font-size:2rem;color:#0891b2;"></i>
+      <div>
+        <h4 class="mb-0 fw-bold">Toll Log</h4>
+        <small class="text-muted">GPS-detected toll trips &mdash; paired entry &rarr; exit plazas per row</small>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <!-- View mode toggle: Trips (default) or Audit Detail -->
+      <div class="btn-group" role="group" aria-label="View mode">
+        <input type="radio" class="btn-check" name="viewMode" id="vmTrips" autocomplete="off" checked
+               onchange="setViewMode('trips')">
+        <label class="btn btn-sm btn-outline-primary" for="vmTrips">
+          <i class="bi bi-arrow-left-right"></i> Trips
+        </label>
+        <input type="radio" class="btn-check" name="viewMode" id="vmAudit" autocomplete="off"
+               onchange="setViewMode('audit')">
+        <label class="btn btn-sm btn-outline-secondary" for="vmAudit">
+          <i class="bi bi-list-ul"></i> Audit Detail
+        </label>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshAll()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+      <button class="btn btn-sm btn-success" onclick="exportToExcel()">
+        <i class="bi bi-file-earmark-excel"></i> Export to Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Summary Cards ──────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4" id="summaryCards">
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-info bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-arrow-down-circle text-info" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Plaza Enters</div>
+              <div class="fs-3 fw-bold" id="kpiEnters">—</div>
+              <small class="text-muted" id="kpiEntersWk">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-arrow-up-circle text-warning" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Plaza Exits</div>
+              <div class="fs-3 fw-bold" id="kpiExits">—</div>
+              <small class="text-muted" id="kpiExitsWk">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-success bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-check2-circle text-success" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Trips Auto-Filled</div>
+              <div class="fs-3 fw-bold" id="kpiClosed">—</div>
+              <small class="text-muted" id="kpiClosedWk">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100"
+           style="background:linear-gradient(135deg,#0891b2,#0e7490);color:white;">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-white bg-opacity-25 rounded-3 p-2">
+              <i class="bi bi-cash-stack text-white" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="small text-white-50">Toll Fees Today</div>
+              <div class="fs-3 fw-bold" id="kpiFees">—</div>
+              <small class="text-white-50" id="kpiFeesWk">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filters ────────────────────────────────────────────────────── -->
+  <div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label fw-semibold small text-muted">From Date</label>
+          <input type="date" class="form-control form-control-sm" id="filterDateFrom"
+                 onchange="reloadActive()">
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label fw-semibold small text-muted">To Date</label>
+          <input type="date" class="form-control form-control-sm" id="filterDateTo"
+                 onchange="reloadActive()">
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label fw-semibold small text-muted">Plate</label>
+          <select class="form-select form-select-sm" id="filterPlate" onchange="reloadActive()">
+            <option value="">All plates</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label fw-semibold small text-muted">Event Type</label>
+          <select class="form-select form-select-sm" id="filterEventType" onchange="reloadActive()">
+            <option value="">All events</option>
+            <option value="enter">Plaza Enter</option>
+            <option value="exit">Plaza Exit</option>
+            <option value="trip_closed">Trip Closed (Auto-fill)</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label fw-semibold small text-muted">Expressway</label>
+          <select class="form-select form-select-sm" id="filterExpressway" onchange="reloadActive()">
+            <option value="">All expressways</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()">
+            <i class="bi bi-x-circle"></i> Clear Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trips Table (default view) ─────────────────────────────────── -->
+  <div class="card shadow-sm border-0 rounded-4" id="tripsCard">
+    <div class="card-body p-0">
+      <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+          <i class="bi bi-arrow-left-right me-1"></i> Toll Trips (entry &rarr; exit)
+          <span id="tripsCount" class="badge bg-secondary ms-2">0</span>
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">Auto-refresh</small>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="autoRefresh"
+                   onchange="toggleAutoRefresh()">
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="small text-muted text-uppercase">Date / Time</th>
+              <th class="small text-muted text-uppercase">Plate</th>
+              <th class="small text-muted text-uppercase">Entry Plaza</th>
+              <th class="small text-muted text-uppercase text-center">&rarr;</th>
+              <th class="small text-muted text-uppercase">Exit Plaza</th>
+              <th class="small text-muted text-uppercase">Expressway</th>
+              <th class="small text-muted text-uppercase text-end">Toll Fee</th>
+            </tr>
+          </thead>
+          <tbody id="tripsTbody">
+            <tr><td colspan="7" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="p-3 text-center text-muted small" id="tripsFooter">
+        &nbsp;
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Audit Detail Table (raw enter/exit events) ─────────────────── -->
+  <div class="card shadow-sm border-0 rounded-4 d-none" id="auditCard">
+    <div class="card-body p-0">
+      <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+          <i class="bi bi-list-ul me-1"></i> Audit Detail &mdash; All Plaza Events
+          <span id="eventCount" class="badge bg-secondary ms-2">0</span>
+        </h6>
+        <small class="text-muted">
+          Includes raw geofence enter/exit. For toll-trip pairs use the
+          <b>Trips</b> tab.
+        </small>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="small text-muted text-uppercase">Date / Time</th>
+              <th class="small text-muted text-uppercase">Plate</th>
+              <th class="small text-muted text-uppercase">Event</th>
+              <th class="small text-muted text-uppercase">Plaza</th>
+              <th class="small text-muted text-uppercase">Expressway</th>
+              <th class="small text-muted text-uppercase">Toll Fee</th>
+              <th class="small text-muted text-uppercase">Entry → Exit</th>
+              <th class="small text-muted text-uppercase">Trip</th>
+            </tr>
+          </thead>
+          <tbody id="eventsTbody">
+            <tr><td colspan="8" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="p-3 text-center text-muted small" id="tableFooter">
+        Showing latest events
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let _autoRefreshTimer = null;
+// Current view mode: 'trips' (default) or 'audit'.
+// 'trips' shows only event_type=trip_closed (entry plaza paired with exit
+// plaza on one row). 'audit' shows raw ENTER/EXIT/trip_closed events for
+// drilling into individual geofence transits.
+let _viewMode = 'trips';
+
+// ── Format helpers ────────────────────────────────────────────────────────
+function formatDT(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-PH', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+}
+
+function formatPHP(n) {
+  if (n == null || n === 0) return '—';
+  return '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function eventBadge(type) {
+  const badges = {
+    'enter':       '<span class="badge bg-info text-white">ENTER</span>',
+    'exit':        '<span class="badge bg-warning text-dark">EXIT</span>',
+    'trip_closed': '<span class="badge bg-success text-white">AUTO-FILL</span>',
+  };
+  return badges[type] || `<span class="badge bg-secondary">${type}</span>`;
+}
+
+// ── Loaders ───────────────────────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const r = await fetch('/api/toll-log/summary');
+    const j = await r.json();
+    document.getElementById('kpiEnters').textContent  = j.today.enters;
+    document.getElementById('kpiExits').textContent   = j.today.exits;
+    document.getElementById('kpiClosed').textContent  = j.today.trip_closed;
+    document.getElementById('kpiFees').textContent    = formatPHP(j.today.total_toll_fee);
+
+    document.getElementById('kpiEntersWk').textContent  = `last 7d: ${j.week.enters}`;
+    document.getElementById('kpiExitsWk').textContent   = `last 7d: ${j.week.exits}`;
+    document.getElementById('kpiClosedWk').textContent  = `last 7d: ${j.week.trip_closed}`;
+    document.getElementById('kpiFeesWk').textContent    = `last 7d: ${formatPHP(j.week.total_toll_fee)}`;
+  } catch (e) {
+    console.error('loadSummary error:', e);
+  }
+}
+
+async function loadFilters() {
+  try {
+    const r = await fetch('/api/toll-log/filters');
+    const j = await r.json();
+
+    // Plates dropdown
+    const plateSel = document.getElementById('filterPlate');
+    j.plates.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.plate_no;
+      plateSel.appendChild(opt);
+    });
+
+    // Expressways dropdown
+    const exSel = document.getElementById('filterExpressway');
+    j.expressways.forEach(ex => {
+      const opt = document.createElement('option');
+      opt.value = ex;
+      opt.textContent = ex;
+      exSel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('loadFilters error:', e);
+  }
+}
+
+// Build the filter query string. Optional `forceEventType` overrides the
+// event_type filter — used by the Trips view to lock the request to
+// trip_closed regardless of what's selected in the dropdown.
+function buildFilterParams(forceEventType) {
+  const params = new URLSearchParams();
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const pl = document.getElementById('filterPlate').value;
+  const et = forceEventType !== undefined
+              ? forceEventType
+              : document.getElementById('filterEventType').value;
+  const ex = document.getElementById('filterExpressway').value;
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (pl) params.set('plate_id', pl);
+  if (et) params.set('event_type', et);
+  if (ex) params.set('expressway', ex);
+  return params;
+}
+
+async function loadEvents() {
+  // Audit-detail view — uses the user-selected event_type filter as-is.
+  const params = buildFilterParams();
+  try {
+    const r = await fetch('/api/toll-log/events?' + params.toString());
+    const j = await r.json();
+    renderEvents(j.events);
+    document.getElementById('eventCount').textContent = j.count;
+    document.getElementById('tableFooter').textContent =
+      j.count === 0 ? 'No events match filters' :
+      `Showing ${j.count} event${j.count === 1 ? '' : 's'} (latest first, max ${j.limit})`;
+  } catch (e) {
+    console.error('loadEvents error:', e);
+  }
+}
+
+// Trips view — locks the request to event_type=trip_closed so the table
+// only shows completed toll trips with paired entry → exit plazas.
+async function loadTrips() {
+  const params = buildFilterParams('trip_closed');
+  try {
+    const r = await fetch('/api/toll-log/events?' + params.toString());
+    const j = await r.json();
+    renderTrips(j.events);
+    document.getElementById('tripsCount').textContent = j.count;
+    document.getElementById('tripsFooter').textContent =
+      j.count === 0 ? '' :
+      `Showing ${j.count} toll trip${j.count === 1 ? '' : 's'} (latest first, max ${j.limit})`;
+  } catch (e) {
+    console.error('loadTrips error:', e);
+  }
+}
+
+function renderTrips(events) {
+  const tbody = document.getElementById('tripsTbody');
+  if (!events || events.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+      <i class="bi bi-arrow-left-right" style="font-size:2rem;opacity:.3;"></i><br>
+      <span class="small d-block mt-2"><b>No toll trips yet.</b></span>
+      <span class="small d-block text-muted" style="max-width:520px;margin:.5rem auto 0;">
+        A toll trip appears here once the polling worker detects a truck
+        entering one plaza and later entering another (the entry &rarr; exit
+        pair). Trips close 30 minutes after the last plaza event. If you've
+        just deployed a fix, give the next polling cycle a few minutes.
+      </span>
+      <span class="small d-block mt-3">
+        Switch to <b>Audit Detail</b> in the top-right to see raw
+        ENTER/EXIT geofence events as they happen.
+      </span>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = events.map(e => {
+    return `<tr>
+      <td class="small">${formatDT(e.created_at)}</td>
+      <td class="fw-semibold small">${e.plate_no}</td>
+      <td class="small">
+        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+          ${e.toll_entry || '—'}
+        </span>
+      </td>
+      <td class="text-center text-muted">&rarr;</td>
+      <td class="small">
+        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+          ${e.toll_exit || '—'}
+        </span>
+      </td>
+      <td class="small text-muted">${e.expressway || '—'}</td>
+      <td class="text-end fw-bold small text-success">${formatPHP(e.toll_fee)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Switch between Trips and Audit Detail views. Toggles card visibility
+// and reloads the data for the active view. We keep both tables in the
+// DOM (just hidden) so swapping doesn't require a fresh API call when
+// the user toggles back and forth quickly.
+function setViewMode(mode) {
+  _viewMode = mode;
+  const tripsCard = document.getElementById('tripsCard');
+  const auditCard = document.getElementById('auditCard');
+  const evtTypeSel = document.getElementById('filterEventType');
+  const evtTypeWrapper = evtTypeSel.closest('.col-md-2');
+  if (mode === 'trips') {
+    tripsCard.classList.remove('d-none');
+    auditCard.classList.add('d-none');
+    // Hide the event-type filter in Trips mode — it's locked to trip_closed.
+    if (evtTypeWrapper) evtTypeWrapper.classList.add('d-none');
+    loadTrips();
+  } else {
+    tripsCard.classList.add('d-none');
+    auditCard.classList.remove('d-none');
+    if (evtTypeWrapper) evtTypeWrapper.classList.remove('d-none');
+    loadEvents();
+  }
+}
+
+function renderEvents(events) {
+  const tbody = document.getElementById('eventsTbody');
+  if (!events || events.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">
+      <i class="bi bi-inbox" style="font-size:2rem;opacity:.3;"></i><br>
+      <span class="small">No events yet. They'll appear here as trucks transit toll plazas.</span>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = events.map(e => {
+    const entryExit = (e.toll_entry && e.toll_exit)
+      ? `<small class="text-muted">${e.toll_entry} → ${e.toll_exit}</small>`
+      : '—';
+    const trip = e.trip_id
+      ? `<a href="/schedule/${new Date(e.created_at).toISOString().slice(0,10)}" class="text-decoration-none small">#${e.trip_id}</a>`
+      : '—';
+    return `<tr>
+      <td class="small">${formatDT(e.created_at)}</td>
+      <td class="fw-semibold small">${e.plate_no}</td>
+      <td>${eventBadge(e.event_type)}</td>
+      <td class="small">${e.plaza_name || '—'}</td>
+      <td class="small text-muted">${e.expressway || '—'}</td>
+      <td class="fw-bold small text-success">${formatPHP(e.toll_fee)}</td>
+      <td>${entryExit}</td>
+      <td>${trip}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────
+// Reload the table for whichever view mode is active. Used by the Refresh
+// button, auto-refresh timer, and filter change handlers.
+function reloadActive() {
+  if (_viewMode === 'trips') {
+    loadTrips();
+  } else {
+    loadEvents();
+  }
+}
+
+function refreshAll() {
+  loadSummary();
+  reloadActive();
+}
+
+function clearFilters() {
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  document.getElementById('filterPlate').value = '';
+  document.getElementById('filterEventType').value = '';
+  document.getElementById('filterExpressway').value = '';
+  reloadActive();
+}
+
+function toggleAutoRefresh() {
+  const enabled = document.getElementById('autoRefresh').checked;
+  if (_autoRefreshTimer) {
+    clearInterval(_autoRefreshTimer);
+    _autoRefreshTimer = null;
+  }
+  if (enabled) {
+    _autoRefreshTimer = setInterval(refreshAll, 30000); // 30 sec
+  }
+}
+
+function exportToExcel() {
+  const params = new URLSearchParams();
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const pl = document.getElementById('filterPlate').value;
+  const et = document.getElementById('filterEventType').value;
+  const ex = document.getElementById('filterExpressway').value;
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (pl) params.set('plate_id', pl);
+  if (et) params.set('event_type', et);
+  if (ex) params.set('expressway', ex);
+  window.location.href = '/api/toll-log/export?' + params.toString();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadFilters();
+  await loadSummary();
+  // Apply the default view mode (Trips). setViewMode also hides the
+  // event-type filter in Trips view and triggers the first data load.
+  setViewMode('trips');
+});
+</script>
+{% endblock %}
