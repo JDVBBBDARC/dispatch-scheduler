@@ -396,14 +396,22 @@ function acClose(inp) {
     const ac = inp?.closest?.('.ac');
     if (!ac) return;
     ac.querySelector('.ac-drop').style.display = 'none';
+    // Auto-clearing a previously-saved value just because the user blurred
+    // an empty text input has caused silent data loss in the field:
+    // dispatcher accidentally selects-all + types, then tabs away with an
+    // empty field, and a previously-set Driver/Plate/etc. quietly resets
+    // to NULL on the server with no warning. We now restore the displayed
+    // label from the hidden value instead of clearing — the dispatcher has
+    // to explicitly pick a different option (or use a future "Clear" UI)
+    // to actually change the value.
     if (!inp.value.trim()) {
       const hid = ac.querySelector('.ac-v');
       if (hid.value) {
-        hid.value = '';
-        const fid = ac.dataset.f;
-        const tr  = ac.closest('tr');
-        const tid = tr?.dataset.tripId ? parseInt(tr.dataset.tripId) : null;
-        if (tid) updateTrip(tid, fid, '');
+        // Restore the label for the still-saved value
+        const cfg  = AC_MAP[ac.dataset.f];
+        const opts = cfg ? (acData[cfg.key] || []) : [];
+        const found = opts.find(o => String(o.v) === String(hid.value));
+        if (found) inp.value = found.l;
       }
     }
   }, 200);
@@ -496,6 +504,28 @@ function saveNewTrip(waveId, changedEl) {
     updateTrip(parseInt(tr.dataset.tripId), changedEl.dataset.field, changedEl.value);
     return;
   }
+
+  // ── Race-condition guard ──────────────────────────────────────────
+  // Without this, fast dispatcher typing across multiple fields (Driver,
+  // Plate, Volume, etc.) could fire saveNewTrip() multiple times before
+  // the first POST returns. Each call saw tr.dataset.tripId='' and POSTed
+  // as a NEW trip — producing TWO or more orphan TripRecord rows in DB
+  // for one visible UI row. Subsequent edits then went to whichever trip
+  // ID arrived last, and the earlier-created trips became invisible
+  // ghost rows — the source of the "data lost" reports.
+  //
+  // Fix: stash the first save's promise on the row. Any field change
+  // that arrives while it's still in flight gets queued and converted
+  // to an updateTrip() call once the trip ID is known.
+  if (tr._savePromise) {
+    const field = changedEl.dataset.field;
+    const value = changedEl.value || '';
+    tr._savePromise.then(tripId => {
+      if (tripId) updateTrip(tripId, field, value);
+    });
+    return;
+  }
+
   const payload = {wave_id: waveId};
   tr.querySelectorAll('[data-field]').forEach(el => {
     payload[el.dataset.field] = el.value || '';
@@ -503,11 +533,14 @@ function saveNewTrip(waveId, changedEl) {
   const badge = tr.querySelector('.s-badge');
   if (badge) payload.status = badge.dataset.status || 'Pending';
 
-  fetch('/api/trip/save', {
+  tr._savePromise = fetch('/api/trip/save', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify(payload)
   })
-  .then(r => r.json())
+  .then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
   .then(data => {
     tr.dataset.tripId = data.id;
     tr.querySelectorAll('[data-field]').forEach(el => {
@@ -522,17 +555,36 @@ function saveNewTrip(waveId, changedEl) {
     if (dupBtn) { dupBtn.disabled = false; dupBtn.onclick = () => duplicateTrip(data.id, waveId, dupBtn); }
     updateWaveCount(waveId);
     showToast('Row saved');
+    return data.id;
   })
-  .catch(() => showToast('Save failed'));
+  .catch(err => {
+    // Clear the promise so the dispatcher can retry by re-editing a field.
+    delete tr._savePromise;
+    showToast('Save failed — please retry');
+    console.error('saveNewTrip failed:', err);
+    return null;
+  });
 }
 
 // ── UPDATE TRIP ───────────────────────────────────────────────────────────
+// Persists a single field change to an existing TripRecord. Previously
+// swallowed all errors silently — the UI looked saved but the server
+// never got the update, contributing to the "data lost" reports. Now
+// surfaces failures via toast so dispatchers can retry immediately.
 function updateTrip(tripId, field, value) {
   if (!tripId) return;
   fetch('/api/trip/save', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({trip_id: tripId, [field]: value})
-  }).then(r => r.json()).catch(()=>{});
+  })
+  .then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .catch(err => {
+    showToast('Update failed — please retry');
+    console.error('updateTrip failed for trip #' + tripId + ' field=' + field + ':', err);
+  });
 }
 
 // ── DELETE TRIP ───────────────────────────────────────────────────────────
