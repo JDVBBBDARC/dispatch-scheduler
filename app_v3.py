@@ -3610,10 +3610,16 @@ def init_db():
                     print(f"  Migrated: added {len(added)} stop-tracking columns to cartrack_truck_state")
             if 'site_visits' in inspector.get_table_names():
                 svcols = [c['name'] for c in inspector.get_columns('site_visits')]
+                # outside_poll_count powers the hysteresis guard on
+                # non-toll exits (see cartrack_poll.py exit-handling
+                # block). Pre-existing rows default to 0, which means
+                # "no outside polls accumulated" — identical to fresh
+                # visit behaviour.
                 sv_migrations = [
-                    ('address', 'VARCHAR(300)'),
-                    ('lat',     'FLOAT'),
-                    ('lng',     'FLOAT'),
+                    ('address',            'VARCHAR(300)'),
+                    ('lat',                'FLOAT'),
+                    ('lng',                'FLOAT'),
+                    ('outside_poll_count', 'INTEGER DEFAULT 0'),
                 ]
                 added = []
                 for col_name, col_type in sv_migrations:
@@ -3625,7 +3631,7 @@ def init_db():
                             conn.commit()
                         added.append(col_name)
                 if added:
-                    print(f"  Migrated: added {len(added)} ad-hoc stop columns to site_visits")
+                    print(f"  Migrated: added {len(added)} columns to site_visits ({', '.join(added)})")
         except Exception as _mig_err:
             print(f"  Migration warning (stop-detection columns): {_mig_err}")
 

@@ -1225,51 +1225,91 @@ def run_poll(app=None, log=None):
                                  state.entry_plaza, state.last_plaza,
                                  expressway or '?')
 
-            # Close exited SiteVisits (drive-by flagged if too short)
+            # Close exited SiteVisits (drive-by flagged if too short).
             #
-            # EXCEPTION: toll-plaza geofences (category='toll') are never
-            # flagged as drive-by. A truck transiting a toll booth typically
-            # spends only 30-90 seconds inside the geofence — well under
-            # MIN_VISIT_MINUTES (5 min). Applying the drive-by filter to
-            # tolls would silently discard every real toll transit, which
-            # is the opposite of what we want.
+            # ── Outside-poll hysteresis (for non-toll geofences) ─────
+            # Cartrack occasionally drops a poll cycle's geofence_ids
+            # (signal blip, device sleep, boundary jitter). Without a
+            # guard, ANY single missed reading closes the visit and
+            # produces a phantom EXIT/ENTER ping-pong on the next poll.
+            #
+            # For non-toll geofences (customer sites, fuel stations,
+            # quarries, etc.) we require OUTSIDE_POLL_THRESHOLD
+            # consecutive "outside" polls before actually closing the
+            # visit. A single dropped reading no longer triggers a
+            # phantom exit — and a real exit just takes one extra
+            # polling cycle to register (~60s lag).
+            #
+            # Toll-plaza geofences (category='toll') BYPASS the
+            # hysteresis: real transits are 30-90 seconds, so adding a
+            # 60-second guard would miss legitimate exits. Toll exits
+            # close immediately, same as before.
+            #
+            # ── Drive-by filter ──────────────────────────────────────
+            # Visits shorter than MIN_VISIT_MINUTES are flagged
+            # is_drive_by=True and hidden from the UI by default.
+            # Toll plazas are EXEMPT — see above for rationale.
+            OUTSIDE_POLL_THRESHOLD = 2   # consecutive outside polls before closing
             min_seconds = rt_min_visit_minutes * 60
+
             for visit in open_visits:
-                if visit.geofence_id not in gf_new_exits:
-                    continue
-                visit.exit_at = now
-                duration = max(0, int((now - visit.enter_at).total_seconds()))
-                visit.duration_seconds = duration
-                if duration > 0:
-                    visit.idling_pct = round(
-                        100.0 * (visit.idling_seconds or 0) / duration, 1)
-                # Look up the geofence category to decide drive-by exemption.
                 gf = gf_by_id.get(visit.geofence_id)
                 is_toll_gf = bool(gf and gf.category == 'toll')
-                visit.is_drive_by = (not is_toll_gf) and (duration < min_seconds)
-                summary['site_visits_closed'] += 1
-                if visit.is_drive_by:
-                    log.info('[VISIT-OUT] drive-by (%ds < %dmin threshold) %s',
-                             duration, rt_min_visit_minutes, plate.display)
-                elif is_toll_gf and duration < min_seconds:
-                    log.info('[VISIT-OUT] toll plaza %s (%ds — drive-by exempt) %s',
-                             gf.name if gf else '?', duration, plate.display)
 
-                # For toll geofences, also emit a CartrackEvent EXIT so
-                # the transit appears symmetrically in the Toll Log.
-                if is_toll_gf:
-                    plaza_name = _strip_toll_prefix(gf.name)
-                    if plaza_name:
-                        state.last_event_ts = now
-                        db.session.add(CartrackEvent(
-                            plate_id=plate.id, event_type='exit',
-                            plaza_name=plaza_name, expressway=None,
-                            lat=lat, lng=lng,
-                        ))
-                        summary['exits_detected'] += 1
-                        log.info('[TOLL-GEO] %s exited Cartrack plaza %s '
-                                 '(duration=%ds)', plate.display,
-                                 plaza_name, duration)
+                if visit.geofence_id in gf_new_exits:
+                    # Cartrack reports the truck is OUTSIDE this geofence
+                    # right now. Apply hysteresis unless it's a toll plaza.
+                    if not is_toll_gf:
+                        visit.outside_poll_count = (visit.outside_poll_count or 0) + 1
+                        if visit.outside_poll_count < OUTSIDE_POLL_THRESHOLD:
+                            # Not yet enough consecutive outside polls — keep
+                            # the visit open and wait. Log lightly so we can
+                            # see hysteresis activity if needed.
+                            log.info('[HYSTERESIS] %s outside %s for %d/%d polls '
+                                     '(keeping visit open)',
+                                     plate.display,
+                                     gf.name if gf else '?',
+                                     visit.outside_poll_count,
+                                     OUTSIDE_POLL_THRESHOLD)
+                            continue
+                    # Threshold met (or it's a toll plaza) — close the visit.
+                    visit.exit_at = now
+                    duration = max(0, int((now - visit.enter_at).total_seconds()))
+                    visit.duration_seconds = duration
+                    if duration > 0:
+                        visit.idling_pct = round(
+                            100.0 * (visit.idling_seconds or 0) / duration, 1)
+                    visit.is_drive_by = (not is_toll_gf) and (duration < min_seconds)
+                    summary['site_visits_closed'] += 1
+                    if visit.is_drive_by:
+                        log.info('[VISIT-OUT] drive-by (%ds < %dmin threshold) %s',
+                                 duration, rt_min_visit_minutes, plate.display)
+                    elif is_toll_gf and duration < min_seconds:
+                        log.info('[VISIT-OUT] toll plaza %s (%ds — drive-by exempt) %s',
+                                 gf.name if gf else '?', duration, plate.display)
+
+                    # For toll geofences, also emit a CartrackEvent EXIT
+                    # so the transit appears symmetrically in the Toll Log.
+                    if is_toll_gf:
+                        plaza_name = _strip_toll_prefix(gf.name)
+                        if plaza_name:
+                            state.last_event_ts = now
+                            db.session.add(CartrackEvent(
+                                plate_id=plate.id, event_type='exit',
+                                plaza_name=plaza_name, expressway=None,
+                                lat=lat, lng=lng,
+                            ))
+                            summary['exits_detected'] += 1
+                            log.info('[TOLL-GEO] %s exited Cartrack plaza %s '
+                                     '(duration=%ds)', plate.display,
+                                     plaza_name, duration)
+                elif visit.geofence_id in gf_still_in:
+                    # Truck is still inside this geofence — reset any
+                    # accumulated outside-poll count. A single blip
+                    # during a long stay no longer leaves a stale count
+                    # that could prematurely close the visit later.
+                    if visit.outside_poll_count:
+                        visit.outside_poll_count = 0
 
             # Accumulate idling time for currently-inside visits
             if is_idling and gf_still_in:

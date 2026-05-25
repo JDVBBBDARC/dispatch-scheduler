@@ -524,6 +524,14 @@ class SiteVisit(db.Model):
     # Link to the open TruckCycle this visit happened during.
     cycle_id    = db.Column(db.Integer, db.ForeignKey('truck_cycles.id'),
                             nullable=True, index=True)
+    # Outside-poll hysteresis counter — protects non-toll visits from
+    # false EXITs caused by GPS jitter or transient Cartrack signal loss.
+    # Incremented each poll where Cartrack reports the truck OUTSIDE the
+    # geofence; reset to 0 when the truck re-appears inside on the next
+    # poll. The visit is only closed once the counter reaches
+    # OUTSIDE_POLL_THRESHOLD (default 2). Toll-plaza visits bypass this
+    # check — their real transits are ~30-90s, so we want immediate close.
+    outside_poll_count = db.Column(db.Integer, default=0)
 
     plate    = db.relationship('Plate')
     geofence = db.relationship('CartrackGeofence')
