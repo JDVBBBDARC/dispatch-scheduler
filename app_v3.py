@@ -2,6 +2,57 @@ import os, io, socket, calendar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+
+# ── ENV FILE LOADING ────────────────────────────────────────────────────────
+# Load credentials from a `.env` file at the project root, if present.
+# This is the recommended location for secrets (gitignored by default) and
+# keeps the WSGI config file free of inline credentials.
+#
+# Format (KEY=VALUE per line, blank lines and `#` comments ignored,
+# optional surrounding quotes on the value are stripped):
+#
+#     SECRET_KEY=abc123...
+#     CARTRACK_USERNAME=...
+#     CARTRACK_PASSWORD=...
+#     JOBORDERS_TOKEN=...
+#
+# Already-set process env vars are NEVER overwritten — .env only fills
+# in missing keys. So values set via PA Web tab env vars, the WSGI
+# config's `os.environ[...]` lines, or the shell continue to take
+# precedence. This means deployments can be migrated to .env at their
+# own pace without breaking existing setups.
+#
+# Mirrors the pattern used by cartrack_poll.py's _bootstrap_env_from_wsgi,
+# so the polling worker and the Flask app read from the same .env file
+# without further coordination.
+def _load_env_file():
+    here = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(here, '.env')
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, encoding='utf-8') as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith('#') or '=' not in s:
+                    continue
+                key, _, val = s.partition('=')
+                key = key.strip()
+                val = val.strip()
+                # Strip surrounding quotes if present.
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                    val = val[1:-1]
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except Exception as _e:
+        # Never let .env parsing kill startup — fall through and let the
+        # downstream code (SECRET_KEY check, etc.) report missing keys.
+        print(f'[env] WARNING: failed to parse .env: {_e}')
+
+
+_load_env_file()
+
+
 # ── FIREBASE SETUP ─────────────────────────────────────────────────────────
 try:
     import firebase_admin
