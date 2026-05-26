@@ -96,8 +96,58 @@ DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'dispatch.db'))
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_PATH}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Use SECRET_KEY env variable in production; fallback for local dev
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dispatch-scheduler-2026')
+
+# ── Security: SECRET_KEY ────────────────────────────────────────────────────
+# Used by Flask to sign session cookies. MUST be set as an environment
+# variable in production — if missing, refuse to start rather than fall
+# back to a hard-coded value (the previous default 'dispatch-scheduler-2026'
+# was visible in the public repo, which would let anyone forge sessions).
+#
+# To run locally without setting SECRET_KEY in the environment, set
+# FLASK_DEV_INSECURE=1 to use an ephemeral random key — sessions reset
+# on every restart, but no hard-coded value ever leaks.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if os.environ.get('FLASK_DEV_INSECURE') == '1':
+        import secrets
+        SECRET_KEY = secrets.token_hex(32)
+        print('[security] WARNING: using ephemeral dev SECRET_KEY '
+              '(FLASK_DEV_INSECURE=1). Sessions will reset on restart.')
+    else:
+        raise RuntimeError(
+            'SECRET_KEY environment variable is required. '
+            'Set it in the PythonAnywhere Web tab (or in a .env file for '
+            'local dev). For ephemeral local-dev use, set '
+            'FLASK_DEV_INSECURE=1 instead.'
+        )
+app.config['SECRET_KEY'] = SECRET_KEY
+
+# ── Security: session cookie hardening ──────────────────────────────────────
+# HTTPONLY  — prevents JS from reading the cookie (XSS mitigation).
+# SECURE    — only sent over HTTPS. PythonAnywhere serves HTTPS by default,
+#             so this is safe in production. Set FLASK_DEV_INSECURE=1 to
+#             relax for plain-HTTP local dev.
+# SAMESITE  — 'Lax' blocks cookies on cross-site POSTs (CSRF mitigation),
+#             while still allowing top-level navigation links to work.
+# LIFETIME  — sessions auto-expire after 12 hours of session.permanent=True.
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=(os.environ.get('FLASK_DEV_INSECURE') != '1'),
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+)
+
+# ── Security: ProxyFix middleware ───────────────────────────────────────────
+# PythonAnywhere terminates HTTPS at the front-end proxy and forwards the
+# request to the WSGI app over plain HTTP. Without ProxyFix the app would
+# see request.scheme = 'http' and url_for(_external=True) would generate
+# http:// URLs even though the browser is on https://. ProxyFix reads the
+# X-Forwarded-Proto / X-Forwarded-For headers PA sets and corrects the
+# perceived scheme / host / client IP. Safe to enable behind any single
+# reverse proxy.
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 db.init_app(app)
 
 # ── AUTH BLUEPRINT ─────────────────────────────────────────────────────────
