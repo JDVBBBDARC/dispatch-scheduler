@@ -234,8 +234,25 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
 }
 .truck-tab:hover { color:var(--text); background:var(--maroon-tint); }
 .truck-tab.active { color:var(--maroon); border-bottom-color:var(--maroon); background:var(--maroon-pale); font-weight:800; }
-.truck-tab .tab-count { background:var(--maroon); color:#fff; border-radius:10px; font-size:.65rem; padding:1px 6px; min-width:18px; text-align:center; }
-.truck-tab:not(.active) .tab-count { background:var(--border); color:var(--muted); }
+/* ── Trip-count badge ─────────────────────────────────────────────────────
+   Always maroon — even on inactive tabs — so dispatchers can scan across
+   truck-type tabs and immediately see which categories already have
+   trips scheduled. Previously the badge faded to a gray pill on inactive
+   tabs, making it easy to miss that 10W (for example) already had 4 trips
+   queued while the dispatcher was looking at 22WD.
+
+   Hidden entirely when count is 0 — the empty state is "no badge at all"
+   rather than a small gray "0", which reads as visual noise. The
+   [data-count="0"] selector is updated live by the updateWaveCount JS
+   so the badge appears/disappears as trips are added or deleted without
+   needing a page refresh. */
+.truck-tab .tab-count {
+  background: var(--maroon); color: #fff;
+  border-radius: 10px; font-size: .65rem; font-weight: 700;
+  padding: 2px 7px; min-width: 20px; text-align: center; line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(139, 26, 43, .35);
+}
+.truck-tab .tab-count[data-count="0"] { display: none; }
 
 /* ── WAVE TABS ───────────────────────────────────────────────────────────── */
 .wave-tabs-wrap { background:var(--surface2); border-bottom:1px solid var(--border); padding:0 20px; overflow-x:auto; }

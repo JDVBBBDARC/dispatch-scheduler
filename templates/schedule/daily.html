@@ -51,7 +51,7 @@
             style="--tab-color:{{ tt.color }};">
       <i class="bi bi-truck me-1" style="color:{{ tt.color }};"></i>
       {{ tt.name }}
-      <span class="tab-count">{{ counts.get(tt.code, 0) }}</span>
+      <span class="tab-count" data-count="{{ counts.get(tt.code, 0) }}">{{ counts.get(tt.code, 0) }}</span>
     </button>
     {% endfor %}
   </div>
@@ -722,7 +722,13 @@ function updateTabCount(truckCode, forceCount) {
     });
   }
   const tab = document.querySelector(`.truck-tab[data-code="${truckCode}"] .tab-count`);
-  if (tab) tab.textContent = total;
+  if (tab) {
+    tab.textContent = total;
+    // Mirror to data-count so the CSS rule that hides empty badges
+    // (.tab-count[data-count="0"]) reacts immediately. Without this,
+    // the badge would keep showing "0" after the last trip is deleted.
+    tab.dataset.count = total;
+  }
 }
 </script>
 {% endblock %}
