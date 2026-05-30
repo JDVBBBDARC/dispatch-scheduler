@@ -153,26 +153,73 @@ def _derive_started_at(record):
         return None
 
 
-def _derive_ended_at(record):
-    """Pick the latest 'complete' transaction timestamp as ended_at.
+def _parse_dt(raw):
+    """Tolerant datetime parser — accepts space-separated or ISO-T form,
+    returns None on parse failure. Used by the ended_at fallbacks."""
+    if not raw or not isinstance(raw, str):
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace(' ', 'T'))
+    except (ValueError, TypeError):
+        return None
 
-    The ERP's transactions[] array holds the audit trail. We look for
-    entries whose description signals completion. If we can't find one,
-    return None — the row stays open.
+
+def _derive_ended_at(record, status):
+    """Pick the best-available completion timestamp for ended_at.
+
+    Only fires when status == 'Fixed' (i.e., all job_orders are
+    complete). If the repair is still in progress we return None so
+    the existing ended_at (if any) is preserved rather than overwritten.
+
+    Search order (most precise -> coarsest):
+
+      1. job_orders[].completed_at / .updated_at
+         The actual completion timestamp of each work order — closest
+         to the "when did the mechanic finish?" question we're answering.
+
+      2. transactions[] entries with 'complete' or 'released' in their
+         description -> their created_at / action_at timestamp.
+         Audit-log signal that the request was closed out.
+
+      3. record.updated_at
+         When the ERP last touched this record. Reasonable proxy
+         when finer-grained signals aren't exposed.
+
+      4. utc_now()
+         Last-resort fallback. We *know* the record is complete
+         (status='Fixed'), so leaving ended_at NULL would defeat the
+         whole purpose of the column. Setting it to "now" is mildly
+         misleading (it's actually "first time we noticed it was
+         complete") but better than the alternative — dispatchers can
+         override manually if precision matters.
     """
-    txns = record.get('transactions') or []
-    candidates = []
-    for t in txns:
+    if status != 'Fixed':
+        return None
+
+    # Strategy 1: per-job-order completion timestamps
+    for jo in (record.get('job_orders') or []):
+        for key in ('completed_at', 'completedAt', 'updated_at', 'updatedAt'):
+            dt = _parse_dt(jo.get(key))
+            if dt:
+                return dt   # first one we find is fine — they should all be close
+
+    # Strategy 2: transaction-log completion entries
+    for t in (record.get('transactions') or []):
         desc = (t.get('description') or '').lower()
         if 'complete' in desc or 'released' in desc:
-            ts = t.get('created_at') or t.get('action_at') or t.get('timestamp')
-            if ts:
-                try:
-                    candidates.append(
-                        datetime.fromisoformat(ts.replace(' ', 'T')))
-                except (ValueError, TypeError):
-                    pass
-    return max(candidates) if candidates else None
+            for key in ('created_at', 'createdAt', 'action_at', 'timestamp'):
+                dt = _parse_dt(t.get(key))
+                if dt:
+                    return dt
+
+    # Strategy 3: record-level updated_at
+    for key in ('updated_at', 'updatedAt', 'completed_at', 'completedAt'):
+        dt = _parse_dt(record.get(key))
+        if dt:
+            return dt
+
+    # Strategy 4: last-resort — use poll time
+    return utc_now()
 
 
 # Map ERP equipment-name keywords to local Plate.body_no prefixes.
@@ -467,8 +514,15 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                 row.approved_by_maintenance = rec.get('maintenance_approved_by')
 
                 row.description = _derive_description(rec) or row.description
+
+                # Status first, because _derive_ended_at uses it to
+                # decide whether the repair is actually finished
+                # (ended_at is only set when status == 'Fixed', so
+                # in-progress rows keep their NULL ended_at).
+                row.status = _derive_status(rec)
+
                 started = _derive_started_at(rec)
-                ended   = _derive_ended_at(rec)
+                ended   = _derive_ended_at(rec, row.status)
                 if started:
                     row.started_at = started
                     if not row.date:
@@ -478,8 +532,6 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                     row.resolved_date = ended.date()
                 if not row.date:
                     row.date = now.date()
-
-                row.status = _derive_status(rec)
 
                 # Best-effort deep link back to the ERP UI (the user-
                 # facing path, not the API path). The repair-request
