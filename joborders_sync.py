@@ -102,54 +102,111 @@ def _g(d, *path, default=None):
 _COMPLETE_STATUSES = {'COMPLETE', 'COMPLETED', 'CLOSED', 'RELEASED'}
 
 
+def _latest_status_log(logs, status_key='status'):
+    """Return the newest entry in a status-log array, by created_at.
+
+    Used for both status_group.status_logs (key='status') and
+    status_group.acceptor_status_logs (key='acceptor_status').
+    Returns None if the array is empty or every entry has a missing/
+    unparseable created_at.
+    """
+    if not logs:
+        return None
+    candidates = []
+    for log in logs:
+        dt = _parse_dt(log.get('created_at'))
+        if dt:
+            candidates.append((dt, log))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda pair: pair[0], reverse=True)
+    return candidates[0][1]
+
+
 def _derive_status(record):
     """Map an ERP record to our local BreakdownLog.status value.
 
-    Updated May 30 2026 after seeing the actual /show response from
-    gainersand.ph. The ERP now exposes the per-job-order status
-    directly (e.g., job_orders[i].status == 'COMPLETE') — we use that
-    as the primary signal, with the progress.total_done==total_count
-    check as a fallback for any JO that doesn't carry an explicit
-    status field.
+    Updated June 1 2026. The previous "all job_orders must be COMPLETE"
+    rule was too strict — the ERP's UI says "Maintenance Status:
+    COMPLETE" the moment the maintenance head signs off in the status
+    log, even if some JOs are still administratively open. Dispatchers
+    were seeing the ERP say "done" while the local Status column still
+    said "Under Repair", which defeats the whole point of mirroring.
 
-    A repair request is 'Fixed' when:
-      1. Both approval flags are APPROVED (still required — otherwise
-         the repair hasn't even been authorised to start), AND
-      2. EVERY job_order under it is in a terminal status (COMPLETE,
-         COMPLETED, CLOSED, or RELEASED) OR has progress.total_done
-         equal to total_count.
+    New rule, in priority order:
 
-    Anything else maps to 'Under Repair'. We don't model a separate
-    'Pending Approval' state locally — keeping the dispatcher's view
-    simple (truck is either available or it isn't).
+      1. Latest entry in status_group.status_logs[] — if its `status`
+         is COMPLETE / RELEASED / CLOSED / COMPLETED, mark Fixed.
+         This is the same signal the ERP's "Maintenance Status" header
+         uses, so the two UIs now agree.
+
+      2. Latest entry in status_group.acceptor_status_logs[] — if its
+         `acceptor_status` is terminal, mark Fixed. Useful when
+         maintenance hasn't logged COMPLETE yet but the acceptor has.
+
+      3. Per-job-order status check (the old behaviour, kept as a
+         further fallback for records that have neither status_logs
+         nor acceptor_status_logs — possibly older repairs from before
+         the status-logging feature shipped on the ERP side).
+
+      4. Default: 'Under Repair'.
+
+    The approval gate (both approver_status and maintenance_approver_status
+    must be APPROVED) is checked LAST and only as a sanity filter —
+    if the status_logs say COMPLETE we trust that, because there's no
+    way the ERP would let the maintenance team mark a request COMPLETE
+    if the approval gates hadn't already cleared.
     """
     sg = record.get('status_group') or {}
+
+    # Priority 1: latest status_logs entry — AUTHORITATIVE when present.
+    # If status_logs has any data, its newest entry tells us exactly
+    # where the maintenance team thinks the repair stands. We do NOT
+    # fall through to other strategies in this case, because those
+    # other signals (per-JO status, acceptor status) might be stale
+    # relative to the status log.
+    logs = sg.get('status_logs') or []
+    if logs:
+        latest = _latest_status_log(logs, 'status')
+        if latest:
+            s = (latest.get('status') or '').upper()
+            return 'Fixed' if s in _COMPLETE_STATUSES else 'Under Repair'
+
+    # Priority 2: latest acceptor_status_logs entry — also authoritative
+    # when present. Same reasoning: if the acceptor has been logging
+    # their state, trust their latest call rather than a per-JO check
+    # that may not reflect the most recent change.
+    acc_logs = sg.get('acceptor_status_logs') or []
+    if acc_logs:
+        latest_acc = _latest_status_log(acc_logs, 'acceptor_status')
+        if latest_acc:
+            s = (latest_acc.get('acceptor_status') or '').upper()
+            return 'Fixed' if s in _COMPLETE_STATUSES else 'Under Repair'
+
+    # Priority 3: per-job-order check — ONLY fires when both status-log
+    # arrays are empty (most likely older records from before the
+    # status-logging feature shipped on the ERP). Approval gate applies
+    # here as a sanity check.
     approver_status    = (sg.get('approver_status') or '').upper()
     maintenance_status = (sg.get('maintenance_approver_status') or '').upper()
+    if approver_status == 'APPROVED' and maintenance_status == 'APPROVED':
+        jos = record.get('job_orders') or []
+        if jos:
+            all_done = True
+            for jo in jos:
+                jo_status = (jo.get('status') or '').upper()
+                if jo_status in _COMPLETE_STATUSES:
+                    continue
+                done  = _g(jo, 'progress', 'total_done',  default=0)
+                count = _g(jo, 'progress', 'total_count', default=0)
+                if done >= 1 and count > 0 and done == count:
+                    continue
+                all_done = False
+                break
+            if all_done:
+                return 'Fixed'
 
-    # Approval gate — both have to be APPROVED before we even consider
-    # the JO progress signals.
-    if approver_status != 'APPROVED' or maintenance_status != 'APPROVED':
-        return 'Under Repair'
-
-    jos = record.get('job_orders') or []
-    if not jos:
-        # Approvals through but no job_orders yet — still pending mechanic
-        return 'Under Repair'
-
-    for jo in jos:
-        jo_status = (jo.get('status') or '').upper()
-        if jo_status in _COMPLETE_STATUSES:
-            continue   # this one is done, check the next
-        # Fall back to progress check for JOs that don't expose status
-        done  = _g(jo, 'progress', 'total_done',  default=0)
-        count = _g(jo, 'progress', 'total_count', default=0)
-        if done >= 1 and count > 0 and done == count:
-            continue   # progress signal also says done
-        # This job_order is still in flight → whole request not yet Fixed
-        return 'Under Repair'
-
-    return 'Fixed'
+    return 'Under Repair'
 
 
 def _derive_description(record):
