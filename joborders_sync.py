@@ -743,10 +743,17 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
 
                 started = _derive_started_at(rec)
                 ended   = _derive_ended_at(rec, row.status)
+
+                # ERP is the source of truth — always overwrite our
+                # local timestamps with what the ERP currently reports.
+                # That way the breakdown row's "Date" column matches the
+                # date the repair actually started (per the ERP), not
+                # the date we happened to first sync it. Critical for
+                # date-bucketed dashboard KPIs (Breakdown Hours, etc.)
+                # to assign each repair to the right reporting day.
                 if started:
                     row.started_at = started
-                    if not row.date:
-                        row.date = started.date()
+                    row.date       = started.date()   # mirror ERP, not sync time
 
                 # ended_at handling — keep it in sync with status.
                 # When status is 'Fixed' AND we have a timestamp, set it.
@@ -762,6 +769,9 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                     row.ended_at      = None
                     row.resolved_date = None
 
+                # Fallback only when ERP exposes no started_at signal AT
+                # ALL — we still need a non-NULL date for the column
+                # constraint. Sync time is the least-bad option.
                 if not row.date:
                     row.date = now.date()
 
