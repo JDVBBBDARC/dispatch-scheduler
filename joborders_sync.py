@@ -289,10 +289,43 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                  len(records), filter, from_date, to_date)
 
         # ── Upsert each record ───────────────────────────────────────
+        # Observed in production (May 30 2026): the /list endpoint
+        # returns shallow items — each entry in data[] is just the
+        # repair-request id as a string/int, NOT a full record dict.
+        # So we have to follow up with a /show call per item to get
+        # the equipment / status / approval details we need to upsert.
+        #
+        # If a future API version returns full dicts in /list, the
+        # isinstance(rec_item, dict) branch will pick them up
+        # transparently — no further changes needed.
         now = utc_now()
-        for rec in records:
+        for rec_item in records:
+            ext_id = None
             try:
-                ext_id = rec.get('id')
+                if isinstance(rec_item, dict):
+                    # /list returned full records — use as-is
+                    rec = rec_item
+                    ext_id = rec.get('id')
+                else:
+                    # /list returned just an ID — fetch the full record
+                    try:
+                        ext_id = int(rec_item)
+                    except (TypeError, ValueError):
+                        log.warning('Skipping non-numeric list item: %r', rec_item)
+                        continue
+                    show_response, err = cc.get_repair_request(ext_id)
+                    if err:
+                        summary['errors'].append(f'show id={ext_id}: {err}')
+                        log.warning('get_repair_request #%s failed: %s', ext_id, err)
+                        continue
+                    # /show returns {data: {...}, message: "maintenanceRequest.show"}
+                    if isinstance(show_response, dict):
+                        rec = show_response.get('data') or show_response
+                    else:
+                        log.warning('Unexpected /show response for #%s: %r',
+                                    ext_id, show_response)
+                        continue
+
                 if not ext_id:
                     log.warning('Skipping record with no id: %r', rec)
                     continue
@@ -350,8 +383,11 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                 else:
                     summary['updated'] += 1
             except Exception as e:
-                summary['errors'].append(f'upsert id={rec.get("id")}: {e}')
-                log.exception('upsert failed for record id=%s', rec.get('id'))
+                # Use ext_id captured above so we don't crash here if
+                # rec is itself the offending value (e.g., string id
+                # that failed type conversion).
+                summary['errors'].append(f'upsert id={ext_id}: {e}')
+                log.exception('upsert failed for record id=%s', ext_id)
                 continue
 
         try:
