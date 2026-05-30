@@ -275,7 +275,26 @@
             </span>
             {% endif %}
           </div>
-          <div class="master-item-sub">{{ p.truck_type.name if p.truck_type else 'Unassigned' }}</div>
+          <div class="master-item-sub">
+            {{ p.truck_type.name if p.truck_type else 'Unassigned' }}
+            {# Toll-class chip — gives admin a one-glance check that
+               vans (Class 1) and light trucks (Class 2) aren't being
+               billed at Class 3 (heavy truck) rates by the GPS toll
+               auto-fill. Colour-coded so misconfigurations stand out. #}
+            {% set _cls = p.toll_class or 'Class 3' %}
+            {% if _cls == 'Class 1' %}
+              {% set _cls_color = '#2563EB' %}{# blue — light vehicle #}
+            {% elif _cls == 'Class 2' %}
+              {% set _cls_color = '#D97706' %}{# amber — medium #}
+            {% else %}
+              {% set _cls_color = '#7F1D1D' %}{# dark red — heavy #}
+            {% endif %}
+            <span class="badge ms-1"
+                  style="background:{{ _cls_color }};color:#fff;font-size:.58rem;font-weight:600;padding:1px 6px;"
+                  title="Toll-fee class used by GPS auto-fill — change via Edit if wrong">
+              {{ _cls }}
+            </span>
+          </div>
         </div>
         <div class="d-flex gap-1">
           <button class="btn btn-ghost btn-xs" title="Map to Cartrack vehicle"
@@ -283,7 +302,7 @@
             <i class="bi bi-broadcast" style="color:#0891B2;"></i>
           </button>
           <button class="btn btn-ghost btn-xs"
-                  onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }})">
+                  onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }},'{{ p.toll_class or 'Class 3' }}')">
             <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-xs {% if p.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('plates',{{ p.id }},this)">
@@ -299,6 +318,11 @@
         {% for tt in truck_types %}
         <option value="{{ tt.id }}">{{ tt.name }}</option>
         {% endfor %}
+      </select>
+      <select id="new-plate-class" style="max-width:115px;" title="Toll fee class">
+        <option value="Class 3" selected>Class 3 (heavy)</option>
+        <option value="Class 2">Class 2 (light truck)</option>
+        <option value="Class 1">Class 1 (van/SUV)</option>
       </select>
       <input type="text" id="new-plate-body" placeholder="Body No. e.g. DT01" style="max-width:130px;">
       <input type="text" id="new-plate-no"   placeholder="Plate No. e.g. ABC 1234" onkeydown="if(event.key==='Enter')addPlate()">
@@ -374,14 +398,20 @@ function addItem(cat) {
 
 // ── ADD PLATE ─────────────────────────────────────────────────────────────
 function addPlate() {
-  const plateNo = document.getElementById('new-plate-no').value.trim();
-  const bodyNo  = document.getElementById('new-plate-body').value.trim();
-  const ttId    = document.getElementById('new-plate-truck').value;
+  const plateNo    = document.getElementById('new-plate-no').value.trim();
+  const bodyNo     = document.getElementById('new-plate-body').value.trim();
+  const ttId       = document.getElementById('new-plate-truck').value;
+  const tollClass  = document.getElementById('new-plate-class').value || 'Class 3';
   if (!plateNo) { document.getElementById('new-plate-no').focus(); return; }
 
   fetch('/api/master/plates/add', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({name: plateNo, body_no: bodyNo, truck_type_id: ttId || null})
+    body: JSON.stringify({
+      name:          plateNo,
+      body_no:       bodyNo,
+      truck_type_id: ttId || null,
+      toll_class:    tollClass,
+    })
   })
   .then(r => r.json())
   .then(data => {
@@ -535,10 +565,11 @@ function editItem(cat, id, currentName) {
   setTimeout(() => document.getElementById('editValue').focus(), 200);
 }
 
-function editPlate(id, plateNo, bodyNo, ttId) {
+function editPlate(id, plateNo, bodyNo, ttId, tollClass) {
   editCat = 'plates'; editId = id;
   document.getElementById('editModalTitle').textContent = 'Edit Plate';
   const ttOpts = document.getElementById('new-plate-truck').innerHTML;
+  const currentClass = tollClass || 'Class 3';
   document.getElementById('editModalBody').innerHTML = `
     <div class="mb-2">
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Body No.</label>
@@ -548,9 +579,20 @@ function editPlate(id, plateNo, bodyNo, ttId) {
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Plate No.</label>
       <input type="text" id="editPlateNo" class="form-control mt-1" value="${escHtml(plateNo)}">
     </div>
-    <div>
+    <div class="mb-2">
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Truck Type</label>
       <select id="editTruckType" class="form-select mt-1">${ttOpts}</select>
+    </div>
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Toll Class</label>
+      <select id="editTollClass" class="form-select mt-1">
+        <option value="Class 1" ${currentClass === 'Class 1' ? 'selected' : ''}>Class 1 (van / SUV — e.g. L300)</option>
+        <option value="Class 2" ${currentClass === 'Class 2' ? 'selected' : ''}>Class 2 (light truck / bus)</option>
+        <option value="Class 3" ${currentClass === 'Class 3' ? 'selected' : ''}>Class 3 (heavy truck / trailer)</option>
+      </select>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">
+        Used by GPS toll auto-fill to look up the right rate. Defaults to Class 3 for heavy trucks.
+      </div>
     </div>`;
   if (ttId) document.getElementById('editTruckType').value = ttId;
   editModal.show();
@@ -560,9 +602,10 @@ function saveEdit() {
   let payload = {};
   if (editCat === 'plates') {
     payload = {
-      plate_no: document.getElementById('editPlateNo')?.value.trim(),
-      body_no:  document.getElementById('editBodyNo')?.value.trim(),
+      plate_no:      document.getElementById('editPlateNo')?.value.trim(),
+      body_no:       document.getElementById('editBodyNo')?.value.trim(),
       truck_type_id: document.getElementById('editTruckType')?.value || null,
+      toll_class:    document.getElementById('editTollClass')?.value || 'Class 3',
     };
   } else {
     const val = document.getElementById('editValue')?.value.trim();

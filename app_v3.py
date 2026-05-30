@@ -1006,14 +1006,23 @@ def api_master_add(category):
         body_no  = (data.get('body_no') or '').strip()
         ttid     = data.get('truck_type_id') or None
         if ttid: ttid = int(ttid)
-        obj = Plate(plate_no=plate_no, body_no=body_no or None, truck_type_id=ttid)
+        # Validate toll_class on insert — defaults to Class 3 (heavy trucks)
+        # if not provided. Accepts 'Class 1', 'Class 2', or 'Class 3' only;
+        # silently coerces anything else to Class 3 so a typo doesn't end
+        # up in the DB.
+        toll_class = (data.get('toll_class') or 'Class 3').strip()
+        if toll_class not in ('Class 1', 'Class 2', 'Class 3'):
+            toll_class = 'Class 3'
+        obj = Plate(plate_no=plate_no, body_no=body_no or None,
+                    truck_type_id=ttid, toll_class=toll_class)
         db.session.add(obj)
         db.session.commit()
         log_change(f"Added plate {obj.display}", 'master')
         db.session.commit()
         tt = TruckTypeDef.query.get(ttid) if ttid else None
         return jsonify({'id': obj.id, 'display': obj.display,
-                        'truck_type': tt.name if tt else ''})
+                        'truck_type': tt.name if tt else '',
+                        'toll_class': obj.toll_class})
 
     Model = model_map.get(category)
     if not Model:
@@ -1050,6 +1059,13 @@ def api_master_update(category, item_id):
         obj.body_no  = (data.get('body_no') or '').strip() or None
         ttid = data.get('truck_type_id') or None
         obj.truck_type_id = int(ttid) if ttid else None
+        # toll_class — only update if the client sent the field, so
+        # legacy edit calls that don't include it preserve the existing
+        # class. Same validation as the add endpoint.
+        if 'toll_class' in data:
+            new_class = (data.get('toll_class') or '').strip()
+            if new_class in ('Class 1', 'Class 2', 'Class 3'):
+                obj.toll_class = new_class
     else:
         obj.name = (data.get('name') or obj.name).strip()
         # Products: optional is_full_day_trip toggle
@@ -3678,6 +3694,13 @@ def init_db():
         # plates — Cartrack GPS provider linkage (which Cartrack vehicle this plate maps to)
         add_col('plates', 'cartrack_vehicle_id',
                 'ALTER TABLE plates ADD COLUMN cartrack_vehicle_id INTEGER')
+
+        # plates — per-plate NLEX/SCTEX toll class for GPS auto-fill rate
+        # lookup. Default to 'Class 3' (heavy trucks) since that's the
+        # majority of the fleet — admins flip to Class 1 / Class 2 for
+        # vans and light trucks via the Master Data Plates UI.
+        add_col('plates', 'toll_class',
+                "ALTER TABLE plates ADD COLUMN toll_class VARCHAR(10) DEFAULT 'Class 3'")
 
         # drivers — truck type category (which type they're trained/assigned to drive)
         # Legacy single-category column. Source of truth moved to driver_truck_types

@@ -1413,7 +1413,16 @@ def run_poll(app=None, log=None):
             # (what the matrix predicts) against manual entries (what
             # the receipts actually show) — useful for catching toll
             # exemptions, RFID glitches, or missed transits.
-            fee, expressway = compute_toll_fee(entry, exit_plaza, 'Class 3')
+            #
+            # toll_class is read from the Plate row — heavy trucks
+            # default to Class 3, but vans (L300) are Class 1 and
+            # light trucks (MDT) are Class 2. Without this lookup,
+            # vans would be overcharged ~3x the actual fee.
+            plate_toll_class = (state.plate.toll_class
+                                if state.plate and state.plate.toll_class
+                                else 'Class 3')
+            fee, expressway = compute_toll_fee(entry, exit_plaza,
+                                                plate_toll_class)
 
             # Log the trip_closed event with the computed fee. No
             # TripRecord lookup needed — Schedule entries are owned by
@@ -1427,9 +1436,9 @@ def run_poll(app=None, log=None):
             ))
             if fee is not None:
                 summary['toll_fees_filled'] += 1
-                log.info('[TOLL-GPS] %s: %s -> %s = PHP %s (%s) — Dashboard KPI only',
+                log.info('[TOLL-GPS] %s: %s -> %s = PHP %s (%s, %s) — Dashboard KPI only',
                          state.plate.display if state.plate else state.plate_id,
-                         entry, exit_plaza, fee, expressway or '?')
+                         entry, exit_plaza, fee, expressway or '?', plate_toll_class)
             summary['trips_closed'] += 1
 
             # Reset state for next trip

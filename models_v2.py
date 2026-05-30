@@ -179,6 +179,15 @@ class Plate(db.Model):
     # this truck's live position and detect toll plaza crossings to
     # auto-fill toll fees on TripRecord. NULL = not yet mapped to Cartrack.
     cartrack_vehicle_id = db.Column(db.Integer, nullable=True, index=True)
+    # NLEX/SCTEX toll class used to look up the fee matrix during GPS-based
+    # toll auto-fill. PH expressways charge different rates per class:
+    #   Class 1 — cars / vans / SUVs (e.g., L300)
+    #   Class 2 — light trucks / buses (e.g., mini dump)
+    #   Class 3 — heavy trucks / trailers (e.g., 10W, 12W, tractor heads)
+    # Default is 'Class 3' because the majority of the fleet is heavy
+    # haulers — admins flip the class to 1 or 2 per-plate via the Master
+    # Data UI for vans/light trucks.
+    toll_class    = db.Column(db.String(10), default='Class 3', nullable=False)
 
     truck_type  = db.relationship('TruckTypeDef', back_populates='plates')
     trips       = db.relationship('TripRecord', foreign_keys='TripRecord.plate_id', back_populates='plate')
