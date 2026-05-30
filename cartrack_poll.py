@@ -1474,6 +1474,15 @@ def run_poll(app=None, log=None):
 # CLI entry point
 # ─────────────────────────────────────────────────────────────────────
 
+# How often to piggyback the JobOrders/ERP sync onto Cartrack polling.
+# At the default 60s polling interval, JOBORDERS_SYNC_EVERY_N=10 means
+# the JobOrders sync fires every 10 minutes — frequent enough that new
+# repair requests show up promptly on the /breakdown page, but rare
+# enough that we don't hammer the ERP API. Tune via the
+# JOBORDERS_SYNC_EVERY_N env var if you need a different cadence.
+JOBORDERS_SYNC_EVERY_N = int(os.environ.get('JOBORDERS_SYNC_EVERY_N', '10'))
+
+
 def _run_loop(interval_seconds=60):
     """Run run_poll() forever, sleeping between iterations.
 
@@ -1483,10 +1492,18 @@ def _run_loop(interval_seconds=60):
 
     Transient exceptions (Cartrack API hiccup, DB blip) are caught so
     they don't take the loop down — only KeyboardInterrupt exits.
+
+    JobOrders piggyback: every Nth iteration we also call
+    joborders_sync.run_sync(). Sharing the always-on task slot keeps
+    PA's task count down (we only need one) and lines up the two
+    integrations on the same heartbeat — easier to reason about
+    overall sync behaviour from a single log stream.
     """
     import time
     print(f'[always-on] Cartrack polling loop starting '
-          f'(interval={interval_seconds}s)', flush=True)
+          f'(interval={interval_seconds}s, '
+          f'joborders sync every {JOBORDERS_SYNC_EVERY_N} iterations)',
+          flush=True)
     iteration = 0
     while True:
         iteration += 1
@@ -1515,6 +1532,36 @@ def _run_loop(interval_seconds=60):
             print(f'[#{iteration}] EXCEPTION after {elapsed:.1f}s: {e}', flush=True)
             traceback.print_exc()
             # Continue anyway — never let a single poll failure stop the loop.
+
+        # ── JobOrders / ERP Repair Request piggyback sync ───────────
+        # Run it after the Cartrack poll (not before) so a JO sync
+        # failure can't delay or interfere with the GPS polling loop.
+        # The try/except keeps the heartbeat alive even if joborders
+        # is misconfigured or the ERP is down.
+        if iteration % JOBORDERS_SYNC_EVERY_N == 0:
+            jo_started = time.time()
+            try:
+                from joborders_sync import run_sync as joborders_run_sync
+                jo_summary = joborders_run_sync()
+                jo_elapsed = time.time() - jo_started
+                print(f'  [JO #{iteration // JOBORDERS_SYNC_EVERY_N}] '
+                      f'elapsed={jo_elapsed:.1f}s '
+                      f'fetched={jo_summary.get("records_fetched", 0)} '
+                      f'created={jo_summary.get("created", 0)} '
+                      f'updated={jo_summary.get("updated", 0)} '
+                      f'unmatched={jo_summary.get("plate_unmatched", 0)} '
+                      f'errors={len(jo_summary.get("errors", []))}',
+                      flush=True)
+                if jo_summary.get('errors'):
+                    for err in jo_summary['errors'][:2]:
+                        print(f'    JO ERR: {err}', flush=True)
+            except Exception as e:
+                import traceback
+                print(f'  [JO #{iteration // JOBORDERS_SYNC_EVERY_N}] '
+                      f'EXCEPTION: {e}', flush=True)
+                traceback.print_exc()
+                # Same policy — never let a JO sync failure kill the
+                # always-on task. The next iteration tries again.
 
         sleep_for = max(1.0, interval_seconds - (time.time() - started))
         time.sleep(sleep_for)
