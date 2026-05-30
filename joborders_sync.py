@@ -153,14 +153,107 @@ def _derive_status(record):
 
 
 def _derive_description(record):
-    """Concatenate all repair_requests[].issue into one description."""
-    issues = record.get('repair_requests') or []
+    """Build a human-readable Description from the ERP record.
+
+    Pulls together everything dispatchers asked to see in one column:
+      - The repair_requests[].issue text (what's broken — the original
+        reason the request was filed)
+      - The job_orders[].ref_no.job_order codes (DC-style JO numbers)
+        so dispatchers can trace back into the ERP system at a glance
+      - Each job_order's category.name (e.g., 'Tire', 'Brake')
+        when the issue text alone is too terse
+
+    Multiple repair requests / JOs get joined with ' | ' so the row
+    stays single-line in the breakdown table. Returns None when there's
+    literally nothing to say — the column then falls back to whatever
+    the dispatcher manually typed (which may also be empty).
+    """
     parts = []
-    for r in issues:
-        text = (r.get('issue') or '').strip()
+
+    # The "what's broken" text from each repair_requests[] entry.
+    for r in (record.get('repair_requests') or []):
+        text = (r.get('issue') or r.get('description') or '').strip()
         if text:
             parts.append(text)
-    return '; '.join(parts) if parts else None
+
+    # Job order references — give dispatchers a way to find this in
+    # the ERP without opening a browser. Pull each JO's ref_no.job_order
+    # code (e.g. 'DC09897'); fall back to the category name when the
+    # ref is hidden.
+    jo_refs   = []
+    jo_cats   = []
+    for jo in (record.get('job_orders') or []):
+        ref = _g(jo, 'ref_no', 'job_order')
+        if ref:
+            jo_refs.append(str(ref))
+        cat = _g(jo, 'category', 'name')
+        if cat:
+            jo_cats.append(str(cat))
+
+    if jo_refs:
+        parts.append(f'JO: {", ".join(jo_refs)}')
+    elif jo_cats:
+        # No JO numbers exposed but we know what category — better than
+        # leaving the field blank.
+        parts.append(f'Category: {", ".join(jo_cats)}')
+
+    return ' | '.join(parts) if parts else None
+
+
+def _derive_remarks(record):
+    """Build the Remarks column from mechanic + acceptor notes.
+
+    The dispatcher uses Remarks to see the operational story — who
+    worked on the repair, the latest status note, etc. We assemble it
+    from whatever the ERP exposes:
+
+      1. Mechanic names from job_orders[].mechanics[] (most useful —
+         tells the dispatcher who to follow up with)
+      2. Notes from the top-level notes[] array (free-form comments)
+      3. Latest status entry from status_group.status_logs[] (so the
+         dispatcher sees 'COMPLETE - Xavier Omar Ramos' at a glance)
+
+    Returns None when there's nothing collected.
+    """
+    parts = []
+
+    # Mechanics assigned across all job_orders
+    mech_names = []
+    for jo in (record.get('job_orders') or []):
+        for m in (jo.get('mechanics') or []):
+            name = (m.get('mechanic_name') or '').strip()
+            if name and name not in mech_names:
+                mech_names.append(name)
+    if mech_names:
+        parts.append(f'Mechanic: {", ".join(mech_names)}')
+
+    # Free-form notes (if the ERP exposes them — schema TBD)
+    for n in (record.get('notes') or []):
+        if isinstance(n, dict):
+            text = (n.get('content') or n.get('note')
+                    or n.get('text') or n.get('remarks') or '').strip()
+        elif isinstance(n, str):
+            text = n.strip()
+        else:
+            text = ''
+        if text:
+            parts.append(text)
+
+    # Latest status_logs entry — gives quick "is anyone working on this?"
+    # context to dispatchers.
+    logs = (record.get('status_group') or {}).get('status_logs') or []
+    if logs:
+        latest = max(
+            logs,
+            key=lambda l: (_parse_dt(l.get('created_at'))
+                            or datetime.min)
+        )
+        s = (latest.get('status') or '').strip()
+        who = (latest.get('actioned_by') or '').strip()
+        if s:
+            parts.append(f'{s}{" — " + who if who else ""}')
+
+    return ' | '.join(parts) if parts else None
 
 
 def _derive_started_at(record):
@@ -566,6 +659,14 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                 row.approved_by_maintenance = rec.get('maintenance_approved_by')
 
                 row.description = _derive_description(rec) or row.description
+
+                # Remarks — overwrite on every sync so mechanic/notes
+                # stay current as the repair progresses (don't preserve
+                # stale values like we do for description, which holds
+                # the original problem statement).
+                derived_remarks = _derive_remarks(rec)
+                if derived_remarks is not None:
+                    row.remarks = derived_remarks[:300]   # column cap
 
                 # Status first, because _derive_ended_at uses it to
                 # decide whether the repair is actually finished
