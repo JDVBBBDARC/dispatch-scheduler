@@ -1714,6 +1714,105 @@ def api_cartrack_status():
     })
 
 
+# ── JOB ORDERS / REPAIR REQUEST INTEGRATION ──────────────────────────────
+# Mirrors the Cartrack admin endpoints: a status check, a manual sync
+# trigger, and a token-protected cron entrypoint. All three share the
+# same env vars (JOBORDERS_BASE_URL, JOBORDERS_TOKEN) and the same sync
+# worker (joborders_sync.run_sync).
+
+@app.route('/api/joborders/status')
+@login_required
+def api_joborders_status():
+    """Diagnostic snapshot of the ERP Repair Request integration.
+
+    Returns enough state for an admin to tell at a glance:
+      - Are the env vars set?
+      - When did we last successfully pull a record?
+      - How many ERP-sourced breakdowns do we have locally?
+      - Are there any unlinked rows (no matching plate)?
+    """
+    from sqlalchemy import func
+    configured = bool(os.environ.get('JOBORDERS_TOKEN'))
+    base_url   = os.environ.get('JOBORDERS_BASE_URL',
+                                 'https://erp-api.gainersand.ph/api')
+
+    # ERP-sourced BreakdownLog stats
+    erp_total = (db.session.query(func.count(BreakdownLog.id))
+                  .filter(BreakdownLog.jo_external_id.isnot(None))
+                  .scalar() or 0)
+    erp_unlinked = (db.session.query(func.count(BreakdownLog.id))
+                     .filter(BreakdownLog.jo_external_id.isnot(None),
+                             BreakdownLog.plate_id.is_(None))
+                     .scalar() or 0)
+    last_sync = (db.session.query(func.max(BreakdownLog.last_synced_at))
+                  .filter(BreakdownLog.jo_external_id.isnot(None))
+                  .scalar())
+    return jsonify({
+        'configured':           configured,
+        'base_url':             base_url,
+        'erp_sourced_total':    erp_total,
+        'unlinked_no_plate':    erp_unlinked,
+        'last_sync':            iso_ph(last_sync) if last_sync else None,
+    })
+
+
+@app.route('/api/joborders/sync-now', methods=['POST'])
+@login_required
+def api_joborders_sync_now():
+    """Manually trigger one sync iteration. Returns the summary dict.
+
+    Useful for first-time testing (before scheduling the always-on task)
+    and for one-off "I just added a repair request, pull it in now"
+    workflows. Body params (optional, all default sensibly):
+
+        { "filter":    "" | "pending" | "approved" | "rejected",
+          "from_date": "YYYY-MM-DD",
+          "to_date":   "YYYY-MM-DD" }
+    """
+    try:
+        from joborders_sync import run_sync
+        body = request.get_json(silent=True) or {}
+        summary = run_sync(
+            app=app,
+            filter=body.get('filter', ''),
+            from_date=body.get('from_date'),
+            to_date=body.get('to_date'),
+        )
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@app.route('/api/joborders/sync-cron', methods=['GET', 'POST'])
+def api_joborders_sync_cron():
+    """External-cron entrypoint for the ERP sync. Mirrors the Cartrack
+    poll-cron endpoint — same shared-secret auth pattern via CRON_SECRET
+    env var.
+
+    Use this instead of an always-on task if you want simpler scheduling
+    (cron-job.org, GitHub Actions, etc.).
+    """
+    expected = os.environ.get('CRON_SECRET', '').strip()
+    if not expected:
+        return jsonify({
+            'error': 'CRON_SECRET env var not configured on server.',
+        }), 503
+
+    provided = (request.args.get('token', '').strip()
+                or request.headers.get('X-Cron-Token', '').strip())
+    if provided != expected:
+        return jsonify({'error': 'Invalid or missing cron token.'}), 401
+
+    try:
+        from joborders_sync import run_sync
+        summary = run_sync(app=app)
+        return jsonify(summary)
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
 # ── TOLL CALCULATOR ───────────────────────────────────────────────────────
 import json as _json_mod
 from collections import deque
@@ -3538,6 +3637,43 @@ def init_db():
         # breakdown_log — precise start/end timestamps for hours calculation
         add_col('breakdown_log', 'started_at', 'ALTER TABLE breakdown_log ADD COLUMN started_at DATETIME')
         add_col('breakdown_log', 'ended_at',   'ALTER TABLE breakdown_log ADD COLUMN ended_at DATETIME')
+
+        # breakdown_log — ERP Repair Request integration columns
+        # Populated by joborders_sync.py when a breakdown is sourced from
+        # the gainersand.ph ERP. Indexed on jo_external_id so the upsert
+        # lookup stays fast even as the table grows.
+        add_col('breakdown_log', 'jo_external_id',
+                'ALTER TABLE breakdown_log ADD COLUMN jo_external_id INTEGER')
+        add_col('breakdown_log', 'jo_ref_no',
+                'ALTER TABLE breakdown_log ADD COLUMN jo_ref_no VARCHAR(30)')
+        add_col('breakdown_log', 'equipment_name',
+                'ALTER TABLE breakdown_log ADD COLUMN equipment_name VARCHAR(200)')
+        add_col('breakdown_log', 'equipment_brand',
+                'ALTER TABLE breakdown_log ADD COLUMN equipment_brand VARCHAR(100)')
+        add_col('breakdown_log', 'operator_name',
+                'ALTER TABLE breakdown_log ADD COLUMN operator_name VARCHAR(100)')
+        add_col('breakdown_log', 'requested_by',
+                'ALTER TABLE breakdown_log ADD COLUMN requested_by VARCHAR(100)')
+        add_col('breakdown_log', 'approved_by_dispatcher',
+                'ALTER TABLE breakdown_log ADD COLUMN approved_by_dispatcher VARCHAR(100)')
+        add_col('breakdown_log', 'approved_by_maintenance',
+                'ALTER TABLE breakdown_log ADD COLUMN approved_by_maintenance VARCHAR(100)')
+        add_col('breakdown_log', 'jo_url',
+                'ALTER TABLE breakdown_log ADD COLUMN jo_url VARCHAR(300)')
+        add_col('breakdown_log', 'last_synced_at',
+                'ALTER TABLE breakdown_log ADD COLUMN last_synced_at DATETIME')
+        # Index on the upsert key — created idempotently (CREATE INDEX
+        # IF NOT EXISTS is supported in SQLite 3.8+; PA's SQLite is much
+        # newer).
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(
+                    'CREATE INDEX IF NOT EXISTS ix_breakdown_log_jo_external_id '
+                    'ON breakdown_log(jo_external_id)'
+                ))
+                conn.commit()
+        except Exception as _mig_err:
+            print(f"  Migration warning (jo_external_id index): {_mig_err}")
 
         # plates — Cartrack GPS provider linkage (which Cartrack vehicle this plate maps to)
         add_col('plates', 'cartrack_vehicle_id',

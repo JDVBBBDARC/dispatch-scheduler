@@ -323,7 +323,32 @@ class BreakdownLog(db.Model):
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # ── ERP Repair Request integration fields ────────────────────────
+    # Populated by joborders_sync.py when a breakdown is sourced from the
+    # gainersand.ph ERP. NULL on all manually-entered rows. These columns
+    # are added via an idempotent ALTER TABLE in init_db() so existing
+    # databases pick them up automatically on the next app reload.
+    #
+    # jo_external_id is the unique link back to the ERP repair-request
+    # record — used as the upsert key by the sync worker so the same ERP
+    # record always maps to the same local row (no duplicates on re-poll).
+    jo_external_id          = db.Column(db.Integer, nullable=True, index=True)
+    jo_ref_no               = db.Column(db.String(30))   # equipment ref_no, e.g. 'D26E06'
+    equipment_name          = db.Column(db.String(200))  # e.g. 'Sharman Dumptruck #29 (10W)'
+    equipment_brand         = db.Column(db.String(100))
+    operator_name           = db.Column(db.String(100))  # driver listed on the request
+    requested_by            = db.Column(db.String(100))  # dispatcher who filed
+    approved_by_dispatcher  = db.Column(db.String(100))
+    approved_by_maintenance = db.Column(db.String(100))
+    jo_url                  = db.Column(db.String(300))  # deep link back to the ERP UI
+    last_synced_at          = db.Column(db.DateTime)     # set on every successful upsert
+
     plate = db.relationship('Plate', back_populates='breakdowns')
+
+    @property
+    def is_erp_sourced(self):
+        """True if this row was pulled from the ERP, False if manually entered."""
+        return self.jo_external_id is not None
 
     @property
     def duration_hours(self):
