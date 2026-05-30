@@ -747,9 +747,21 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                     row.started_at = started
                     if not row.date:
                         row.date = started.date()
-                if ended:
-                    row.ended_at = ended
+
+                # ended_at handling — keep it in sync with status.
+                # When status is 'Fixed' AND we have a timestamp, set it.
+                # When status reverts to anything else (Under Repair,
+                # Standby), CLEAR the old ended_at — otherwise a record
+                # that was briefly marked complete and then reopened
+                # would show stale "Ended At" + duration hours in the
+                # breakdown table, contradicting the Status column.
+                if row.status == 'Fixed' and ended:
+                    row.ended_at      = ended
                     row.resolved_date = ended.date()
+                elif row.status != 'Fixed':
+                    row.ended_at      = None
+                    row.resolved_date = None
+
                 if not row.date:
                     row.date = now.date()
 

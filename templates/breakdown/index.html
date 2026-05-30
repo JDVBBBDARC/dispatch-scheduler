@@ -173,58 +173,29 @@
   </select>
 </form>
 
-<!-- Add Breakdown Form -->
-<div class="bd-add-form">
-  <div style="font-size:.82rem;font-weight:700;color:var(--maroon);margin-bottom:12px;">
-    <i class="bi bi-plus-circle me-1"></i>Log New Breakdown
-  </div>
-  <div class="form-row">
-    <div class="form-group">
-      <label>Date</label>
-      <input type="date" id="bdDate" value="{{ today.isoformat() }}">
-    </div>
-    <div class="form-group">
-      <label>Plate / Truck</label>
-      <select id="bdPlate">
-        <option value="">— Select Plate —</option>
-        {% for tt in truck_types %}
-        {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
-        {% if tt_plates %}
-        <optgroup label="{{ tt.name }}">
-          {% for p in tt_plates %}
-          <option value="{{ p.id }}">{{ p.display }}</option>
-          {% endfor %}
-        </optgroup>
-        {% endif %}
-        {% endfor %}
-        {% set uncat = plates|selectattr('truck_type_id', 'none')|list %}
-        {% if uncat %}
-        <optgroup label="Uncategorized">
-          {% for p in uncat %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}
-        </optgroup>
-        {% endif %}
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Status</label>
-      <select id="bdStatus">
-        {% for s in bd_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
-      </select>
-    </div>
-    <div class="form-group" style="flex:1;min-width:200px;">
-      <label>Description / Issue</label>
-      <textarea id="bdDesc" placeholder="Describe the breakdown or issue…" rows="1"></textarea>
-    </div>
-    <div class="form-group" style="flex:1;min-width:160px;">
-      <label>Remarks</label>
-      <input type="text" id="bdRemarks" placeholder="Optional remarks">
-    </div>
-    <div class="form-group" style="justify-content:flex-end;">
-      <button class="btn btn-maroon btn-sm" style="height:34px;" onclick="addBreakdown()">
-        <i class="bi bi-plus-lg me-1"></i>Add Log
-      </button>
-    </div>
-  </div>
+<!--
+  Manual "Log New Breakdown" form removed June 2026.
+
+  Breakdowns are now auto-pulled from the ERP Repair Request module
+  every ~10 minutes by the joborders_sync worker. Dispatchers no
+  longer need to type entries here — what shows up in the table
+  below is whatever maintenance has filed in the ERP.
+
+  If a one-off manual entry is ever needed again (e.g., to log a
+  breakdown that bypassed the ERP), an admin can either:
+    1. Add a row directly via the ERP system, or
+    2. Re-enable this form by reverting this commit on a feature branch.
+
+  Keeping the markup out (rather than just hiding it with d-none) so
+  the page renders cleaner and there's no temptation to use it.
+-->
+<div class="bd-source-notice" style="margin:14px 0 18px;padding:10px 14px;
+     background:var(--maroon-pale);border-left:3px solid var(--maroon);
+     border-radius:4px;font-size:.78rem;color:var(--text-mid);">
+  <i class="bi bi-info-circle me-2" style="color:var(--maroon);"></i>
+  Breakdowns are auto-synced every <b>~10 minutes</b> from the ERP
+  Repair Request module. To log a new breakdown, file it in the ERP —
+  it will appear here on the next sync cycle.
 </div>
 
 <!-- Breakdown Table -->
