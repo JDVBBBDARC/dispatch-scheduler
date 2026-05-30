@@ -646,36 +646,46 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
         # If a future API version returns full dicts in /list, the
         # isinstance(rec_item, dict) branch will pick them up
         # transparently — no further changes needed.
+        # June 1 2026 update: ALWAYS follow up with /show, even when
+        # /list returns dict items. Confirmed by inspecting real data —
+        # /list dicts are SUMMARY views (id, ref_no, status, basic
+        # equipment info) and DO NOT carry the nested arrays we need
+        # (repair_requests[], status_group.status_logs[], transactions[],
+        # full job_orders[]). Only /show returns those.
+        #
+        # Cost: one extra GET per record per sync cycle. At ~13 records
+        # and a 10-min cadence that's ~78 calls/hour to the ERP — well
+        # within any reasonable rate limit.
         now = utc_now()
         for rec_item in records:
             ext_id = None
             try:
+                # Extract the ID from whichever shape /list returned.
                 if isinstance(rec_item, dict):
-                    # /list returned full records — use as-is
-                    rec = rec_item
-                    ext_id = rec.get('id')
+                    ext_id = rec_item.get('id')
                 else:
-                    # /list returned just an ID — fetch the full record
                     try:
                         ext_id = int(rec_item)
                     except (TypeError, ValueError):
                         log.warning('Skipping non-numeric list item: %r', rec_item)
                         continue
-                    show_response, err = cc.get_repair_request(ext_id)
-                    if err:
-                        summary['errors'].append(f'show id={ext_id}: {err}')
-                        log.warning('get_repair_request #%s failed: %s', ext_id, err)
-                        continue
-                    # /show returns {data: {...}, message: "maintenanceRequest.show"}
-                    if isinstance(show_response, dict):
-                        rec = show_response.get('data') or show_response
-                    else:
-                        log.warning('Unexpected /show response for #%s: %r',
-                                    ext_id, show_response)
-                        continue
 
                 if not ext_id:
-                    log.warning('Skipping record with no id: %r', rec)
+                    log.warning('Skipping record with no id: %r', rec_item)
+                    continue
+
+                # Always fetch the full record via /show.
+                show_response, err = cc.get_repair_request(ext_id)
+                if err:
+                    summary['errors'].append(f'show id={ext_id}: {err}')
+                    log.warning('get_repair_request #%s failed: %s', ext_id, err)
+                    continue
+                # /show returns {data: {...}, message: "maintenanceRequest.show"}
+                if isinstance(show_response, dict):
+                    rec = show_response.get('data') or show_response
+                else:
+                    log.warning('Unexpected /show response for #%s: %r',
+                                ext_id, show_response)
                     continue
 
                 # Find existing local row by external ID, or create a new one.
