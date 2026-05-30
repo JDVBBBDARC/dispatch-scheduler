@@ -96,36 +96,60 @@ def _g(d, *path, default=None):
     return cur
 
 
+# Status strings that the ERP uses to signal "done" — checked
+# case-insensitively in several places below. Adjust this set if IT
+# adds new terminal statuses.
+_COMPLETE_STATUSES = {'COMPLETE', 'COMPLETED', 'CLOSED', 'RELEASED'}
+
+
 def _derive_status(record):
     """Map an ERP record to our local BreakdownLog.status value.
 
-    See module docstring for the rules. We try to be defensive — the
-    record's shape may evolve, so we degrade gracefully to 'Under
-    Repair' when anything looks off.
-    """
-    approver_status     = _g(record, 'status_group', 'approver_status',
-                              default='').upper()
-    maintenance_status  = _g(record, 'status_group', 'maintenance_approver_status',
-                              default='').upper()
+    Updated May 30 2026 after seeing the actual /show response from
+    gainersand.ph. The ERP now exposes the per-job-order status
+    directly (e.g., job_orders[i].status == 'COMPLETE') — we use that
+    as the primary signal, with the progress.total_done==total_count
+    check as a fallback for any JO that doesn't carry an explicit
+    status field.
 
-    # Either approval still pending → treat as Under Repair (we don't
-    # yet model a separate "Pending Approval" state locally).
+    A repair request is 'Fixed' when:
+      1. Both approval flags are APPROVED (still required — otherwise
+         the repair hasn't even been authorised to start), AND
+      2. EVERY job_order under it is in a terminal status (COMPLETE,
+         COMPLETED, CLOSED, or RELEASED) OR has progress.total_done
+         equal to total_count.
+
+    Anything else maps to 'Under Repair'. We don't model a separate
+    'Pending Approval' state locally — keeping the dispatcher's view
+    simple (truck is either available or it isn't).
+    """
+    sg = record.get('status_group') or {}
+    approver_status    = (sg.get('approver_status') or '').upper()
+    maintenance_status = (sg.get('maintenance_approver_status') or '').upper()
+
+    # Approval gate — both have to be APPROVED before we even consider
+    # the JO progress signals.
     if approver_status != 'APPROVED' or maintenance_status != 'APPROVED':
         return 'Under Repair'
 
-    # All job_orders complete → Fixed
     jos = record.get('job_orders') or []
-    if jos:
-        all_done = all(
-            (_g(jo, 'progress', 'total_done', default=0) >= 1
-             and _g(jo, 'progress', 'total_done', default=0)
-                 == _g(jo, 'progress', 'total_count', default=0))
-            for jo in jos
-        )
-        if all_done:
-            return 'Fixed'
+    if not jos:
+        # Approvals through but no job_orders yet — still pending mechanic
+        return 'Under Repair'
 
-    return 'Under Repair'
+    for jo in jos:
+        jo_status = (jo.get('status') or '').upper()
+        if jo_status in _COMPLETE_STATUSES:
+            continue   # this one is done, check the next
+        # Fall back to progress check for JOs that don't expose status
+        done  = _g(jo, 'progress', 'total_done',  default=0)
+        count = _g(jo, 'progress', 'total_count', default=0)
+        if done >= 1 and count > 0 and done == count:
+            continue   # progress signal also says done
+        # This job_order is still in flight → whole request not yet Fixed
+        return 'Under Repair'
+
+    return 'Fixed'
 
 
 def _derive_description(record):
@@ -171,39 +195,67 @@ def _derive_ended_at(record, status):
     complete). If the repair is still in progress we return None so
     the existing ended_at (if any) is preserved rather than overwritten.
 
+    Updated May 30 2026 after debugging /show output. The ERP's most
+    precise completion signal turns out to be in status_group:
+
+      status_group: {
+        status_logs: [
+          { id: 92, status: "COMPLETE",    created_at: "2026-05-29 11:55:25" },
+          { id: 89, status: "IN PROGRESS", created_at: "2026-05-29 09:13:13" },
+        ],
+        acceptor_status_logs: [
+          { id: 94, acceptor_status: "COMPLETE", created_at: "2026-05-29 11:55:25" },
+          ...
+        ],
+      }
+
+    The newest entry whose status (or acceptor_status) is COMPLETE
+    carries the exact moment the maintenance team marked it done.
+    That's what we want for ended_at.
+
     Search order (most precise -> coarsest):
-
-      1. job_orders[].completed_at / .updated_at
-         The actual completion timestamp of each work order — closest
-         to the "when did the mechanic finish?" question we're answering.
-
-      2. transactions[] entries with 'complete' or 'released' in their
-         description -> their created_at / action_at timestamp.
-         Audit-log signal that the request was closed out.
-
-      3. record.updated_at
-         When the ERP last touched this record. Reasonable proxy
-         when finer-grained signals aren't exposed.
-
-      4. utc_now()
-         Last-resort fallback. We *know* the record is complete
-         (status='Fixed'), so leaving ended_at NULL would defeat the
-         whole purpose of the column. Setting it to "now" is mildly
-         misleading (it's actually "first time we noticed it was
-         complete") but better than the alternative — dispatchers can
-         override manually if precision matters.
+      1. status_group.status_logs[] entry where status is terminal
+      2. status_group.acceptor_status_logs[] entry where acceptor_status
+         is terminal (the maintenance head's sign-off — usually same
+         time as #1, but useful as a backup)
+      3. job_orders[].completed_at / .updated_at
+      4. transactions[] with 'complete'/'released' in description
+      5. record.updated_at
+      6. utc_now() — last resort so the field isn't left NULL on a
+         repair we KNOW is finished
     """
     if status != 'Fixed':
         return None
 
-    # Strategy 1: per-job-order completion timestamps
+    sg = record.get('status_group') or {}
+
+    # Strategy 1: status_logs[]
+    candidates = []
+    for log in (sg.get('status_logs') or []):
+        if (log.get('status') or '').upper() in _COMPLETE_STATUSES:
+            dt = _parse_dt(log.get('created_at'))
+            if dt:
+                candidates.append(dt)
+    if candidates:
+        return max(candidates)
+
+    # Strategy 2: acceptor_status_logs[]
+    for log in (sg.get('acceptor_status_logs') or []):
+        if (log.get('acceptor_status') or '').upper() in _COMPLETE_STATUSES:
+            dt = _parse_dt(log.get('created_at'))
+            if dt:
+                candidates.append(dt)
+    if candidates:
+        return max(candidates)
+
+    # Strategy 3: per-job-order completion timestamps
     for jo in (record.get('job_orders') or []):
         for key in ('completed_at', 'completedAt', 'updated_at', 'updatedAt'):
             dt = _parse_dt(jo.get(key))
             if dt:
-                return dt   # first one we find is fine — they should all be close
+                return dt
 
-    # Strategy 2: transaction-log completion entries
+    # Strategy 4: transaction-log completion entries
     for t in (record.get('transactions') or []):
         desc = (t.get('description') or '').lower()
         if 'complete' in desc or 'released' in desc:
@@ -212,13 +264,13 @@ def _derive_ended_at(record, status):
                 if dt:
                     return dt
 
-    # Strategy 3: record-level updated_at
+    # Strategy 5: record-level updated_at
     for key in ('updated_at', 'updatedAt', 'completed_at', 'completedAt'):
         dt = _parse_dt(record.get(key))
         if dt:
             return dt
 
-    # Strategy 4: last-resort — use poll time
+    # Strategy 6: last-resort — use poll time
     return utc_now()
 
 
