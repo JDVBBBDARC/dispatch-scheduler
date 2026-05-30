@@ -175,31 +175,101 @@ def _derive_ended_at(record):
     return max(candidates) if candidates else None
 
 
-def _match_plate(ref_no, Plate):
-    """Find the local Plate that corresponds to an ERP equipment ref_no.
+# Map ERP equipment-name keywords to local Plate.body_no prefixes.
+# Order matters — the matcher iterates this list and takes the first
+# substring hit, so more-specific keywords come first to avoid the
+# "Tractor" in "Tractor Head" matching a hypothetical "Tractor" prefix.
+_EQUIPMENT_TYPE_PREFIXES = [
+    ('trailer dump',  'TD'),   # "Howo Trailer Dump #N" — confirm prefix with admin
+    ('tractor head',  'TH'),   # "Howo Tractor Head #06" -> TH06
+    ('dump truck',    'DT'),   # "Howo Dump Truck #04 (12W)" -> DT04
+    ('mini dump',     'MDT'),  # "Howo Mini Dump #17" -> MDT17 (if used)
+    ('self loading',  'SL'),   # "Howo Self Loading #1" -> SL01 (if used)
+    ('l300',          'L300'), # utility vans
+]
 
-    The ERP uses a body-number-style code (e.g., 'D26E06'). Our local
-    Plate model has body_no and plate_no. We try body_no first (the
-    expected match), then plate_no as a fallback. Return None if no
-    match — the BreakdownLog row will still be created with plate_id=NULL
-    and a warning logged, so a fleet manager can link it manually later.
+
+def _extract_equipment_code(equipment_name):
+    """Derive a local-style body_no from an ERP equipment.name string.
+
+    Examples:
+        "Howo Tractor Head #06"          -> "TH06"
+        "Howo Dump Truck #04 (12W)"      -> "DT04"
+        "Howo Tractor Head #03 (12W)"    -> "TH03"
+        "Howo Trailer Dump #1"           -> "TD01"
+        "Some Unknown Equipment #5"      -> None  (no prefix match)
+        ""                               -> None
+
+    Returns None when either the type keyword or the number isn't found.
+    The number is zero-padded to 2 digits so "#4" maps to "DT04" the
+    same way "#04" does — the local body_no convention is always 2-digit.
     """
-    if not ref_no:
+    if not equipment_name:
         return None
-    ref_no = ref_no.strip().upper()
-    # Try body_no exact match first
-    p = Plate.query.filter(
-        db_func_upper(Plate.body_no) == ref_no,
-        Plate.active.is_(True),
-    ).first()
-    if p:
-        return p
-    # Fallback: plate_no exact match
-    p = Plate.query.filter(
-        db_func_upper(Plate.plate_no) == ref_no,
-        Plate.active.is_(True),
-    ).first()
-    return p
+    import re
+    name_lower = equipment_name.lower()
+    prefix = None
+    for keyword, p in _EQUIPMENT_TYPE_PREFIXES:
+        if keyword in name_lower:
+            prefix = p
+            break
+    if not prefix:
+        return None
+    # Extract the first "#NN" number (works whether the (12W) suffix is
+    # present or not — the # marker pins us to the right number).
+    m = re.search(r'#\s*(\d+)', equipment_name)
+    if not m:
+        return None
+    return f'{prefix}{int(m.group(1)):02d}'
+
+
+def _match_plate(ref_no, equipment_name, Plate):
+    """Find the local Plate that corresponds to an ERP repair-request.
+
+    Tried in priority order:
+      1. ref_no == Plate.body_no  (exact)
+      2. ref_no == Plate.plate_no (exact)
+      3. derived body_no from equipment.name == Plate.body_no
+         (e.g., "Howo Dump Truck #04 (12W)" -> DT04 -> match)
+
+    Strategy 3 is the one that actually works for the gainersand.ph
+    deployment — the ERP's ref_no is opaque ("D26E29") while our local
+    body_no follows a "<TYPE><NN>" convention (DT04, TH06, etc.). The
+    equipment name carries enough info to bridge the gap.
+
+    Returns None if no strategy matches — the BreakdownLog row is still
+    created with plate_id=NULL so the fleet manager can link it manually
+    via the /breakdown UI later.
+    """
+    # Strategy 1+2: exact ref_no match (legacy path, kept for forward
+    # compatibility — if the ERP ever issues a ref_no that matches our
+    # body_no/plate_no directly, we'd rather use that than infer.)
+    if ref_no:
+        ref_upper = ref_no.strip().upper()
+        p = Plate.query.filter(
+            db_func_upper(Plate.body_no) == ref_upper,
+            Plate.active.is_(True),
+        ).first()
+        if p:
+            return p
+        p = Plate.query.filter(
+            db_func_upper(Plate.plate_no) == ref_upper,
+            Plate.active.is_(True),
+        ).first()
+        if p:
+            return p
+
+    # Strategy 3: derive body_no from equipment.name pattern.
+    expected = _extract_equipment_code(equipment_name)
+    if expected:
+        p = Plate.query.filter(
+            db_func_upper(Plate.body_no) == expected.upper(),
+            Plate.active.is_(True),
+        ).first()
+        if p:
+            return p
+
+    return None
 
 
 def db_func_upper(col):
@@ -374,13 +444,17 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                                        date=now.date())
                     db.session.add(row)
 
-                # Plate matching
-                ref_no = rec.get('ref_no') or ''
-                plate = _match_plate(ref_no, Plate)
+                # Plate matching — pass equipment.name too, since the
+                # ERP's ref_no ("D26E29") is opaque while the equipment
+                # name ("Howo Dump Truck #04 (12W)") carries the local
+                # body_no convention. See _extract_equipment_code.
+                ref_no   = rec.get('ref_no') or ''
+                equip_nm = _g(rec, 'equipment', 'name') or ''
+                plate    = _match_plate(ref_no, equip_nm, Plate)
                 if plate is None and ref_no:
                     summary['plate_unmatched'] += 1
-                    log.warning('No plate match for ref_no=%r (record id=%s)',
-                                ref_no, ext_id)
+                    log.warning('No plate match for ref_no=%r equipment=%r (record id=%s)',
+                                ref_no, equip_nm[:40], ext_id)
 
                 # Populate / refresh fields
                 row.plate_id                = plate.id if plate else None
