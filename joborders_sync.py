@@ -272,13 +272,42 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
             log.error('list_repair_requests failed: %s', err)
             return summary
 
-        # The exact response shape isn't documented yet — handle the
-        # three common Laravel-API patterns: bare array, {data: [...]},
-        # or {data: [...], meta: {...}}.
+        # Unwrap the response. The ERP returns a Laravel paginator
+        # nested inside the outer envelope. Observed shape (May 30 2026):
+        #
+        #   {
+        #     "data": {                         ← outer envelope
+        #         "current_page": 1,
+        #         "data": [ {...}, {...}, ...], ← actual records here
+        #         "first_page_url": "...",
+        #         "from": 1,
+        #         "last_page": 1,
+        #         "last_page_url": "...",
+        #         "links": [...],
+        #         "next_page_url": null,
+        #         "path": "...",
+        #         "per_page": 15,
+        #         "prev_page_url": null,
+        #         "to": 13,
+        #         "total": 13
+        #     },
+        #     "count": 13,
+        #     "message": "..."
+        #   }
+        #
+        # We dig two levels: outer.data → paginator → paginator.data.
+        # If the API ever flattens to {data: [...]} (no paginator),
+        # the second dig is a no-op because the first .get already
+        # returned an array.
         if isinstance(data, list):
             records = data
         elif isinstance(data, dict):
             records = data.get('data') or data.get('items') or []
+            # Unwrap Laravel paginator: {current_page, data, total, ...}
+            if (isinstance(records, dict)
+                    and 'data' in records
+                    and isinstance(records.get('data'), list)):
+                records = records['data']
         else:
             summary['errors'].append(f'unexpected response type {type(data).__name__}')
             log.error('unexpected response type: %s', type(data).__name__)
