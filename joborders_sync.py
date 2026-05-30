@@ -359,11 +359,19 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                     log.warning('Skipping record with no id: %r', rec)
                     continue
 
-                # Find existing local row by external ID, or create a new one
+                # Find existing local row by external ID, or create a new one.
+                # CRITICAL: BreakdownLog.date is NOT NULL. We must seed it
+                # at construction time, because subsequent Plate.query calls
+                # in this iteration trigger SQLAlchemy autoflush — and a
+                # flush with date=NULL would raise IntegrityError, killing
+                # this whole transaction. We use today's date as a safe
+                # default; if the record carries a real created_at later
+                # below, row.date is overwritten with that value.
                 row = BreakdownLog.query.filter_by(jo_external_id=ext_id).first()
                 is_new = row is None
                 if is_new:
-                    row = BreakdownLog(jo_external_id=ext_id)
+                    row = BreakdownLog(jo_external_id=ext_id,
+                                       date=now.date())
                     db.session.add(row)
 
                 # Plate matching
@@ -415,8 +423,18 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                 # Use ext_id captured above so we don't crash here if
                 # rec is itself the offending value (e.g., string id
                 # that failed type conversion).
+                #
+                # Rollback the session so the NEXT record's queries can
+                # run cleanly. Without this, every subsequent upsert
+                # cascades-fails with "This Session's transaction has
+                # been rolled back due to a previous exception", masking
+                # the real cause and producing 13× the same error.
                 summary['errors'].append(f'upsert id={ext_id}: {e}')
                 log.exception('upsert failed for record id=%s', ext_id)
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
                 continue
 
         try:
