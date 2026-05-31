@@ -124,6 +124,28 @@
 
 <div class="page-header">
   <h1><i class="bi bi-tools me-2"></i>Breakdown Monitoring</h1>
+  {#
+    Manual ERP sync trigger. The polling worker already runs this
+    automatically every ~10 minutes (via the Cartrack always-on task),
+    but a button gives the dispatcher a way to force an immediate
+    refresh after they file something on the ERP side. Also handy
+    during development / debugging — lets us re-pull data without
+    waiting for the next scheduled cycle.
+
+    The button calls /api/joborders/sync-now (POST), which we already
+    expose for admin use. Response includes counts (fetched, created,
+    updated, unmatched, errors) — we surface them in a toast so the
+    dispatcher knows the sync actually did something.
+  #}
+  <div class="d-flex gap-2 align-items-center">
+    <span id="bdLastSync" style="font-size:.7rem;color:var(--muted);"></span>
+    <button id="bdSyncBtn"
+            class="btn btn-sm"
+            style="background:var(--maroon);color:#fff;font-size:.78rem;"
+            onclick="syncFromERP()">
+      <i class="bi bi-arrow-repeat me-1"></i>Sync from ERP
+    </button>
+  </div>
 </div>
 
 <!-- KPI Row -->
@@ -479,6 +501,54 @@ function updateCount(delta) {
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── MANUAL ERP SYNC ──────────────────────────────────────────────────────
+// Calls the same /api/joborders/sync-now endpoint that the always-on task
+// hits every 10 minutes. Useful when the dispatcher just filed a request
+// in the ERP and doesn't want to wait for the next polling cycle, or
+// when validating that the latest code is actually being used (a
+// completed manual sync proves the sync worker is healthy and current).
+async function syncFromERP() {
+  const btn = document.getElementById('bdSyncBtn');
+  const indicator = document.getElementById('bdLastSync');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing…';
+  if (indicator) indicator.textContent = '';
+
+  try {
+    const r = await fetch('/api/joborders/sync-now', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    '{}',
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+
+    if (j.error) {
+      alert('Sync failed: ' + j.error);
+      return;
+    }
+
+    const msg = `Fetched ${j.records_fetched || 0}, `
+              + `created ${j.created || 0}, `
+              + `updated ${j.updated || 0}, `
+              + `unmatched ${j.plate_unmatched || 0}`
+              + (j.errors && j.errors.length
+                  ? `, errors ${j.errors.length}` : '');
+    if (indicator) indicator.textContent = msg;
+
+    // Reload the page so the updated rows show up. Small delay so the
+    // dispatcher can read the toast before the reload kicks in.
+    setTimeout(() => location.reload(), 800);
+  } catch (e) {
+    alert('Sync request failed: ' + e.message);
+    console.error('syncFromERP error:', e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
 }
 </script>
 {% endblock %}
