@@ -1491,6 +1491,16 @@ def run_poll(app=None, log=None):
 # JOBORDERS_SYNC_EVERY_N env var if you need a different cadence.
 JOBORDERS_SYNC_EVERY_N = int(os.environ.get('JOBORDERS_SYNC_EVERY_N', '10'))
 
+# How often to backfill missed toll events from Cartrack's server-side
+# event log (cartrack_trips_backfill). At highway speed a truck transits
+# a toll geofence in 7-14 seconds; our 60s polling has roughly a 1-in-5
+# chance of catching the truck mid-transit, so ~80% of brief transits
+# slip between polls. This backfill closes the gap by reading
+# /rest/vehicles/events, which records every transit server-side. Runs
+# every TOLL_BACKFILL_EVERY_N iterations (default 30 = ~30 min) so the
+# lookback window stays small and the API response compact.
+TOLL_BACKFILL_EVERY_N = int(os.environ.get('TOLL_BACKFILL_EVERY_N', '30'))
+
 
 def _run_loop(interval_seconds=60):
     """Run run_poll() forever, sleeping between iterations.
@@ -1541,6 +1551,35 @@ def _run_loop(interval_seconds=60):
             print(f'[#{iteration}] EXCEPTION after {elapsed:.1f}s: {e}', flush=True)
             traceback.print_exc()
             # Continue anyway — never let a single poll failure stop the loop.
+
+        # ── Toll backfill piggyback ────────────────────────────────
+        # Run after the live poll. Pulls Cartrack's server-side event
+        # log for any toll transits the live poll missed in the last
+        # ~35 minutes, dedupes against existing CartrackEvent rows,
+        # inserts only the gaps. Heavily wrapped in try/except — a
+        # failure here must NOT take down the live polling loop.
+        if iteration % TOLL_BACKFILL_EVERY_N == 0:
+            bf_started = time.time()
+            try:
+                from cartrack_trips_backfill import backfill_toll_events
+                bf_summary = backfill_toll_events(app=None)
+                bf_elapsed = time.time() - bf_started
+                print(f'  [BACKFILL #{iteration // TOLL_BACKFILL_EVERY_N}] '
+                      f'elapsed={bf_elapsed:.1f}s '
+                      f'scanned={bf_summary.get("events_scanned", 0)} '
+                      f'toll_seen={bf_summary.get("toll_events_seen", 0)} '
+                      f'inserted={bf_summary.get("backfilled", 0)} '
+                      f'dup={bf_summary.get("skipped_dup", 0)} '
+                      f'errors={len(bf_summary.get("errors", []))}',
+                      flush=True)
+                if bf_summary.get('errors'):
+                    for err in bf_summary['errors'][:2]:
+                        print(f'    BACKFILL ERR: {err}', flush=True)
+            except Exception as e:
+                import traceback
+                print(f'  [BACKFILL #{iteration // TOLL_BACKFILL_EVERY_N}] '
+                      f'EXCEPTION: {e}', flush=True)
+                traceback.print_exc()
 
         # ── JobOrders / ERP Repair Request piggyback sync ───────────
         # Run it after the Cartrack poll (not before) so a JO sync
