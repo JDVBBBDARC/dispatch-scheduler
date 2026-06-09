@@ -1480,6 +1480,11 @@ def breakdown():
                 'label':        p.body_no or p.plate_no,
                 'count':        count,
                 'is_equipment': False,
+                # plate_id surfaced so the frontend bar-click handler
+                # can hit the unit-logs endpoint with the right key.
+                # Stays absent for equipment rows (those identify by
+                # name string, not id).
+                'plate_id':     p.id,
             })
     for eq_name, count in equipment_counts.most_common():
         plate_breakdown_chart.append({
@@ -1524,6 +1529,95 @@ def breakdown():
         bd_statuses=BREAKDOWN_STATUSES, summary=summary,
         plate_breakdown_chart=plate_breakdown_chart,
         operator_breakdown_chart=operator_breakdown_chart)
+
+
+@app.route('/api/breakdown/unit-logs')
+@login_required
+def api_breakdown_unit_logs():
+    """Modal-detail endpoint for the Breakdowns-by-Plate bar chart.
+
+    Returns the list of breakdown rows for one specific unit within
+    the same Year/Month/Status window the page is currently showing.
+    The frontend invokes this when the dispatcher clicks a bar — the
+    response populates a Bootstrap modal listing each Job Order so
+    they can drill into trailers and other unmapped equipment that
+    the existing Plate dropdown filter can't reach.
+
+    Query string:
+      type   — 'plate' or 'equipment' (required)
+      id     — Plate.id (required when type=plate)
+      name   — equipment_name string (required when type=equipment)
+      year   — int, defaults to current PHT year
+      month  — int, defaults to current PHT month
+      status — 'all' or one of BREAKDOWN_STATUSES, defaults to 'all'
+
+    Response shape:
+      { label: str,
+        count: int,
+        logs:  [ {id, date, jo_ref_no, jo_url, description, status,
+                  started_at, ended_at, duration_hours, remarks,
+                  operator_name}, ... ] }
+    """
+    unit_type = (request.args.get('type') or '').strip().lower()
+    if unit_type not in ('plate', 'equipment'):
+        return jsonify({'error': "type must be 'plate' or 'equipment'"}), 400
+
+    year   = request.args.get('year',  ph_today().year,  type=int)
+    month  = request.args.get('month', ph_today().month, type=int)
+    status = request.args.get('status', 'all')
+
+    last_day = calendar.monthrange(year, month)[1]
+    mo_s     = date(year, month, 1)
+    mo_e     = date(year, month, last_day)
+
+    q = BreakdownLog.query.filter(
+        BreakdownLog.date >= mo_s,
+        BreakdownLog.date <= mo_e
+    )
+    if status != 'all':
+        q = q.filter(BreakdownLog.status == status)
+
+    label = ''
+    if unit_type == 'plate':
+        pid = request.args.get('id', type=int)
+        if not pid:
+            return jsonify({'error': 'id is required for type=plate'}), 400
+        q = q.filter(BreakdownLog.plate_id == pid)
+        p = Plate.query.get(pid)
+        label = p.display if p else f'Plate #{pid}'
+    else:  # equipment
+        name = (request.args.get('name') or '').strip()
+        if not name:
+            return jsonify({'error': 'name is required for type=equipment'}), 400
+        # Equipment bars come from rows with plate_id IS NULL AND a
+        # specific equipment_name. Filter exactly that combo so we
+        # don't accidentally surface plate-matched rows that share
+        # the equipment label.
+        q = q.filter(BreakdownLog.plate_id.is_(None),
+                     BreakdownLog.equipment_name == name)
+        label = name
+
+    rows = q.order_by(BreakdownLog.date.desc(),
+                      BreakdownLog.id.desc()).all()
+
+    def _fmt_dt(dt):
+        return dt.strftime('%Y-%m-%d %I:%M %p') if dt else None
+
+    logs = [{
+        'id':              r.id,
+        'date':            r.date.isoformat() if r.date else None,
+        'jo_ref_no':       getattr(r, 'jo_ref_no', None),
+        'jo_url':          getattr(r, 'jo_url',    None),
+        'description':     r.description,
+        'status':          r.status,
+        'started_at':      _fmt_dt(r.started_at),
+        'ended_at':        _fmt_dt(r.ended_at),
+        'duration_hours':  round(r.duration_hours, 2) if r.duration_hours else None,
+        'remarks':         r.remarks,
+        'operator_name':   getattr(r, 'operator_name', None),
+    } for r in rows]
+
+    return jsonify({'label': label, 'count': len(logs), 'logs': logs})
 
 
 def _parse_dt(s):

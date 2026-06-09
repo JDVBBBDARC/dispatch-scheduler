@@ -270,7 +270,10 @@
   <div class="card-body" style="padding:18px 22px;">
     {% if plate_breakdown_chart %}
     <div style="position:relative;height:{{ (plate_breakdown_chart|length * 30 + 40) if plate_breakdown_chart|length > 4 else 180 }}px;">
-      <canvas id="breakdownByPlateChart"></canvas>
+      <canvas id="breakdownByPlateChart" style="cursor:pointer;"></canvas>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:6px;text-align:right;">
+      <i class="bi bi-hand-index me-1"></i>Click a bar to see its job orders
     </div>
     {% else %}
     <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
@@ -278,6 +281,31 @@
       No breakdowns recorded in this filter window.
     </div>
     {% endif %}
+  </div>
+</div>
+
+{#
+  Bar-click detail modal. Opened by Chart.js onClick on the Plate
+  chart. Fetches /api/breakdown/unit-logs?type=plate&id=... (or
+  type=equipment&name=...), then renders the row list inside.
+  Loaded async so the modal can show a spinner state on slow links
+  and recover gracefully when the endpoint errors.
+#}
+<div class="modal fade" id="unitDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--maroon);color:#fff;border-bottom:none;">
+        <h5 class="modal-title" id="unitDetailTitle">
+          <i class="bi bi-tools me-2"></i><span id="unitDetailTitleText">Loading…</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="unitDetailBody" style="padding:0;">
+        <div class="text-center py-5 text-muted">
+          <div class="spinner-border" role="status" style="color:var(--maroon);"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -717,6 +745,19 @@ async function syncFromERP() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      /* Click any bar → open the unit-detail modal with that unit's
+         job orders. Plate bars resolve by plate_id, equipment bars by
+         label (the equipment_name string). Empty `elements` means a
+         click on whitespace inside the chart area — ignore. */
+      onClick: (_evt, elements) => {
+        if (!elements || !elements.length) return;
+        const d = dataPoints[elements[0].index];
+        if (d) openUnitDetailModal(d);
+      },
+      /* Hover cursor switches to pointer over a bar so the click
+         affordance is obvious; cursor reverts otherwise. Chart.js
+         doesn't ship this out of the box — set via DOM listener
+         below. */
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -726,6 +767,7 @@ async function syncFromERP() {
               const suffix = d.is_equipment ? ' (equipment, not in master)' : '';
               return `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}${suffix}`;
             },
+            afterBody: () => '\nClick to see job orders →',
           },
         },
       },
@@ -743,6 +785,113 @@ async function syncFromERP() {
     },
   });
 })();
+
+/* ── Unit-detail modal ─────────────────────────────────────────────
+   Opened by the Plate-chart onClick. Filter context (year/month/
+   status) comes from the page's current URL — read once at module
+   load so we don't drift if Chart.js fires the callback after a
+   future filter change (the page would reload anyway, but be
+   defensive). escHtml is already defined above. */
+const _UDM_YEAR   = '{{ year }}';
+const _UDM_MONTH  = '{{ month }}';
+const _UDM_STATUS = '{{ filter_status }}';
+
+async function openUnitDetailModal(d) {
+  const titleEl = document.getElementById('unitDetailTitleText');
+  const bodyEl  = document.getElementById('unitDetailBody');
+  titleEl.textContent = `${d.label} — loading…`;
+  bodyEl.innerHTML = `
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border" role="status" style="color:var(--maroon);"></div>
+    </div>`;
+
+  /* Show the modal immediately so the user sees feedback even on a
+     slow connection. Bootstrap 5.3 bundle is loaded globally via
+     base.html, so `bootstrap` is always defined here. */
+  const modal = new bootstrap.Modal(document.getElementById('unitDetailModal'));
+  modal.show();
+
+  const params = new URLSearchParams({
+    type:   d.is_equipment ? 'equipment' : 'plate',
+    year:   _UDM_YEAR,
+    month:  _UDM_MONTH,
+    status: _UDM_STATUS,
+  });
+  if (d.is_equipment) params.set('name', d.label);
+  else                params.set('id',   d.plate_id);
+
+  let j;
+  try {
+    const r = await fetch('/api/breakdown/unit-logs?' + params.toString());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    j = await r.json();
+  } catch (e) {
+    titleEl.textContent = d.label;
+    bodyEl.innerHTML = `
+      <div class="p-4 text-center text-danger">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Could not load job orders: ${escHtml(e.message)}
+      </div>`;
+    return;
+  }
+
+  titleEl.textContent = `${j.label} — ${j.count} record${j.count === 1 ? '' : 's'}`;
+
+  if (!j.logs.length) {
+    bodyEl.innerHTML = `
+      <div class="p-4 text-center text-muted">
+        No job orders for this unit in the selected filter window.
+      </div>`;
+    return;
+  }
+
+  /* Render as a compact table. JO ref links out to the ERP when
+     jo_url is populated — otherwise the ref number renders as
+     plain text. Status uses the existing bd-badge classes so the
+     colour palette matches the main breakdown table. */
+  let html = `
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" style="font-size:.82rem;">
+        <thead style="position:sticky;top:0;background:var(--maroon-pale);">
+          <tr>
+            <th style="white-space:nowrap;">Date</th>
+            <th>JO</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th style="white-space:nowrap;">Started</th>
+            <th style="white-space:nowrap;">Ended</th>
+            <th class="text-end">Hrs</th>
+            <th>Operator</th>
+            <th>Mechanic / Remarks</th>
+          </tr>
+        </thead>
+        <tbody>`;
+  j.logs.forEach(l => {
+    const joCell = l.jo_url
+      ? `<a href="${escHtml(l.jo_url)}" target="_blank" rel="noopener">${escHtml(l.jo_ref_no || '')}</a>`
+      : escHtml(l.jo_ref_no || '—');
+    const statusBadge = l.status
+      ? `<span class="bd-badge bd-${(l.status || '').replace(/\s+/g, '-')}">${escHtml(l.status)}</span>`
+      : '';
+    html += `
+      <tr>
+        <td style="white-space:nowrap;">${escHtml(l.date || '')}</td>
+        <td style="white-space:nowrap;">${joCell}</td>
+        <td>${escHtml(l.description || '')}</td>
+        <td>${statusBadge}</td>
+        <td style="white-space:nowrap;">${escHtml(l.started_at || '—')}</td>
+        <td style="white-space:nowrap;">${escHtml(l.ended_at || '—')}</td>
+        <td class="text-end" style="color:#0891B2;font-weight:600;">${l.duration_hours != null ? l.duration_hours.toFixed(1) : '—'}</td>
+        <td>${escHtml(l.operator_name || '—')}</td>
+        <td>${escHtml(l.remarks || '')}</td>
+      </tr>`;
+  });
+  html += `
+        </tbody>
+      </table>
+    </div>`;
+  bodyEl.innerHTML = html;
+}
 
 /* ── Breakdowns-by-Driver bar chart ──────────────────────────────
    Mirrors the by-plate chart's structure but coloured in slate-blue
