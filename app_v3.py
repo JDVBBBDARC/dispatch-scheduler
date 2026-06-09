@@ -1433,11 +1433,26 @@ def breakdown():
     summary = {s: sum(1 for l in all_logs_month if l.status == s) for s in BREAKDOWN_STATUSES}
     summary['Total'] = len(all_logs_month)
 
+    # Most Breakdown Unit — which plate has the most breakdown rows in
+    # the CURRENT filter window. Computed from `logs` (already filtered
+    # by year, month, AND status), so changing any filter re-derives the
+    # answer. Returns None when the filtered set is empty so the KPI
+    # card can render an em-dash placeholder.
+    from collections import Counter
+    plate_counts = Counter(l.plate_id for l in logs if l.plate_id is not None)
+    most_unit = None
+    if plate_counts:
+        top_plate_id, top_count = plate_counts.most_common(1)[0]
+        top_plate = Plate.query.get(top_plate_id)
+        if top_plate:
+            most_unit = {'plate': top_plate, 'count': top_count}
+
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,
         logs=logs, plates=plates, truck_types=truck_types,
         filter_status=filter_status,
-        bd_statuses=BREAKDOWN_STATUSES, summary=summary)
+        bd_statuses=BREAKDOWN_STATUSES, summary=summary,
+        most_unit=most_unit)
 
 
 def _parse_dt(s):

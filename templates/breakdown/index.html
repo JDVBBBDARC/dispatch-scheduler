@@ -170,6 +170,25 @@
     <div class="kpi-value" style="font-size:1.8rem;">{{ summary['Standby'] }}</div>
     <div class="kpi-sub">monitoring</div>
   </div>
+  {#
+    Most Breakdown Unit — driven from the SAME filter set as the table
+    below (year + month + status). Server computes from `logs` so the
+    card auto-updates whenever a filter dropdown changes (the form
+    auto-submits on change). Renders an em-dash placeholder when the
+    filtered set is empty.
+  #}
+  <div class="kpi-card" title="Plate with the most breakdown records in the current filter window">
+    <div class="kpi-label">Most Breakdown Unit</div>
+    {% if most_unit %}
+    <div class="kpi-value" style="font-size:1.3rem;line-height:1.15;">
+      {{ most_unit.plate.body_no or most_unit.plate.plate_no }}
+    </div>
+    <div class="kpi-sub">{{ most_unit.count }} record{{ 's' if most_unit.count != 1 else '' }}</div>
+    {% else %}
+    <div class="kpi-value" style="font-size:1.8rem;color:var(--muted);">—</div>
+    <div class="kpi-sub">no data in window</div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Filter Bar -->
