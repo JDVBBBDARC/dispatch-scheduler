@@ -281,6 +281,41 @@
   </div>
 </div>
 
+{#
+  Breakdowns-by-Driver bar chart — parallels the Plate chart above.
+  Source: BreakdownLog.operator_name, populated by joborders_sync from
+  the FixFlo job-order 'Operator Name' field (confirmed reliable; the
+  equipment.name field by contrast is stale on some records — per the
+  user's screenshot annotation on 06/09).
+
+  Same height-adaptation logic and chart styling as the Plate chart
+  for visual consistency. Different accent colour (slate blue) so the
+  two charts read as related-but-distinct sections at a glance.
+#}
+<div class="card" id="bdDriverChartCard" style="margin-bottom:18px;">
+  <div class="card-header" style="background:#1F3A5F;">
+    <span class="card-title">
+      <i class="bi bi-person-badge me-2"></i>Breakdowns by Driver —
+      {{ mo_s.strftime('%B %Y') }}{% if filter_status != 'all' %} ({{ filter_status }}){% endif %}{% if filter_plate != 'all' %} · single plate{% endif %}
+    </span>
+    <span style="font-size:.78rem;opacity:.85;">
+      {{ operator_breakdown_chart|length }} driver{{ 's' if operator_breakdown_chart|length != 1 else '' }} in window
+    </span>
+  </div>
+  <div class="card-body" style="padding:18px 22px;">
+    {% if operator_breakdown_chart %}
+    <div style="position:relative;height:{{ (operator_breakdown_chart|length * 30 + 40) if operator_breakdown_chart|length > 4 else 180 }}px;">
+      <canvas id="breakdownByDriverChart"></canvas>
+    </div>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
+      <i class="bi bi-person-x" style="font-size:1.4rem;opacity:.6;"></i><br/>
+      No driver names recorded in this filter window.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Breakdown Table -->
 <div class="card">
   <div class="card-header">
@@ -691,6 +726,66 @@ async function syncFromERP() {
               const suffix = d.is_equipment ? ' (equipment, not in master)' : '';
               return `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}${suffix}`;
             },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { precision: 0, stepSize: 1 },
+          grid: { color: 'rgba(0,0,0,.05)' },
+        },
+        y: {
+          ticks: { font: { weight: '600' } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+})();
+
+/* ── Breakdowns-by-Driver bar chart ──────────────────────────────
+   Mirrors the by-plate chart's structure but coloured in slate-blue
+   to read as a sibling section. Same auto-render-on-page-load
+   lifecycle. Empty-state path is handled by Jinja above (the canvas
+   isn't even emitted when the data is empty), so this initialiser
+   bails fast if the element is missing. */
+(function initBreakdownByDriverChart() {
+  const dataPoints = {{ operator_breakdown_chart|tojson }};
+  if (!dataPoints || dataPoints.length === 0) return;
+  const canvas = document.getElementById('breakdownByDriverChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = dataPoints.map(d => d.label);
+  const counts = dataPoints.map(d => d.count);
+  /* Top offender in the deepest slate; rest in slate-blue with
+     slight transparency for hierarchy. Distinct from the plate
+     chart's maroon palette so the two charts don't visually fuse. */
+  const bg = counts.map((_, i) => i === 0 ? '#142B47' : 'rgba(31, 58, 95, .82)');
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Breakdown reports',
+        data: counts,
+        backgroundColor: bg,
+        borderColor: '#142B47',
+        borderWidth: 1,
+        borderRadius: 4,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.x} report${ctx.parsed.x === 1 ? '' : 's'}`,
           },
         },
       },

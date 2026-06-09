@@ -1494,12 +1494,36 @@ def breakdown():
     # most_common() lists).
     plate_breakdown_chart.sort(key=lambda r: -r['count'])
 
+    # Breakdowns by Driver — parallel chart, same filter window. Keyed
+    # by operator_name from the FixFlo job order ('Operator Name' on
+    # the request form, screenshot 06/2026). Helps spot drivers most
+    # often associated with breakdown reports — could indicate the
+    # driver runs chronic-problem plates, handles equipment roughly,
+    # or simply files diligently. We deliberately do NOT pull driver
+    # info from equipment.name; per user, that field is not always
+    # updated on FixFlo and would misattribute incidents.
+    #
+    # Names are normalised on input (stripped + non-empty check) so
+    # whitespace variants don't fork into two bars. Anonymous rows
+    # (no operator listed) are silently excluded — there is no
+    # 'Unknown' catch-all bucket because that would just be noise.
+    operator_counts = Counter()
+    for l in logs:
+        nm = (getattr(l, 'operator_name', None) or '').strip()
+        if nm:
+            operator_counts[nm] += 1
+    operator_breakdown_chart = [
+        {'label': name, 'count': count}
+        for name, count in operator_counts.most_common()
+    ]
+
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,
         logs=logs, plates=plates, truck_types=truck_types,
         filter_status=filter_status, filter_plate=filter_plate,
         bd_statuses=BREAKDOWN_STATUSES, summary=summary,
-        plate_breakdown_chart=plate_breakdown_chart)
+        plate_breakdown_chart=plate_breakdown_chart,
+        operator_breakdown_chart=operator_breakdown_chart)
 
 
 def _parse_dt(s):
