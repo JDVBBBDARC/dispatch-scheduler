@@ -1433,26 +1433,32 @@ def breakdown():
     summary = {s: sum(1 for l in all_logs_month if l.status == s) for s in BREAKDOWN_STATUSES}
     summary['Total'] = len(all_logs_month)
 
-    # Most Breakdown Unit — which plate has the most breakdown rows in
-    # the CURRENT filter window. Computed from `logs` (already filtered
-    # by year, month, AND status), so changing any filter re-derives the
-    # answer. Returns None when the filtered set is empty so the KPI
-    # card can render an em-dash placeholder.
+    # Breakdowns by Plate — bar-chart data. Ranks every plate that
+    # appears in the CURRENT filter window (year + month + status) by
+    # breakdown-record count, descending. Drives the Chart.js bar
+    # chart below the filter bar. Empty list when nothing matches.
+    # `plates` is already loaded above (active=True); we fall back to
+    # a direct query for any inactive plate that still has rows in the
+    # window, so chronic problem units don't vanish from the chart
+    # once they're retired from the fleet.
     from collections import Counter
     plate_counts = Counter(l.plate_id for l in logs if l.plate_id is not None)
-    most_unit = None
-    if plate_counts:
-        top_plate_id, top_count = plate_counts.most_common(1)[0]
-        top_plate = Plate.query.get(top_plate_id)
-        if top_plate:
-            most_unit = {'plate': top_plate, 'count': top_count}
+    plate_lookup = {p.id: p for p in plates}
+    plate_breakdown_chart = []
+    for plate_id, count in plate_counts.most_common():
+        p = plate_lookup.get(plate_id) or Plate.query.get(plate_id)
+        if p:
+            plate_breakdown_chart.append({
+                'label': p.body_no or p.plate_no,
+                'count': count,
+            })
 
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,
         logs=logs, plates=plates, truck_types=truck_types,
         filter_status=filter_status,
         bd_statuses=BREAKDOWN_STATUSES, summary=summary,
-        most_unit=most_unit)
+        plate_breakdown_chart=plate_breakdown_chart)
 
 
 def _parse_dt(s):
