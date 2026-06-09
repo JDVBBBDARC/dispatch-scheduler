@@ -333,7 +333,10 @@
   <div class="card-body" style="padding:18px 22px;">
     {% if operator_breakdown_chart %}
     <div style="position:relative;height:{{ (operator_breakdown_chart|length * 30 + 40) if operator_breakdown_chart|length > 4 else 180 }}px;">
-      <canvas id="breakdownByDriverChart"></canvas>
+      <canvas id="breakdownByDriverChart" style="cursor:pointer;"></canvas>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:6px;text-align:right;">
+      <i class="bi bi-hand-index me-1"></i>Click a bar to see this driver's job orders
     </div>
     {% else %}
     <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
@@ -811,14 +814,33 @@ async function openUnitDetailModal(d) {
   const modal = new bootstrap.Modal(document.getElementById('unitDetailModal'));
   modal.show();
 
+  /* Determine which kind of bar was clicked:
+     - 'aliases' field present (even if empty array)  -> driver bar
+     - 'is_equipment' true                            -> equipment bar
+     - otherwise                                      -> plate bar
+     The two chart datasets carry different shapes so this is the
+     cheapest reliable dispatch. */
+  const isDriver = (d.aliases !== undefined);
   const params = new URLSearchParams({
-    type:   d.is_equipment ? 'equipment' : 'plate',
     year:   _UDM_YEAR,
     month:  _UDM_MONTH,
     status: _UDM_STATUS,
   });
-  if (d.is_equipment) params.set('name', d.label);
-  else                params.set('id',   d.plate_id);
+  if (isDriver) {
+    params.set('type', 'driver');
+    params.set('label', d.label);
+    /* Aliases is always populated for driver bars (one entry when
+       no merge happened, multiple when the server folded spellings).
+       Each alias goes into the IN-list on the backend. */
+    const names = d.aliases.length > 0 ? d.aliases : [d.label];
+    names.forEach(n => params.append('name', n));
+  } else if (d.is_equipment) {
+    params.set('type', 'equipment');
+    params.set('name', d.label);
+  } else {
+    params.set('type', 'plate');
+    params.set('id',   d.plate_id);
+  }
 
   let j;
   try {
@@ -930,6 +952,15 @@ async function openUnitDetailModal(d) {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      /* Click any driver bar → open the unit-detail modal scoped to
+         that driver's job orders. Reuses the same modal as the plate
+         chart; the opener detects driver vs plate vs equipment via
+         the data-point shape and builds the right query. */
+      onClick: (_evt, elements) => {
+        if (!elements || !elements.length) return;
+        const d = dataPoints[elements[0].index];
+        if (d) openUnitDetailModal(d);
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -943,10 +974,11 @@ async function openUnitDetailModal(d) {
               const d = dataPoints[ctxs[0].dataIndex];
               if (d && d.aliases && d.aliases.length > 1) {
                 return ['', 'Merged spellings:'].concat(
-                  d.aliases.map(a => '  • ' + a)
+                  d.aliases.map(a => '  • ' + a),
+                  '', 'Click to see job orders →'
                 );
               }
-              return '';
+              return '\nClick to see job orders →';
             },
           },
         },

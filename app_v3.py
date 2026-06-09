@@ -1594,6 +1594,20 @@ def breakdown():
     # the merged aliases in the tooltip so the dispatcher can audit
     # any false merges. Explicit placeholders like 'No Operator' /
     # 'N/A' are filtered out (they aren't real drivers).
+    # Two-stage grouping:
+    #   Stage 1 — exact-key merge via _normalize_driver_key
+    #             ('J.SALONGA' / 'JUDEMAR SALONGA' / 'Judemar Salonga'
+    #             all collapse to one key here).
+    #   Stage 2 — fuzzy surname merge across keys with the same
+    #             initial. Catches typos like 'R.HAGONOY' vs
+    #             'Ronie Hagunoy' (surnames differ by one letter)
+    #             that Stage 1 leaves on separate keys. Threshold
+    #             tuned at 0.82 (SequenceMatcher) — empirically
+    #             merges Hagonoy/Hagunoy without joining unrelated
+    #             surnames in the test fleet.
+    from difflib import SequenceMatcher
+    SURNAME_SIMILARITY_THRESHOLD = 0.82
+
     operator_groups = {}   # key -> {'canonical': str, 'count': int, 'aliases': set[str]}
     for l in logs:
         nm = (getattr(l, 'operator_name', None) or '').strip()
@@ -1602,7 +1616,26 @@ def breakdown():
         key = _normalize_driver_key(nm)
         if key is None:
             continue
-        g = operator_groups.setdefault(key, {
+        # Stage 2 lookup: scan existing keys for a near-surname
+        # match within the same initial bucket. If found, fold
+        # this name into that existing group instead of creating
+        # a new key. We deliberately compare against ORIGINAL keys
+        # (not chained merges) so the threshold stays predictable.
+        new_initial, _, new_surname = key.partition('.')
+        merge_into = key
+        for existing in operator_groups.keys():
+            ex_initial, _, ex_surname = existing.partition('.')
+            if ex_initial != new_initial:
+                continue
+            if ex_surname == new_surname:
+                merge_into = existing
+                break
+            ratio = SequenceMatcher(None, ex_surname, new_surname).ratio()
+            if ratio >= SURNAME_SIMILARITY_THRESHOLD:
+                merge_into = existing
+                break
+
+        g = operator_groups.setdefault(merge_into, {
             'canonical': nm, 'count': 0, 'aliases': set(),
         })
         g['count'] += 1
@@ -1620,9 +1653,12 @@ def breakdown():
         operator_breakdown_chart.append({
             'label':    g['canonical'],
             'count':    g['count'],
-            # Only expose aliases when more than one spelling was
-            # merged — otherwise it just clutters the tooltip.
-            'aliases':  aliases if len(aliases) > 1 else [],
+            # Always expose the full spelling list — the frontend
+            # needs it to drive the click-to-modal lookup (the
+            # endpoint filters by operator_name IN <aliases>).
+            # Tooltip code only renders the 'Merged spellings'
+            # block when length > 1.
+            'aliases':  aliases,
         })
 
     return render_template('breakdown/index.html',
@@ -1662,8 +1698,8 @@ def api_breakdown_unit_logs():
                   operator_name}, ... ] }
     """
     unit_type = (request.args.get('type') or '').strip().lower()
-    if unit_type not in ('plate', 'equipment'):
-        return jsonify({'error': "type must be 'plate' or 'equipment'"}), 400
+    if unit_type not in ('plate', 'equipment', 'driver'):
+        return jsonify({'error': "type must be 'plate', 'equipment', or 'driver'"}), 400
 
     year   = request.args.get('year',  ph_today().year,  type=int)
     month  = request.args.get('month', ph_today().month, type=int)
@@ -1688,7 +1724,7 @@ def api_breakdown_unit_logs():
         q = q.filter(BreakdownLog.plate_id == pid)
         p = Plate.query.get(pid)
         label = p.display if p else f'Plate #{pid}'
-    else:  # equipment
+    elif unit_type == 'equipment':
         name = (request.args.get('name') or '').strip()
         if not name:
             return jsonify({'error': 'name is required for type=equipment'}), 400
@@ -1699,6 +1735,23 @@ def api_breakdown_unit_logs():
         q = q.filter(BreakdownLog.plate_id.is_(None),
                      BreakdownLog.equipment_name == name)
         label = name
+
+    else:  # driver — operator_name IN <list of aliases>
+        # The frontend passes every original spelling that the
+        # server-side grouping merged into this bar (e.g.
+        # 'JIM LAYAG' + 'J.LAYAG'). Filtering by IN keeps the
+        # endpoint stateless — no need to re-run the normaliser
+        # here. The canonical display label is sent separately
+        # so the modal title reads as the dispatcher expects.
+        names = [n.strip() for n in request.args.getlist('name')
+                 if n and n.strip()]
+        if not names:
+            return jsonify({'error': 'name(s) required for type=driver'}), 400
+        q = q.filter(BreakdownLog.operator_name.in_(names))
+        # Optional 'label' arg lets the frontend pass the canonical
+        # display so the modal title matches the bar label exactly
+        # (otherwise we'd fall back to one of the aliases).
+        label = (request.args.get('label') or names[0]).strip()
 
     rows = q.order_by(BreakdownLog.date.desc(),
                       BreakdownLog.id.desc()).all()
