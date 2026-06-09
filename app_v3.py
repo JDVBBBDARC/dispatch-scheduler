@@ -1407,6 +1407,10 @@ def breakdown():
     year   = request.args.get('year',  ph_today().year,  type=int)
     month  = request.args.get('month', ph_today().month, type=int)
     filter_status = request.args.get('status', 'all')
+    # Plate filter — value comes in as a string ID. Kept as string so
+    # the template's selected check works uniformly (Plate.id|string vs
+    # the querystring value). 'all' means no plate filter.
+    filter_plate = request.args.get('plate', 'all')
     years  = list(range(2024, ph_today().year + 2))
 
     last_day = calendar.monthrange(year, month)[1]
@@ -1419,6 +1423,15 @@ def breakdown():
     )
     if filter_status != 'all':
         q = q.filter(BreakdownLog.status == filter_status)
+    # Plate filter — coerce to int defensively so a stray non-numeric
+    # value (manually edited URL) doesn't bubble up as a 500. Falls
+    # back to no filter on bad input and resets filter_plate so the
+    # dropdown shows 'All Plates' rather than a corrupt selection.
+    if filter_plate != 'all':
+        try:
+            q = q.filter(BreakdownLog.plate_id == int(filter_plate))
+        except (TypeError, ValueError):
+            filter_plate = 'all'
 
     logs = q.order_by(BreakdownLog.date.desc(), BreakdownLog.id.desc()).all()
 
@@ -1456,7 +1469,7 @@ def breakdown():
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,
         logs=logs, plates=plates, truck_types=truck_types,
-        filter_status=filter_status,
+        filter_status=filter_status, filter_plate=filter_plate,
         bd_statuses=BREAKDOWN_STATUSES, summary=summary,
         plate_breakdown_chart=plate_breakdown_chart)
 

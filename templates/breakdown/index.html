@@ -193,6 +193,35 @@
     <option value="{{ s }}" {% if filter_status==s %}selected{% endif %}>{{ s }}</option>
     {% endfor %}
   </select>
+  {#
+    Plate filter. Optgrouped by truck type so the dispatcher can find
+    a plate even on a long fleet list (DT alone runs 20+). 'All Plates'
+    is the default and matches the 'all' querystring value. Comparison
+    uses Plate.id|string so the selected attribute resolves whether
+    the querystring delivers '5' or '5 ' (browser-trimmed) cleanly.
+  #}
+  <label>Plate</label>
+  <select name="plate" onchange="this.form.submit()">
+    <option value="all" {% if filter_plate=='all' %}selected{% endif %}>All Plates</option>
+    {% for tt in truck_types %}
+      {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
+      {% if tt_plates %}
+      <optgroup label="{{ tt.name }}">
+        {% for p in tt_plates %}
+        <option value="{{ p.id }}" {% if filter_plate==p.id|string %}selected{% endif %}>{{ p.display }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endif %}
+    {% endfor %}
+    {% set uncat = plates|selectattr('truck_type_id', 'none')|list %}
+    {% if uncat %}
+    <optgroup label="Uncategorized">
+      {% for p in uncat %}
+      <option value="{{ p.id }}" {% if filter_plate==p.id|string %}selected{% endif %}>{{ p.display }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endif %}
+  </select>
 </form>
 
 <!--
@@ -232,7 +261,7 @@
   <div class="card-header">
     <span class="card-title">
       <i class="bi bi-bar-chart-line me-2"></i>Breakdowns by Plate —
-      {{ mo_s.strftime('%B %Y') }}{% if filter_status != 'all' %} ({{ filter_status }}){% endif %}
+      {{ mo_s.strftime('%B %Y') }}{% if filter_status != 'all' %} ({{ filter_status }}){% endif %}{% if filter_plate != 'all' %} · single plate{% endif %}
     </span>
     <span style="font-size:.78rem;opacity:.85;">
       {{ plate_breakdown_chart|length }} plate{{ 's' if plate_breakdown_chart|length != 1 else '' }} in window
