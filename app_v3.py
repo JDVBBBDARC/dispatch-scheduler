@@ -1446,25 +1446,53 @@ def breakdown():
     summary = {s: sum(1 for l in all_logs_month if l.status == s) for s in BREAKDOWN_STATUSES}
     summary['Total'] = len(all_logs_month)
 
-    # Breakdowns by Plate — bar-chart data. Ranks every plate that
+    # Breakdowns by Plate — bar-chart data. Ranks every unit that
     # appears in the CURRENT filter window (year + month + status) by
     # breakdown-record count, descending. Drives the Chart.js bar
     # chart below the filter bar. Empty list when nothing matches.
-    # `plates` is already loaded above (active=True); we fall back to
-    # a direct query for any inactive plate that still has rows in the
-    # window, so chronic problem units don't vanish from the chart
-    # once they're retired from the fleet.
+    #
+    # Two sources are merged into one ranking:
+    #   1. Plate-matched rows  — keyed by plate_id, resolved via the
+    #      preloaded `plates` lookup with a direct query fallback so
+    #      retired (inactive) plates with rows in the window still
+    #      appear instead of vanishing silently.
+    #   2. Unmapped equipment  — rows where plate_id is null but the
+    #      FixFlo sync captured an equipment.name (typically trailers
+    #      and generators not registered as plates). Keyed by the
+    #      equipment_name string itself so each unique label gets its
+    #      own bar. Flagged is_equipment=True so the frontend can
+    #      visually distinguish these from real plate bars.
     from collections import Counter
-    plate_counts = Counter(l.plate_id for l in logs if l.plate_id is not None)
+    plate_counts = Counter()
+    equipment_counts = Counter()
+    for l in logs:
+        if l.plate_id is not None:
+            plate_counts[l.plate_id] += 1
+        elif getattr(l, 'equipment_name', None):
+            equipment_counts[l.equipment_name] += 1
+
     plate_lookup = {p.id: p for p in plates}
     plate_breakdown_chart = []
     for plate_id, count in plate_counts.most_common():
         p = plate_lookup.get(plate_id) or Plate.query.get(plate_id)
         if p:
             plate_breakdown_chart.append({
-                'label': p.body_no or p.plate_no,
-                'count': count,
+                'label':        p.body_no or p.plate_no,
+                'count':        count,
+                'is_equipment': False,
             })
+    for eq_name, count in equipment_counts.most_common():
+        plate_breakdown_chart.append({
+            'label':        eq_name,
+            'count':        count,
+            'is_equipment': True,
+        })
+    # Final re-sort so plates and equipment interleave correctly by
+    # count, not by source group. Stable sort preserves the original
+    # within-group order on ties (a plate and an equipment with the
+    # same count stay in their relative order from the two pre-sorted
+    # most_common() lists).
+    plate_breakdown_chart.sort(key=lambda r: -r['count'])
 
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,

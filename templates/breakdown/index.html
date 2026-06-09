@@ -327,6 +327,23 @@
               {% endif %}
               {% endfor %}
             </select>
+            {#
+              ERP equipment label fallback. When the FixFlo job order
+              couldn't be matched to a Plate in master data (typically
+              trailers, generators, and other equipment not registered
+              as fleet plates), the sync still captures the original
+              equipment.name from FixFlo. Surface it here so the row
+              still identifies what was repaired — read-only context,
+              not editable, distinguished visually from real plate
+              data via italic + muted color + info icon.
+            #}
+            {% if not log.plate_id and log.equipment_name %}
+            <div style="font-size:.7rem;color:var(--muted);margin:3px 0 0 4px;
+                        font-style:italic;line-height:1.2;"
+                 title="From FixFlo — not in master data">
+              <i class="bi bi-info-circle me-1" style="opacity:.55;"></i>{{ log.equipment_name }}
+            </div>
+            {% endif %}
           </td>
           <td>
             <textarea class="bd-inline" rows="1"
@@ -627,10 +644,25 @@ async function syncFromERP() {
 
   const labels = dataPoints.map(d => d.label);
   const counts = dataPoints.map(d => d.count);
-  /* Highlight the top offender in the deeper maroon-dark so the
-     eye lands on the worst unit immediately; the rest get the
-     standard brand maroon with a touch of transparency for hierarchy. */
-  const bg = counts.map((_, i) => i === 0 ? '#6B1420' : 'rgba(139, 26, 43, .82)');
+  /* Per-bar colour resolves in priority order:
+       1. Unmapped equipment (from FixFlo equipment.name, no master-
+          data plate)  -> slate grey so it reads as 'context, not
+          fleet'. Lets the dispatcher see trailer counts without
+          confusing them for real plate stats.
+       2. The top bar of the chart                 -> maroon-dark
+          accent so the worst offender catches the eye first.
+       3. Everything else                          -> brand maroon
+          at 82% alpha — soft hierarchy without graphic noise. */
+  const bg = dataPoints.map((d, i) => {
+    if (d.is_equipment) return 'rgba(107, 114, 128, .75)';
+    if (i === 0)        return '#6B1420';
+    return 'rgba(139, 26, 43, .82)';
+  });
+  /* Borders match the bar palette so the equipment-vs-plate
+     distinction reads cleanly even on low-DPR displays. */
+  const borders = dataPoints.map((d) =>
+    d.is_equipment ? '#4B5563' : '#6B1420'
+  );
 
   new Chart(canvas.getContext('2d'), {
     type: 'bar',
@@ -640,7 +672,7 @@ async function syncFromERP() {
         label: 'Breakdown records',
         data: counts,
         backgroundColor: bg,
-        borderColor: '#6B1420',
+        borderColor: borders,
         borderWidth: 1,
         borderRadius: 4,
         maxBarThickness: 22,
@@ -654,7 +686,11 @@ async function syncFromERP() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}`,
+            label: (ctx) => {
+              const d = dataPoints[ctx.dataIndex];
+              const suffix = d.is_equipment ? ' (equipment, not in master)' : '';
+              return `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}${suffix}`;
+            },
           },
         },
       },
