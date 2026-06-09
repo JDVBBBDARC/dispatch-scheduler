@@ -148,25 +148,6 @@
     <div class="kpi-value" style="font-size:1.8rem;">{{ summary['Standby'] }}</div>
     <div class="kpi-sub">monitoring</div>
   </div>
-  {#
-    Most Breakdown Unit — driven from the SAME filter set as the table
-    below (year + month + status). Server computes from `logs` so the
-    card auto-updates whenever a filter dropdown changes (the form
-    auto-submits on change). Renders an em-dash placeholder when the
-    filtered set is empty.
-  #}
-  <div class="kpi-card" title="Plate with the most breakdown records in the current filter window">
-    <div class="kpi-label">Most Breakdown Unit</div>
-    {% if most_unit %}
-    <div class="kpi-value" style="font-size:1.3rem;line-height:1.15;">
-      {{ most_unit.plate.body_no or most_unit.plate.plate_no }}
-    </div>
-    <div class="kpi-sub">{{ most_unit.count }} record{{ 's' if most_unit.count != 1 else '' }}</div>
-    {% else %}
-    <div class="kpi-value" style="font-size:1.8rem;color:var(--muted);">—</div>
-    <div class="kpi-sub">no data in window</div>
-    {% endif %}
-  </div>
 </div>
 
 <!-- Filter Bar -->
@@ -191,6 +172,38 @@
     {% endfor %}
   </select>
 </form>
+
+{#
+  Breakdowns-by-Plate bar chart — visualises which units accumulate
+  the most breakdowns in the current filter window. The server hands
+  us a list pre-sorted by count descending; Chart.js just renders.
+  Height grows ~30px per bar so the chart adapts to small fleets
+  (3-4 plates) without leaving huge empty space and stays readable
+  on large windows (20+ plates) without per-bar squashing.
+#}
+<div class="card" id="bdChartCard" style="margin-bottom:18px;">
+  <div class="card-header">
+    <span class="card-title">
+      <i class="bi bi-bar-chart-line me-2"></i>Breakdowns by Plate —
+      {{ mo_s.strftime('%B %Y') }}{% if filter_status != 'all' %} ({{ filter_status }}){% endif %}
+    </span>
+    <span style="font-size:.78rem;opacity:.85;">
+      {{ plate_breakdown_chart|length }} plate{{ 's' if plate_breakdown_chart|length != 1 else '' }} in window
+    </span>
+  </div>
+  <div class="card-body" style="padding:18px 22px;">
+    {% if plate_breakdown_chart %}
+    <div style="position:relative;height:{{ (plate_breakdown_chart|length * 30 + 40) if plate_breakdown_chart|length > 4 else 180 }}px;">
+      <canvas id="breakdownByPlateChart"></canvas>
+    </div>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
+      <i class="bi bi-graph-down" style="font-size:1.4rem;opacity:.6;"></i><br/>
+      No breakdowns recorded in this filter window.
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 <!-- Add Breakdown Form -->
 <div class="bd-add-form">
@@ -528,5 +541,66 @@ function updateCount(delta) {
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+/* ── Breakdowns-by-Plate bar chart ──────────────────────────────
+   The server hands us {{ plate_breakdown_chart|length }} pre-sorted
+   data points (descending by count). Render as a horizontal bar
+   chart so long plate labels remain readable and the visualisation
+   reads naturally as a ranking. Re-renders on every full page load
+   — same lifecycle as the filter form, which auto-submits on
+   change, so the chart always reflects the current filter window. */
+(function initBreakdownByPlateChart() {
+  const dataPoints = {{ plate_breakdown_chart|tojson }};
+  if (!dataPoints || dataPoints.length === 0) return;
+  const canvas = document.getElementById('breakdownByPlateChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = dataPoints.map(d => d.label);
+  const counts = dataPoints.map(d => d.count);
+  /* Highlight the top offender in the deeper maroon-dark so the
+     eye lands on the worst unit immediately; the rest get the
+     standard brand maroon with a touch of transparency for hierarchy. */
+  const bg = counts.map((_, i) => i === 0 ? '#6B1420' : 'rgba(139, 26, 43, .82)');
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Breakdown records',
+        data: counts,
+        backgroundColor: bg,
+        borderColor: '#6B1420',
+        borderWidth: 1,
+        borderRadius: 4,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { precision: 0, stepSize: 1 },
+          grid: { color: 'rgba(0,0,0,.05)' },
+        },
+        y: {
+          ticks: { font: { weight: '600' } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+})();
 </script>
 {% endblock %}
