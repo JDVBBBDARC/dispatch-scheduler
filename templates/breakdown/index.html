@@ -935,6 +935,19 @@ async function openUnitDetailModal(d) {
         tooltip: {
           callbacks: {
             label: (ctx) => `${ctx.parsed.x} report${ctx.parsed.x === 1 ? '' : 's'}`,
+            /* When the server-side grouping merged two-or-more
+               spellings into this bar, list them under the count
+               so the dispatcher can audit the merge. Quiet when
+               only one spelling exists. */
+            afterBody: (ctxs) => {
+              const d = dataPoints[ctxs[0].dataIndex];
+              if (d && d.aliases && d.aliases.length > 1) {
+                return ['', 'Merged spellings:'].concat(
+                  d.aliases.map(a => '  • ' + a)
+                );
+              }
+              return '';
+            },
           },
         },
       },

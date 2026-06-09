@@ -1,4 +1,4 @@
-import os, io, socket, calendar
+import os, io, re, socket, calendar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -1401,6 +1401,83 @@ def api_helper_attendance_set():
 
 
 # ── BREAKDOWN ──────────────────────────────────────────────────────────────
+# ── Driver-name normalisation (for the Breakdowns-by-Driver chart) ──
+# FixFlo operators are typed freeform — same person ends up as
+# 'JIM LAYAG', 'J.LAYAG', 'Jim layag', or even 'DANILO MIASCO TH10
+# NHA 3948' (with the plate appended by accident). We derive a
+# stable key per name so the chart aggregates spellings instead of
+# fanning them out into one bar each.
+#
+# Heuristic: strip trailing plate-like patterns and common name
+# suffixes, then build a key of '<first-initial>.<surname>'. This
+# correctly merges 'JIM LAYAG' + 'J.LAYAG' (both J.LAYAG) and
+# separates 'R.JARO' from 'R.DELA CRUZ' (different surnames). False
+# merges are rare in a ~30-driver fleet; if they do happen, the
+# tooltip exposes the merged aliases so the dispatcher can spot it.
+
+_DRIVER_NAME_SKIP = {
+    'NO OPERATOR', 'N/A', 'NA', 'NONE',
+    'UNASSIGNED', 'TBA', 'TBD', '-',
+}
+_DRIVER_SUFFIX_TOKENS = {
+    'JR', 'JR.', 'SR', 'SR.', 'JUNIOR', 'SENIOR',
+    'II', 'III', 'IV',
+}
+# Matches trailing plate-like garbage on a name. Two shapes:
+#   ' TH10 NHA 3948'  (truck-type code, plate prefix, plate number)
+#   ' DT4 NET2693'    (same with prefix glued to number)
+# Anchored to the end of the string with leading whitespace so a
+# real first-name token like 'TH...' can't accidentally match (no
+# real first name starts with 2+ uppercase letters followed by
+# digits).
+_DRIVER_PLATE_TAIL_RE = re.compile(
+    r'\s+[A-Z]{2,4}\d{1,3}'        # truck-type code, e.g. TH10 / DT4
+    r'(\s+[A-Z]{3}\s*\d{3,4})?'    # optional plate, e.g. NHA 3948
+    r'\s*$',
+    flags=re.IGNORECASE,
+)
+
+
+def _normalize_driver_key(name):
+    """Return a canonical key for grouping driver name variants.
+
+    Examples:
+      'Judemar Salonga'                  -> 'J.SALONGA'
+      'JUDEMAR SALONGA'                  -> 'J.SALONGA'
+      'J.SALONGA'                        -> 'J.SALONGA'
+      'JIM LAYAG'                        -> 'J.LAYAG'
+      'J.LAYAG'                          -> 'J.LAYAG'
+      'DANILO MIASCO TH10 NHA 3948'      -> 'D.MIASCO'
+      'REYNALDO DELA CRUZ'               -> 'R.CRUZ'
+      'No Operator'                      -> None  (skipped)
+
+    Returns None when the input is empty or matches a placeholder
+    in _DRIVER_NAME_SKIP — those should be excluded from the chart
+    rather than rendered as an 'Unknown' bucket.
+    """
+    if not name:
+        return None
+    s = name.strip().upper()
+    if not s or s in _DRIVER_NAME_SKIP:
+        return None
+    # Strip trailing plate-like tokens.
+    s = _DRIVER_PLATE_TAIL_RE.sub('', s).strip()
+    # Tokenise on whitespace, dots, commas. Drop empties and
+    # name suffixes (JR, SR, III, ...).
+    parts = [p for p in re.split(r'[\s.,]+', s)
+             if p and p not in _DRIVER_SUFFIX_TOKENS]
+    if not parts:
+        return None
+    # First-letter of the first word as the initial; last word as
+    # the surname. Single-letter first tokens (e.g. the 'J' in
+    # 'J.LAYAG') already collapse to themselves.
+    surname = parts[-1]
+    initial = parts[0][0] if parts[0] else ''
+    if not initial or not surname:
+        return None
+    return f'{initial}.{surname}'
+
+
 @app.route('/breakdown')
 @login_required
 def breakdown():
@@ -1502,25 +1579,51 @@ def breakdown():
     # Breakdowns by Driver — parallel chart, same filter window. Keyed
     # by operator_name from the FixFlo job order ('Operator Name' on
     # the request form, screenshot 06/2026). Helps spot drivers most
-    # often associated with breakdown reports — could indicate the
-    # driver runs chronic-problem plates, handles equipment roughly,
-    # or simply files diligently. We deliberately do NOT pull driver
-    # info from equipment.name; per user, that field is not always
-    # updated on FixFlo and would misattribute incidents.
+    # often associated with breakdown reports.
     #
-    # Names are normalised on input (stripped + non-empty check) so
-    # whitespace variants don't fork into two bars. Anonymous rows
-    # (no operator listed) are silently excluded — there is no
-    # 'Unknown' catch-all bucket because that would just be noise.
-    operator_counts = Counter()
+    # Names from FixFlo are messy — the same driver appears as
+    # 'JIM LAYAG', 'J.LAYAG', 'Judemar Salonga', 'JUDEMAR SALONGA',
+    # 'J.SALONGA', sometimes with trailing plate junk like
+    # 'DANILO MIASCO TH10 NHA 3948'. Without normalisation each
+    # spelling forks into its own bar and the chart becomes useless
+    # for finding chronic reporters.
+    #
+    # Strategy: derive a canonical key per name (first-initial +
+    # surname) via _normalize_driver_key, group rows by that key,
+    # display the longest variant as the chart label, and surface
+    # the merged aliases in the tooltip so the dispatcher can audit
+    # any false merges. Explicit placeholders like 'No Operator' /
+    # 'N/A' are filtered out (they aren't real drivers).
+    operator_groups = {}   # key -> {'canonical': str, 'count': int, 'aliases': set[str]}
     for l in logs:
         nm = (getattr(l, 'operator_name', None) or '').strip()
-        if nm:
-            operator_counts[nm] += 1
-    operator_breakdown_chart = [
-        {'label': name, 'count': count}
-        for name, count in operator_counts.most_common()
-    ]
+        if not nm:
+            continue
+        key = _normalize_driver_key(nm)
+        if key is None:
+            continue
+        g = operator_groups.setdefault(key, {
+            'canonical': nm, 'count': 0, 'aliases': set(),
+        })
+        g['count'] += 1
+        g['aliases'].add(nm)
+        # Pick the longest spelling as the canonical display — it
+        # almost always carries the most information (full first
+        # name beats an initial). Ties keep the first one seen.
+        if len(nm) > len(g['canonical']):
+            g['canonical'] = nm
+
+    operator_breakdown_chart = []
+    for key, g in sorted(operator_groups.items(),
+                          key=lambda kv: (-kv[1]['count'], kv[0])):
+        aliases = sorted(g['aliases'])
+        operator_breakdown_chart.append({
+            'label':    g['canonical'],
+            'count':    g['count'],
+            # Only expose aliases when more than one spelling was
+            # merged — otherwise it just clutters the tooltip.
+            'aliases':  aliases if len(aliases) > 1 else [],
+        })
 
     return render_template('breakdown/index.html',
         year=year, month=month, years=years, mo_s=mo_s,
