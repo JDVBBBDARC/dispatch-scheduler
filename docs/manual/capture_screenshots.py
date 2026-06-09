@@ -32,7 +32,6 @@ PAGES = [
     ('master.png',        '/master',                 'Master Data',                 True,  3),
     ('breakdown.png',     '/breakdown',              'Breakdown',                   True,  3),
     ('toll_calculator.png','/toll-calculator',       'Toll Calculator',             True,  2),
-    ('toll_log.png',      '/toll-log',               'Toll Log',                    True,  3),
     ('truck_cycle.png',   '/truck-cycle-time',       'Truck Cycle Time',            True,  4),
     ('reports.png',       '/reports',                'Reports',                     True,  3),
 ]

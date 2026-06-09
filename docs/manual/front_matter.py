@@ -80,23 +80,26 @@ def document_control_page():
                   'with type-CLEAR confirmation. Manual geofences '
                   'workaround for API visibility issues. Ad-hoc stop '
                   'detection. Timezone serialisation unified to '
-                  'PHT-aware ISO.'])
+                  'PHT-aware timestamp format.'])
     rows.append(['1.2', 'May 2026', 'All',
-                  'Generic edition — references to specific company, '
-                  'compliance frameworks, and proprietary identifiers '
-                  'removed in favour of role-based descriptions. '
-                  'Schedule trip-save race condition fix. Toll EXIT '
-                  'event symmetry fix. datetime API modernization.'])
-    rows.append(['1.3', DOC_DATE, 'B.1, B.5',
-                  'Schedule tabs: per-truck-type trip count rendered as '
-                  'a prominent maroon pill badge on every tab, visible '
-                  'at a glance without expanding the tab. Empty types '
-                  'auto-hide their badge so the bar reads cleanly. '
-                  'Toll Log default view switched from raw event stream '
-                  'to trip-centric pairing — every Entry plaza is shown '
-                  'beside its matched Exit plaza on a single row, with '
-                  'computed transit duration. Unmatched events still '
-                  'surface separately for reconciliation.'])
+                  'Generic edition — references to specific company '
+                  'identifiers removed in favour of role-based '
+                  'descriptions. Schedule trip-save race condition fix. '
+                  'Toll EXIT event symmetry fix. datetime API '
+                  'modernization.'])
+    rows.append(['1.3', DOC_DATE, 'B.1, B.2, B.4, B.5, C-001..004, D.4',
+                  'Breakdown module rewritten as a read-only mirror of '
+                  'FixFlo (workshop management system); all manual-entry '
+                  'workflow removed. Toll plaza GPS auto-fill content '
+                  'removed pending field-accurate geofence coverage '
+                  '(GPS Toll dashboard KPI, Toll Log module, and toll '
+                  'reconciliation against GPS figures all deferred). '
+                  'Toll Calculator retained as a standalone fee-lookup '
+                  'tool. SOP-003 (Breakdown) and SOP-004 (Toll) updated '
+                  'to reflect FixFlo source-of-truth and corporate-RFID-'
+                  'statement reconciliation. Manual rebrand: all '
+                  'remaining compliance-framework framing removed; '
+                  'Schedule trip-count badge documented.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(sp(20))
@@ -141,7 +144,7 @@ def glossary_page():
     rows = [['Term / Acronym', 'Definition']]
     glossary = [
         ('API',       'Application Programming Interface — the protocol used by external systems (Cartrack, Google Sheets) to exchange data with the Dispatch Scheduler.'),
-        ('Auto-fill', 'The automatic populating of a TripRecord field (such as toll fee) from GPS telemetry, without manual data entry.'),
+        ('FixFlo',    'The workshop management system used by the mechanics to log job orders. The Dispatch Scheduler Breakdown module is a read-only mirror of FixFlo job orders.'),
         ('Home Geofence', 'The home base location for the fleet (typically the dispatch yard or supply chain management hub). Cycles open when a truck leaves this geofence and close when it returns. The system supports multiple home geofences.'),
         ('Breakdown', 'A recorded incident in which a vehicle becomes unavailable due to mechanical, electrical, or accident-related causes.'),
         ('Cartrack',  'The fleet GPS tracking provider integrated with this system. Provides real-time vehicle positions, geofence events, and trip data.'),

@@ -1,9 +1,7 @@
 """Sections D (System Governance), E (Technical), F (Appendices).
 
-Section D is intentionally minimal in this edition — the legacy ISO 9001
-mapping has been removed. The remaining content is operational governance
-(change management, access control, audit trail) without the compliance
-framing.
+Section D covers operational governance: data quality, change
+management, access control, and audit trail.
 """
 from reportlab.platypus import PageBreak
 from reportlab.lib.units import cm
@@ -49,16 +47,13 @@ def section_d():
          'Trip status cycles through Pending → Loading → In Transit → '
          'Delivered. Backward transitions require explicit dropdown '
          'selection.', 'Dispatcher'],
-        ['GPS evidence for tolls',
-         'Auto-fills carry their source CartrackEvent and SiteVisit '
-         'IDs for traceability.', 'System'],
-        ['Daily reconciliation',
-         'Every Delivered trip must have either an auto-filled toll '
-         'or a manually entered toll with a Notes annotation by '
-         'end-of-day.', 'Dispatcher'],
-        ['Weekly toll reconciliation',
-         'Finance compares system toll figures against physical '
-         'receipts and RFID statements every Monday.', 'Finance'],
+        ['Daily toll entry',
+         'Every Delivered trip that crossed an expressway must have '
+         'a Toll Fee entered from the physical receipt, or a Notes '
+         'annotation explaining the absence, by end-of-day.', 'Dispatcher'],
+        ['Monthly toll reconciliation',
+         'Finance reconciles entered Toll Fees against the corporate '
+         'RFID statement on a monthly cadence.', 'Finance'],
         ['Quarterly access review',
          'Operations Manager confirms each active user '
          'account is still required.', 'Operations Manager'],
@@ -153,13 +148,8 @@ def section_d():
          'Y (timestamped per change)', 'Indefinite'],
         ['Login successes / failures',
          'Y (via web-server logs)', '60 days'],
-        ['Breakdown record creation / closure',
-         'Y', 'Indefinite'],
-        ['Toll auto-fill events',
-         'Y (via CartrackEvent + SiteVisit)', '60 days for events, '
-         'indefinite for the resulting TripRecord.toll_fee'],
-        ['Cartrack polling worker runs',
-         'Y (always-on task log)', '60 days'],
+        ['Breakdown record sync from FixFlo',
+         'Y (mirrored from FixFlo job orders)', 'Indefinite'],
         ['Database backups',
          'Y (daily file snapshots)', '7 daily + weekly off-site'],
     ]
@@ -225,8 +215,8 @@ def section_e():
          'Serves user-facing pages and JSON APIs.',
          'PythonAnywhere WSGI on inbound HTTPS request.'],
         ['Polling worker (cartrack_poll.py)',
-         'Fetches GPS positions, geofence events, processes site visits, '
-         'opens/closes cycles, auto-fills tolls.',
+         'Fetches GPS positions and geofence events, processes site '
+         'visits, opens and closes cycles.',
          'PythonAnywhere always-on task, restart on host reboot.'],
         ['Database (SQLite)',
          'Single-file relational store.',
@@ -283,7 +273,7 @@ def section_e():
         'an authenticated session.'))
     api_rows = [
         ['Endpoint', 'Method', 'Purpose'],
-        ['/api/dashboard/kpis',                'GET',  'Headline KPI figures (now includes GPS Toll aggregate).'],
+        ['/api/dashboard/kpis',                'GET',  'Headline KPI figures.'],
         ['/api/dashboard/fleet-utilization',   'GET',  'Per-truck-type utilisation.'],
         ['/api/dashboard/driver-truck-ratio',  'GET',  'Driver vs assigned plate ratio.'],
         ['/api/dashboard/breakdown-hours',     'GET',  'Per-plate downtime histogram.'],
@@ -299,9 +289,6 @@ def section_e():
         ['/api/cycle-time/settings',           'GET',  'Read the current min-visit and stop-detection thresholds.'],
         ['/api/cycle-time/settings',           'POST', 'Admin-only: update the thresholds (persists to AppSetting; polling worker picks up on next poll).'],
         ['/api/cycle-time/clear-logs',         'POST', 'Admin-only: purge tracking rows (SiteVisit, TruckCycle, CartrackEvent) older than a required cutoff date. Requires confirm="CLEAR".'],
-        ['/api/toll-log/summary',              'GET',  'Toll Log KPI figures.'],
-        ['/api/toll-log/events',               'GET',  'Filtered list of plaza events.'],
-        ['/api/toll-log/export',               'GET',  'Excel export of events.'],
         ['/api/cartrack/status',               'GET',  'Diagnostic status of the GPS integration.'],
         ['/api/cartrack/poll-now',             'POST', 'Manually trigger a polling cycle.'],
         ['/api/cartrack/auto-map',             'POST', 'Auto-link plates to Cartrack vehicles.'],
@@ -353,11 +340,11 @@ def section_f():
          'Try again carefully. If still failing, contact the IT '
          'Administrator for a password reset.'],
         ['Trip toll_fee shows 0 after delivery',
-         'GPS evidence not captured — plate not mapped to Cartrack, '
-         'plaza missed by the polling worker, or trip outside the '
-         'date-match window.',
-         'Enter the toll manually from the physical receipt. Add a '
-         'Notes annotation. Investigate per SOP-004.'],
+         'Dispatcher has not yet entered the figure from the receipt, '
+         'or the driver did not surrender a receipt.',
+         'Enter the toll from the physical receipt; if the receipt is '
+         'missing, add a Notes annotation explaining the absence. See '
+         'SOP-004.'],
         ['Truck shows live status "NO DATA"',
          'Plate not mapped to Cartrack, or the Cartrack device is '
          'offline.',
@@ -420,24 +407,18 @@ def section_f():
         ['Cancel a trip',
          'Schedule',
          'Click Status badge dropdown → Cancelled.'],
-        ['Log a breakdown',
+        ['See current breakdowns (from FixFlo)',
          'Breakdown',
-         '+ Log Breakdown → fill form → Save.'],
+         'Open /breakdown — records appear automatically from FixFlo sync.'],
+        ['Force a FixFlo sync',
+         'Breakdown',
+         'Click <b>Sync from FixFlo</b> at the top of the page.'],
         ['Compute a toll',
          'Toll Calculator',
          'Pick expressway → class → entry → exit.'],
-        ['Enter trip toll fee (manual)',
+        ['Enter trip toll fee',
          'Schedule',
          'Type the toll from the physical receipt into the trip\'s Toll Fee column.'],
-        ['Check today\'s GPS-detected toll total',
-         'Dashboard',
-         'Look at the "GPS Toll" KPI card (purple, broadcast icon).'],
-        ['Drill into GPS-detected toll events',
-         'Toll Log',
-         'Open /toll-log (or click the GPS Toll card on Dashboard).'],
-        ['Export the toll log',
-         'Toll Log',
-         'Set filters → Export to Excel.'],
         ['Map a plate to GPS',
          'Master Data',
          'Plates card → broadcast icon → pick vehicle.'],

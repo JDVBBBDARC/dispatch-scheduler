@@ -1,4 +1,4 @@
-"""Section B — User Manual (9 modules)."""
+"""Section B — User Manual (8 modules)."""
 from reportlab.platypus import PageBreak
 from reportlab.lib.units import cm
 from helpers import (h_section, h1, h2, h3, p, pj, lead, sp, code,
@@ -12,7 +12,7 @@ def section_b():
     out.append(h_section('Section B — User Manual'))
     out.append(lead(
         'This section is a step-by-step operating guide for each of the '
-        'nine modules in the Dispatch Scheduler. Each subsection follows '
+        'eight modules in the Dispatch Scheduler. Each subsection follows '
         'the same template: an introduction, a screen-by-screen walk '
         'through of the user interface, the most common tasks performed '
         'in the module, and any quality-control checks the user must '
@@ -68,23 +68,11 @@ def section_b():
     kpi_rows = [
         ['KPI', 'Definition', 'Drill-down'],
         ['Trips Today',    'Count of TripRecord rows with a Wave date equal to today, excluding cancelled trips.', 'List of today\'s trips with status, plate, driver, client.'],
-        ['Toll Fee',       'Sum of toll_fee across today\'s non-cancelled trips. <b>Manual entry only</b> — dispatcher records each trip\'s toll from the physical receipt or RFID statement.', 'Same trip list with toll figures highlighted.'],
-        ['GPS Toll',       'Sum of toll fees computed by the polling worker from GPS plaza transits today. <b>Independent of Toll Fee</b> — purely reference / audit. Finance can compare the two to spot exemptions, missed transits, or RFID glitches.', 'Click the card to open the Toll Log page.'],
+        ['Toll Fee',       'Sum of toll_fee across today\'s non-cancelled trips. Recorded manually by the dispatcher from the physical receipt or RFID statement.', 'Same trip list with toll figures highlighted.'],
         ['Delivered',      'Count of trips with status = Delivered.',                                                'Filtered list of completed trips only.'],
         ['Fleet Util. %',  'Earned points divided by daily target points across all plates with at least one assignment.','Per-plate breakdown of points earned.'],
     ]
     out.append(std_table(kpi_rows, col_widths=[3.3 * cm, 6.7 * cm, 6.5 * cm]))
-
-    out.append(callout(
-        'Toll Fee vs GPS Toll',
-        'Two distinct KPIs by design. <b>Toll Fee</b> is what dispatchers '
-        'manually record from receipts (this is what Finance bills). '
-        '<b>GPS Toll</b> is what our polling worker auto-detected from '
-        'plaza transits — it is a reference figure, not a billing input. '
-        'Daily reconciliation (SOP-004) compares the two to catch '
-        'discrepancies that warrant investigation (e.g., a transit the '
-        'GPS detected but no manual entry exists, or vice-versa).',
-        kind='note'))
 
     out.append(h2('Fleet Utilisation Chart'))
     out.append(pj(
@@ -171,8 +159,8 @@ def section_b():
         'Plate, Product, Client. Optional but recommended: Helper, '
         'Dispatcher, RS No., PO No., DR No., Volume.',
         'Set the Status — typically "Pending" at creation time.',
-        'Enter the Toll Fee if known in advance; otherwise leave at 0 '
-        'and let the GPS auto-fill populate it.',
+        'Enter the Toll Fee from the physical receipt or RFID '
+        'statement once the trip is complete.',
         'Click anywhere outside the row to commit the changes. Saves '
         'occur automatically per field on blur.',
     ]): out.append(x)
@@ -322,51 +310,62 @@ def section_b():
         'accident damage, scheduled maintenance, and other downtime '
         'causes. It is the primary record of fleet reliability.'))
     out.append(screenshot_placeholder(
-        'Breakdown module — incident table and log form',
+        'Breakdown module — incident table populated by FixFlo sync',
         image='breakdown.png', height_cm=10))
 
-    out.append(h2('Logging a Breakdown'))
-    for x in numbered_list([
-        'Navigate to <b>Breakdown</b> in the left sidebar.',
-        'Click <b>+ Log Breakdown</b>.',
-        'Select the affected plate.',
-        'Enter the start date and time of the incident.',
-        'Choose the status: <b>Under Repair</b>, <b>Fixed</b>, or <b>Standby</b>.',
-        'Enter a short description of the cause.',
-        'Optionally attach the resolution and the end date and time once known.',
-        'Click <b>Save</b>.',
-    ]): out.append(x)
+    out.append(h2('FixFlo Integration'))
+    out.append(pj(
+        'The Breakdown module does <b>not</b> use manual entry. All '
+        'records are sourced directly from <b>FixFlo</b>, the workshop '
+        'management system used by the mechanics. When a mechanic logs '
+        'a repair request in FixFlo, the Dispatch Scheduler pulls the '
+        'job order, derives the breakdown record (plate, start time, '
+        'status, description, mechanic, resolution), and inserts or '
+        'updates the corresponding row on the Breakdown page.'))
+    out.append(pj(
+        'A background sync runs automatically; users can also trigger '
+        'an on-demand pull with the <b>Sync from FixFlo</b> button at '
+        'the top of the page when a freshly-logged job order needs to '
+        'appear immediately.'))
 
-    out.append(h2('Updating Repair Status'))
-    out.append(p('Re-open the breakdown record. Change the status, '
-                  'enter the end date and time, and add the resolution '
-                  'description. Total downtime is calculated '
-                  'automatically as the difference between start and '
-                  'end timestamps.'))
+    out.append(h2('What Gets Synced'))
+    sync_rows = [
+        ['Field', 'Source in FixFlo'],
+        ['Plate',         'Job order vehicle'],
+        ['Started At',    'Job order start timestamp (authoritative — overrides any other date)'],
+        ['Ended At',      'Job order completion timestamp (cleared automatically if status reverts)'],
+        ['Status',        'Derived from the latest FixFlo status log entry'],
+        ['Description',   'Built from FixFlo JO reference codes and request titles'],
+        ['Remarks',       'Mechanic names + the latest status log line'],
+        ['Resolution',    'Resolution notes captured by the mechanic on close-out'],
+    ]
+    out.append(std_table(sync_rows, col_widths=[4.5 * cm, 12 * cm]))
 
-    out.append(h2('Breakdown Categories'))
+    out.append(h2('Breakdown Statuses'))
     bd_rows = [
         ['Status',       'Meaning'],
-        ['Under Repair', 'Plate is currently with a mechanic or in the shop. Not available for dispatch.'],
-        ['Fixed',        'Repair is complete. Plate is back in service.'],
-        ['Standby',      'Plate is operational but intentionally held out of service (e.g., waiting for parts, scheduled inspection).'],
+        ['Under Repair', 'FixFlo job order is open and in progress. Plate is unavailable for dispatch.'],
+        ['Fixed',        'FixFlo job order is closed/completed. Plate is back in service.'],
+        ['Standby',      'Plate is operational but held out of service (e.g., waiting for parts, scheduled inspection).'],
     ]
     out.append(std_table(bd_rows, col_widths=[3.5 * cm, 13 * cm]))
     out.append(callout(
-        'Same-Day Reporting',
-        'Breakdowns must be logged within twenty-four hours of '
-        'occurrence. Delayed reporting distorts fleet-availability '
-        'metrics and complicates payroll calculations for affected '
-        'drivers. See SOP-003 (Breakdown Reporting).',
+        'Single Source of Truth',
+        'All repair data originates in FixFlo. The Dispatch Scheduler '
+        'is a read-only mirror — fields are not editable on the '
+        'Breakdown page. To correct an incident, the mechanic edits '
+        'the job order in FixFlo and the next sync pulls the '
+        'correction. See SOP-003 (Breakdown Reporting).',
         kind='note'))
 
     # ── B.5 Toll Calculator ───────────────────────────────────────────
     out.append(h1('B.5 Toll Calculator'))
     out.append(pj(
         'The Toll Calculator computes the expected toll fee between '
-        'any two plazas on any supported expressway. It uses the same '
-        'fee matrix that powers the GPS auto-fill feature, so manual '
-        'and automatic figures are always consistent.'))
+        'any two plazas on any supported expressway. It is a '
+        'standalone reference tool the dispatch team can use to '
+        'estimate trip costs in advance, or to confirm the expected '
+        'fee against a physical receipt.'))
     out.append(screenshot_placeholder(
         'Toll Calculator — expressway selector, plaza dropdowns, '
         'computed fee display', image='toll_calculator.png', height_cm=10))
@@ -404,56 +403,8 @@ def section_b():
     ]
     out.append(std_table(exp_rows, col_widths=[10 * cm, 6.5 * cm]))
 
-    # ── B.6 Toll Log ──────────────────────────────────────────────────
-    out.append(h1('B.6 Toll Log'))
-    out.append(pj(
-        'The Toll Log is a chronological list of every plaza-detection '
-        'event captured by the GPS polling worker. Each event records '
-        'the plate, expressway, plaza, event type (Enter or Exit), and '
-        'timestamp. When the system pairs an Enter event with a '
-        'subsequent Exit event at a different plaza, the matching '
-        'trip is identified and its toll_fee is auto-filled.'))
-    out.append(screenshot_placeholder(
-        'Toll Log page — KPI cards, filter panel, events table',
-        image='toll_log.png', height_cm=11))
-
-    out.append(h2('KPI Cards'))
-    for x in bullet_list([
-        '<b>Plaza Enters</b> — count of ENTER events in the selected '
-        'date range.',
-        '<b>Plaza Exits</b> — count of EXIT events in the selected '
-        'date range.',
-        '<b>Trips Auto-Filled</b> — count of TripRecords whose '
-        'toll_fee was populated by the GPS worker.',
-        '<b>Toll Fees Today</b> — sum of auto-filled toll fees for the '
-        'current day.',
-    ]): out.append(x)
-
-    out.append(h2('Filtering Events'))
-    out.append(p('Six filters are available: From Date, To Date, Plate, '
-                  'Event Type, Expressway, and a Clear button. Filters '
-                  'apply immediately upon change. Use them to '
-                  'investigate a specific transit or to audit a '
-                  'reported missing toll fee.'))
-
-    out.append(h2('Exporting to Excel'))
-    out.append(p('Click <b>Export to Excel</b> to download all '
-                  'currently filtered events as an .xlsx file. The '
-                  'export preserves the filter state, so to export the '
-                  'full log, click <b>Clear Filters</b> first.'))
-
-    out.append(h2('Reconciling Auto-Filled Tolls'))
-    out.append(pj(
-        'Finance reconciles auto-filled tolls against physical '
-        'receipts on a weekly basis. Any discrepancy greater than '
-        'twenty pesos is investigated. Common causes of '
-        'discrepancies are: a plate not mapped to Cartrack (no GPS '
-        'evidence collected); a transit completed too quickly to be '
-        'captured at the current polling cadence; or the plaza\'s GPS '
-        'coordinates falling outside the actual booth location.'))
-
-    # ── B.7 Truck Cycle Time ──────────────────────────────────────────
-    out.append(h1('B.7 Truck Cycle Time'))
+    # ── B.6 Truck Cycle Time ──────────────────────────────────────────
+    out.append(h1('B.6 Truck Cycle Time'))
     out.append(pj(
         'The Truck Cycle Time module is the fleet manager\'s live '
         'situational-awareness view. It shows, for every active plate, '
@@ -540,8 +491,7 @@ def section_b():
         ['🟢',     'DEPARTED',      'SiteVisit',   'Truck left a known geofence (cycle home base, customer, quarry, etc.).'],
         ['🔵',     'ARRIVED',       'SiteVisit',   'Truck entered a known geofence.'],
         ['⏸️',     'STOPPED',       'SiteVisit',   'Ad-hoc stop — truck stopped for ≥ N minutes outside any geofence. Address captured from Cartrack reverse-geocode.'],
-        ['🛣️',     'PLAZA IN/OUT',  'CartrackEvent','Truck entered or exited a toll plaza geofence.'],
-        ['💰',     'TOLL FILLED',   'CartrackEvent','GPS-detected toll fee computed (reference / Dashboard KPI — NOT written to the trip\'s Toll Fee field). See SOP-004.'],
+        ['🛣️',     'PLAZA IN/OUT',  'CartrackEvent','Truck entered or exited a toll plaza geofence (for situational awareness; not used to bill).'],
     ]
     out.append(std_table(audit_rows, col_widths=[1 * cm, 3 * cm, 3 * cm, 9.5 * cm]))
 
@@ -552,7 +502,7 @@ def section_b():
         'thresholds without code changes:'))
     settings_rows = [
         ['Setting',                  'Default', 'Effect'],
-        ['Minimum visit dwell',      '5 min',   'Geofence visits shorter than this are flagged is_drive_by=True and hidden from analytics. Toll plazas are exempt — see SOP-004.'],
+        ['Minimum visit dwell',      '5 min',   'Geofence visits shorter than this are flagged is_drive_by=True and hidden from analytics. Toll plazas are exempt from this filter.'],
         ['Stop detection threshold', '10 min',  'Truck stopping outside any geofence for at least this duration is logged as an ad-hoc stop SiteVisit (with address). Below the threshold, the stop is ignored.'],
     ]
     out.append(std_table(settings_rows, col_widths=[4.5 * cm, 2.5 * cm, 9 * cm]))
@@ -626,8 +576,8 @@ def section_b():
                   'system until this sync runs. The sync is safe to '
                   'run on demand.'))
 
-    # ── B.8 Reports ───────────────────────────────────────────────────
-    out.append(h1('B.8 Reports'))
+    # ── B.7 Reports ───────────────────────────────────────────────────
+    out.append(h1('B.7 Reports'))
     out.append(pj(
         'The Reports module produces summarised views over '
         'configurable date ranges. Reports are intended for '
@@ -649,8 +599,8 @@ def section_b():
                   '<b>Sync to Google Sheets</b> to push the data into '
                   'the configured shared sheet for finance.'))
 
-    # ── B.9 Admin / Settings ──────────────────────────────────────────
-    out.append(h1('B.9 Administration and Settings'))
+    # ── B.8 Admin / Settings ──────────────────────────────────────────
+    out.append(h1('B.8 Administration and Settings'))
     out.append(pj(
         'The Admin module is restricted by convention to the IT '
         'Administrator and the Operations Manager. It provides access '

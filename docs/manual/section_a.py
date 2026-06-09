@@ -71,9 +71,10 @@ def section_a():
     for x in bullet_list([
         'A full audit trail of every assigned, completed, or cancelled trip.',
         'Daily, weekly, and monthly key-performance indicators (KPIs).',
-        'Auto-filled toll fees per trip, where GPS evidence is available.',
         'Cycle-time analytics — how long each truck spends per round trip.',
         'Idling-rate analytics at customer and quarry geofences.',
+        'Live breakdown status mirrored from the FixFlo workshop '
+        'management system.',
         'Exportable reports in Excel and Google Sheets formats for '
         'finance, payroll, and management review.',
     ]): out.append(x)
@@ -130,7 +131,7 @@ def section_a():
 
     # ── A.4 Modules Overview ──────────────────────────────────────────
     out.append(h1('A.4 Modules Overview'))
-    out.append(p('The application is organised into nine functional '
+    out.append(p('The application is organised into eight functional '
                   'modules, each accessible from the left-hand sidebar.'))
 
     mod_rows = [
@@ -145,21 +146,18 @@ def section_a():
          'Manage drivers, helpers, plates, products, clients, dispatchers, '
          'truck types, and GPS mappings.'],
         ['4', 'Breakdown',         'Fleet Manager, Mechanics',
-         'Record incidents that take a plate out of service; track repair '
-         'status and downtime.'],
+         'Read-only mirror of FixFlo job orders — track which plates are '
+         'under repair and the cumulative downtime.'],
         ['5', 'Toll Calculator',   'Dispatchers',
          'Compute the expected toll fee between any two plazas on any '
          'expressway, with multi-route support.'],
-        ['6', 'Toll Log',          'Dispatchers, Finance',
-         'View every GPS-detected plaza event in chronological order; '
-         'export to Excel.'],
-        ['7', 'Truck Cycle Time',  'Fleet Manager, Management',
+        ['6', 'Truck Cycle Time',  'Fleet Manager, Management',
          'Live plate status, per-truck audit trail (visits, plaza events, '
          'in-progress stops), idling-rate ranking, multi-day cycle '
          'tracking. Configurable thresholds and admin Clear Logs.'],
-        ['8', 'Reports',           'Management, Finance',
+        ['7', 'Reports',           'Management, Finance',
          'Aggregated KPIs and trend charts across configurable date ranges.'],
-        ['9', 'Admin / Settings',  'IT, Operations Manager',
+        ['8', 'Admin / Settings',  'IT, Operations Manager',
          'User account management, password resets, environment configuration.'],
     ]
     out.append(std_table(mod_rows,
@@ -177,8 +175,8 @@ def section_a():
     role_rows = [
         ['Role', 'Modules Used (Primary)', 'Key Responsibilities'],
         ['Dispatcher',
-         'Schedule, Toll Calculator, Toll Log',
-         'Build the daily plan, assign trips, update statuses, verify auto-filled tolls.'],
+         'Schedule, Toll Calculator',
+         'Build the daily plan, assign trips, update statuses, record toll fees from receipts.'],
         ['Dispatch Supervisor',
          'Schedule, Dashboard, Reports',
          'Approve the plan, monitor execution, intervene on exceptions, sign off on daily totals.'],
@@ -189,8 +187,8 @@ def section_a():
          'All',
          'Cross-functional oversight; final accountability for operational metrics.'],
         ['Finance Officer',
-         'Toll Log, Reports',
-         'Reconcile auto-filled tolls against receipts; produce monthly cost reports.'],
+         'Reports',
+         'Reconcile entered toll fees against physical receipts and the corporate RFID statement; produce monthly cost reports.'],
         ['IT Administrator',
          'Admin / Settings, Master Data',
          'Provision and de-provision user accounts; manage environment variables and integrations.'],

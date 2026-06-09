@@ -64,21 +64,21 @@ def section_c():
             'the Driver-Type relationship; resolve any mismatch before '
             'proceeding.',
             'Enter the expected toll fee per trip using the Toll '
-            'Calculator. Trips that auto-fill from GPS will overwrite '
-            'this figure later.',
+            'Calculator. The actual toll fee will be entered from the '
+            'physical receipt at end of trip.',
             'Submit the day\'s plan for Dispatch Supervisor review.',
             'On supervisor approval, set the trip statuses to <b>Pending</b> '
             '(default) — no further action required until dispatch.',
             'As trucks depart, update trip status to <b>Loading</b> upon '
             'arrival at loading point, then <b>In Transit</b> on departure.',
             'On delivery confirmation, update status to <b>Delivered</b> '
-            'and verify the toll_fee has populated. If still zero, '
-            'investigate (see SOP-004).',
+            'and ensure the toll_fee has been entered from the physical '
+            'receipt or RFID statement.',
         ],
         records=(
             'TripRecord rows in the database; Wave records; status '
-            'change timestamps (audit log); auto-fill toll evidence '
-            '(CartrackEvent + SiteVisit rows).'),
+            'change timestamps (audit log); physical toll receipts and '
+            'RFID statements filed by date.'),
         frequency='Daily — every operational day, including weekends.',
         references=(
             'SOP-002 End-of-Day Reconciliation<br/>'
@@ -115,14 +115,13 @@ def section_c():
             'For each exception, contact the assigned driver or '
             'dispatcher to determine the actual outcome. Update the '
             'status accordingly.',
-            'Open the <b>Toll Log</b> page and filter to the current date.',
-            'For each Delivered trip, verify a corresponding toll '
-            'auto-fill is present, or that the manual toll entry matches '
-            'the physical receipt.',
+            'For each Delivered trip that crossed an expressway, '
+            'verify the entered toll_fee matches the physical receipt '
+            'collected from the driver.',
             'For trips with toll_fee = 0 that should have a toll, '
-            'manually enter the figure from the receipt. Add a note in '
-            'the trip\'s Notes field indicating "Manual entry — no GPS '
-            'evidence".',
+            'enter the figure from the receipt. If no receipt is '
+            'available, add a note in the trip\'s Notes field stating '
+            'the reason (missing receipt, exemption, etc.).',
             'Open the <b>Dashboard</b> and confirm the Trips Today, '
             'Delivered, and Total Toll KPIs reflect the expected '
             'figures.',
@@ -159,39 +158,44 @@ def section_c():
             'accidents, and standby holds.'),
         responsibilities=(
             '<b>Driver</b> — reports the event immediately to the '
-            'Dispatcher.<br/>'
-            '<b>Dispatcher</b> — opens a Breakdown record in the system '
-            'within thirty minutes of notification.<br/>'
-            '<b>Fleet Manager</b> — assigns the plate to a mechanic, '
-            'tracks repair progress, updates the resolution.'),
+            'Dispatcher and the Fleet Manager.<br/>'
+            '<b>Fleet Manager</b> — opens a job order in <b>FixFlo</b> '
+            'for the affected plate; the Dispatch Scheduler '
+            'auto-mirrors the record on its Breakdown page.<br/>'
+            '<b>Mechanic</b> — updates the FixFlo job order status as '
+            'the repair progresses; the mirror updates on the next '
+            'sync.<br/>'
+            '<b>Dispatcher</b> — reassigns affected trips and confirms '
+            'the plate is removed from active dispatch.'),
         procedure=[
             'Upon driver notification of a breakdown, record the '
-            'time, location, and reported symptoms.',
-            'Open the <b>Breakdown</b> module in the Dispatch '
-            'Scheduler.',
-            'Click <b>+ Log Breakdown</b> and complete the form: '
-            'Plate, Start Date / Time, Status = <b>Under Repair</b>, '
-            'Description (driver\'s reported symptoms).',
-            'Save the breakdown record. The plate is now flagged as '
-            'unavailable in dispatch dropdowns.',
-            'Reassign the affected trip\'s Plate field to an '
-            'available plate of the same truck type. If none is '
+            'time, location, and reported symptoms verbally to the '
+            'Fleet Manager.',
+            'The Fleet Manager opens a new job order in <b>FixFlo</b>, '
+            'entering the plate, start timestamp, status (In Progress), '
+            'and description.',
+            'Within minutes the Dispatch Scheduler\'s background sync '
+            '(or a manual click on <b>Sync from FixFlo</b>) pulls the '
+            'job order. The plate appears on the Breakdown page with '
+            'status <b>Under Repair</b> and is automatically excluded '
+            'from dispatch dropdowns.',
+            'The Dispatcher reassigns the affected trip\'s Plate field '
+            'to an available plate of the same truck type. If none is '
             'available, escalate to the Dispatch Supervisor.',
-            'Notify the Fleet Manager via Viber or radio for '
-            'recovery / repair dispatch.',
-            'On receipt of repair confirmation from the mechanic, '
-            're-open the breakdown record and set Status = <b>Fixed</b>, '
-            'enter the End Date / Time, and add the resolution '
-            'description.',
-            'Confirm the plate is back in the dispatch pool for the '
-            'next operational day.',
+            'As the repair progresses, the mechanic updates the FixFlo '
+            'job order. Each sync brings the latest status, mechanic '
+            'names, and remarks across to the Dispatch Scheduler.',
+            'When the FixFlo job order is closed (status = Completed '
+            'or equivalent), the next sync sets the Dispatch Scheduler '
+            'Breakdown row to <b>Fixed</b>, populates the End Date '
+            '/ Time from FixFlo, and clears the plate for dispatch.',
         ],
         records=(
-            'BreakdownLog rows in the database; total downtime '
-            'calculated automatically; Fleet Manager\'s mechanic '
-            'communication log.'),
-        frequency='Event-driven — within thirty minutes of any '
-                  'service-affecting incident.',
+            'FixFlo job orders (source of truth); BreakdownLog rows '
+            'in the Dispatch Scheduler (read-only mirror); total '
+            'downtime calculated automatically from FixFlo timestamps.'),
+        frequency='Event-driven — FixFlo job order opened within '
+                  'thirty minutes of any service-affecting incident.',
         references=(
             'SOP-001 Daily Dispatch'),
     )
@@ -202,65 +206,52 @@ def section_c():
         title='Toll Documentation and Reconciliation',
         purpose=(
             'To ensure that every toll fee incurred by the fleet is '
-            'recorded accurately and that the manual entries on trip '
-            'records (the billing source of truth) reconcile with the '
-            'physical evidence (toll receipts, RFID statements) and '
-            'with the system\'s GPS-detected toll figures (reference).'),
+            'recorded accurately and that the entries on trip records '
+            'reconcile with the physical evidence (toll receipts, '
+            'corporate RFID statements).'),
         scope=(
             'All trips that traverse a Philippine expressway with a toll '
             'plaza. Excludes purely intra-city trips that incur no toll.'),
         responsibilities=(
-            '<b>Dispatcher</b> — manually records the toll_fee on each '
-            'trip from the physical receipt at end of trip.<br/>'
-            '<b>Finance Officer</b> — reconciles weekly against the '
-            'GPS Toll Dashboard KPI, RFID statements, and physical '
-            'receipts.<br/>'
+            '<b>Driver</b> — collects and surrenders the physical toll '
+            'receipt to the dispatcher at end of trip.<br/>'
+            '<b>Dispatcher</b> — records the toll_fee on each trip from '
+            'the physical receipt.<br/>'
+            '<b>Finance Officer</b> — reconciles monthly against the '
+            'corporate RFID statement.<br/>'
             '<b>Fleet Manager</b> — investigates any reconciliation '
             'discrepancy greater than twenty pesos.'),
         procedure=[
             'At end of trip, the dispatcher collects the physical '
             'toll receipt from the driver and enters the toll fee '
             'directly into the trip\'s Toll Fee field on the Schedule '
-            'page. This is the <b>sole source of truth</b> for '
-            'Finance billing. The polling worker does NOT modify '
-            'this field.',
-            'Throughout the day, the GPS polling worker detects '
-            'plaza transits and computes the toll fee from the rate '
-            'matrix. These figures are logged as CartrackEvent rows '
-            'and aggregated into the Dashboard\'s <b>GPS Toll</b> '
-            'KPI card. They are <b>reference / audit only</b> — they '
-            'do not overwrite the dispatcher\'s manual entry.',
+            'page. This is the operational record of what the trip '
+            'cost.',
             'At end-of-day reconciliation (SOP-002), the dispatch '
-            'supervisor cross-checks the day\'s Toll Fee total '
-            '(manual) against the GPS Toll figure on the Dashboard. '
-            'A small variance is expected; large gaps trigger '
-            'investigation via the Toll Log page.',
-            'On a weekly cadence (every Monday), Finance opens the '
-            '<b>Toll Log</b> module, filters to the prior week, and '
-            'exports to Excel.',
-            'Finance produces a three-way reconciliation: '
-            'TripRecord.toll_fee totals (manual), CartrackEvent '
-            'totals (GPS), and RFID/receipt totals (physical). '
-            'Discrepancies above twenty pesos per trip are flagged.',
-            'Resolution of each discrepancy is recorded in the '
-            'trip\'s Notes field and signed off by the Fleet Manager. '
-            'Common causes: a toll exemption, a missed plaza '
-            '(hidden geofence — see Manual Geofences in B.7), or a '
-            'receipt typo.',
+            'supervisor confirms every Delivered trip that crossed an '
+            'expressway has a non-zero Toll Fee, or a Notes entry '
+            'explaining the absence.',
+            'On a monthly cadence, Finance downloads the corporate '
+            'RFID statement from the NLEX / SCTEX corporate portal '
+            'and reconciles each line item against the dispatcher-'
+            'entered Toll Fees for the same period.',
+            'Discrepancies above twenty pesos per trip are flagged for '
+            'investigation. Resolution is recorded in the trip\'s '
+            'Notes field and signed off by the Fleet Manager. Common '
+            'causes: a missing or illegible receipt, a toll exemption, '
+            'or a receipt typo.',
         ],
         records=(
-            'TripRecord.toll_fee values (manual, the billing record); '
-            'CartrackEvent rows with toll_fee + plaza pair (GPS '
-            'reference); weekly reconciliation Excel exports; '
-            'physical receipts (paper file).'),
-        frequency='Per trip (manual entry at end of trip); end-of-day '
-                  '(per SOP-002); weekly (Finance reconciliation, '
-                  'every Monday).',
+            'TripRecord.toll_fee values (operational record); '
+            'physical receipts (paper file, kept by date); monthly '
+            'RFID statement PDF/Excel from corporate portal (filed '
+            'by Finance).'),
+        frequency='Per trip (entry at end of trip); end-of-day '
+                  '(per SOP-002); monthly (Finance reconciliation '
+                  'against corporate RFID statement).',
         references=(
             'SOP-001 Daily Dispatch<br/>'
-            'SOP-002 End-of-Day Reconciliation<br/>'
-            'Manual v1.1 — Toll auto-fill decoupling change'
-            'resources)'),
+            'SOP-002 End-of-Day Reconciliation'),
     )
 
     # ── SOP-005: Data Backup & User Access ────────────────────────────

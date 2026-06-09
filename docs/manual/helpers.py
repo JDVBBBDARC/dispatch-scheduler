@@ -65,17 +65,12 @@ def numbered_list(items, start=1):
 def callout(title, body, kind='info'):
     """Coloured callout box used for cross-references, warnings, and
     procedure notes. `kind` ∈ {info, warn, ok, note}. Returns a single
-    Flowable wrapped in KeepTogether so it never splits across pages.
-
-    Note: 'iso' is kept as a back-compat alias for 'note' so older
-    section files that still pass kind='iso' don't break — but the
-    rendered label is generic ('REFERENCE')."""
+    Flowable wrapped in KeepTogether so it never splits across pages."""
     palette = {
         'info': (BLUE_INFO,    BLUE_LIGHT,    'INFO'),
         'warn': (ORANGE_WARN,  ORANGE_LIGHT,  'IMPORTANT'),
         'ok':   (GREEN_OK,     GREEN_LIGHT,   'BEST PRACTICE'),
         'note': (MAROON,       MAROON_LIGHT,  'REFERENCE'),
-        'iso':  (MAROON,       MAROON_LIGHT,  'REFERENCE'),  # back-compat alias
     }
     border, bg, label = palette.get(kind, palette['info'])
 
