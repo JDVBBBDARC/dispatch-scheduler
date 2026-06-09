@@ -81,12 +81,22 @@ def document_control_page():
                   'workaround for API visibility issues. Ad-hoc stop '
                   'detection. Timezone serialisation unified to '
                   'PHT-aware ISO.'])
-    rows.append(['1.2', DOC_DATE, 'All',
+    rows.append(['1.2', 'May 2026', 'All',
                   'Generic edition — references to specific company, '
                   'compliance frameworks, and proprietary identifiers '
                   'removed in favour of role-based descriptions. '
                   'Schedule trip-save race condition fix. Toll EXIT '
                   'event symmetry fix. datetime API modernization.'])
+    rows.append(['1.3', DOC_DATE, 'B.1, B.5',
+                  'Schedule tabs: per-truck-type trip count rendered as '
+                  'a prominent maroon pill badge on every tab, visible '
+                  'at a glance without expanding the tab. Empty types '
+                  'auto-hide their badge so the bar reads cleanly. '
+                  'Toll Log default view switched from raw event stream '
+                  'to trip-centric pairing — every Entry plaza is shown '
+                  'beside its matched Exit plaza on a single row, with '
+                  'computed transit duration. Unmatched events still '
+                  'surface separately for reconciliation.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(sp(20))
