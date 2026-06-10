@@ -116,8 +116,15 @@ _bootstrap_env_from_wsgi()
 # Configuration
 # ─────────────────────────────────────────────────────────────────────
 
-# How long a trip can be idle before we consider it "closed" and compute toll
-TRIP_IDLE_CLOSE_MINUTES = 30
+# How long a trip can be idle (no toll geofence event) before we close
+# it and compute the GPS-detected toll. Raised 30 -> 45 (June 2026):
+# at 30 minutes, a truck stuck in genuinely heavy traffic BETWEEN two
+# plazas had its trip closed early as a single-plaza touch, and the
+# real transit was never counted (undercount on the Dashboard KPI).
+# 45 gives EDSA-grade congestion room to clear while still closing
+# trips promptly. Env-overridable so it can be tuned from the
+# PythonAnywhere Web tab during monitoring without a code deploy.
+TRIP_IDLE_CLOSE_MINUTES = int(os.environ.get('TRIP_IDLE_CLOSE_MINUTES', '45'))
 
 # How many days of CartrackEvent log to keep
 EVENT_RETENTION_DAYS = 60
