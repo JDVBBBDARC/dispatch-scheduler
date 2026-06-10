@@ -714,11 +714,30 @@ def api_dashboard_driver_truck_ratio():
     active_plate_ids = {p.id for p in plates_q.all()}
     total_active_plates = len(active_plate_ids)
 
-    # Pre-fetch breakdowns for ONLY plates we care about
+    # Pre-fetch breakdowns for ONLY plates we care about.
+    #
+    # Two kinds of rows matter for the per-day window check below:
+    #   1. Still open (status='Under Repair', resolved_date NULL) —
+    #      the plate is broken from `date` through today.
+    #   2. Already fixed (status='Fixed' WITH a resolved_date) — the
+    #      plate was broken from `date` until `resolved_date`; needed
+    #      so HISTORICAL days in the trend still subtract the plate.
+    #
+    # Filtering on status='Under Repair' alone (the original query)
+    # silently dropped kind 2: the moment FixFlo flipped a row to
+    # Fixed, past trend days started counting that plate as working
+    # during the very period it sat in the shop. Fixed-without-
+    # resolved_date rows (legacy manual entries) are excluded — with
+    # no end date they would subtract the plate forever.
     breakdown_q = db.session.query(
             BreakdownLog.plate_id, BreakdownLog.date, BreakdownLog.resolved_date
-        ).filter(BreakdownLog.status == 'Under Repair',
-                 BreakdownLog.date <= to_d)
+        ).filter(
+            BreakdownLog.date <= to_d,
+            db.or_(
+                BreakdownLog.status == 'Under Repair',
+                db.and_(BreakdownLog.status == 'Fixed',
+                        BreakdownLog.resolved_date.isnot(None)),
+            ))
     if active_plate_ids:
         breakdown_q = breakdown_q.filter(BreakdownLog.plate_id.in_(active_plate_ids))
     breakdowns = breakdown_q.all()
