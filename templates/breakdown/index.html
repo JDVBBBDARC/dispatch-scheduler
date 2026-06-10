@@ -124,6 +124,28 @@
 
 <div class="page-header">
   <h1><i class="bi bi-tools me-2"></i>Breakdown Monitoring</h1>
+  {#
+    Manual ERP sync trigger. The polling worker already runs this
+    automatically every ~10 minutes (via the Cartrack always-on task),
+    but a button gives the dispatcher a way to force an immediate
+    refresh after they file something on the ERP side. Also handy
+    during development / debugging — lets us re-pull data without
+    waiting for the next scheduled cycle.
+
+    The button calls /api/joborders/sync-now (POST), which we already
+    expose for admin use. Response includes counts (fetched, created,
+    updated, unmatched, errors) — we surface them in a toast so the
+    dispatcher knows the sync actually did something.
+  #}
+  <div class="d-flex gap-2 align-items-center">
+    <span id="bdLastSync" style="font-size:.7rem;color:var(--muted);"></span>
+    <button id="bdSyncBtn"
+            class="btn btn-sm"
+            style="background:var(--maroon);color:#fff;font-size:.78rem;"
+            onclick="syncFromERP()">
+      <i class="bi bi-arrow-repeat me-1"></i>Sync from ERP
+    </button>
+  </div>
 </div>
 
 <!-- KPI Row -->
@@ -202,6 +224,31 @@
   </select>
 </form>
 
+<!--
+  Manual "Log New Breakdown" form removed June 2026.
+
+  Breakdowns are now auto-pulled from the ERP Repair Request module
+  every ~10 minutes by the joborders_sync worker. Dispatchers no
+  longer need to type entries here — what shows up in the table
+  below is whatever maintenance has filed in the ERP.
+
+  If a one-off manual entry is ever needed again (e.g., to log a
+  breakdown that bypassed the ERP), an admin can either:
+    1. Add a row directly via the ERP system, or
+    2. Re-enable this form by reverting this commit on a feature branch.
+
+  Keeping the markup out (rather than just hiding it with d-none) so
+  the page renders cleaner and there's no temptation to use it.
+-->
+<div class="bd-source-notice" style="margin:14px 0 18px;padding:10px 14px;
+     background:var(--maroon-pale);border-left:3px solid var(--maroon);
+     border-radius:4px;font-size:.78rem;color:var(--text-mid);">
+  <i class="bi bi-info-circle me-2" style="color:var(--maroon);"></i>
+  Breakdowns are auto-synced every <b>~10 minutes</b> from the ERP
+  Repair Request module. To log a new breakdown, file it in the ERP —
+  it will appear here on the next sync cycle.
+</div>
+
 {#
   Breakdowns-by-Plate bar chart — visualises which units accumulate
   the most breakdowns in the current filter window. The server hands
@@ -223,7 +270,10 @@
   <div class="card-body" style="padding:18px 22px;">
     {% if plate_breakdown_chart %}
     <div style="position:relative;height:{{ (plate_breakdown_chart|length * 30 + 40) if plate_breakdown_chart|length > 4 else 180 }}px;">
-      <canvas id="breakdownByPlateChart"></canvas>
+      <canvas id="breakdownByPlateChart" style="cursor:pointer;"></canvas>
+    </div>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:6px;text-align:right;">
+      <i class="bi bi-hand-index me-1"></i>Click a bar to see its job orders
     </div>
     {% else %}
     <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
@@ -234,57 +284,66 @@
   </div>
 </div>
 
-<!-- Add Breakdown Form -->
-<div class="bd-add-form">
-  <div style="font-size:.82rem;font-weight:700;color:var(--maroon);margin-bottom:12px;">
-    <i class="bi bi-plus-circle me-1"></i>Log New Breakdown
+{#
+  Bar-click detail modal. Opened by Chart.js onClick on the Plate
+  chart. Fetches /api/breakdown/unit-logs?type=plate&id=... (or
+  type=equipment&name=...), then renders the row list inside.
+  Loaded async so the modal can show a spinner state on slow links
+  and recover gracefully when the endpoint errors.
+#}
+<div class="modal fade" id="unitDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--maroon);color:#fff;border-bottom:none;">
+        <h5 class="modal-title" id="unitDetailTitle">
+          <i class="bi bi-tools me-2"></i><span id="unitDetailTitleText">Loading…</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="unitDetailBody" style="padding:0;">
+        <div class="text-center py-5 text-muted">
+          <div class="spinner-border" role="status" style="color:var(--maroon);"></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="form-row">
-    <div class="form-group">
-      <label>Date</label>
-      <input type="date" id="bdDate" value="{{ today.isoformat() }}">
+</div>
+
+{#
+  Breakdowns-by-Driver bar chart — parallels the Plate chart above.
+  Source: BreakdownLog.operator_name, populated by joborders_sync from
+  the FixFlo job-order 'Operator Name' field (confirmed reliable; the
+  equipment.name field by contrast is stale on some records — per the
+  user's screenshot annotation on 06/09).
+
+  Same height-adaptation logic and chart styling as the Plate chart
+  for visual consistency. Different accent colour (slate blue) so the
+  two charts read as related-but-distinct sections at a glance.
+#}
+<div class="card" id="bdDriverChartCard" style="margin-bottom:18px;">
+  <div class="card-header" style="background:#1F3A5F;">
+    <span class="card-title">
+      <i class="bi bi-person-badge me-2"></i>Breakdowns by Driver —
+      {{ mo_s.strftime('%B %Y') }}{% if filter_status != 'all' %} ({{ filter_status }}){% endif %}{% if filter_plate != 'all' %} · single plate{% endif %}
+    </span>
+    <span style="font-size:.78rem;opacity:.85;">
+      {{ operator_breakdown_chart|length }} driver{{ 's' if operator_breakdown_chart|length != 1 else '' }} in window
+    </span>
+  </div>
+  <div class="card-body" style="padding:18px 22px;">
+    {% if operator_breakdown_chart %}
+    <div style="position:relative;height:{{ (operator_breakdown_chart|length * 30 + 40) if operator_breakdown_chart|length > 4 else 180 }}px;">
+      <canvas id="breakdownByDriverChart" style="cursor:pointer;"></canvas>
     </div>
-    <div class="form-group">
-      <label>Plate / Truck</label>
-      <select id="bdPlate">
-        <option value="">— Select Plate —</option>
-        {% for tt in truck_types %}
-        {% set tt_plates = plates|selectattr('truck_type_id', 'equalto', tt.id)|list %}
-        {% if tt_plates %}
-        <optgroup label="{{ tt.name }}">
-          {% for p in tt_plates %}
-          <option value="{{ p.id }}">{{ p.display }}</option>
-          {% endfor %}
-        </optgroup>
-        {% endif %}
-        {% endfor %}
-        {% set uncat = plates|selectattr('truck_type_id', 'none')|list %}
-        {% if uncat %}
-        <optgroup label="Uncategorized">
-          {% for p in uncat %}<option value="{{ p.id }}">{{ p.display }}</option>{% endfor %}
-        </optgroup>
-        {% endif %}
-      </select>
+    <div style="font-size:.7rem;color:var(--muted);margin-top:6px;text-align:right;">
+      <i class="bi bi-hand-index me-1"></i>Click a bar to see this driver's job orders
     </div>
-    <div class="form-group">
-      <label>Status</label>
-      <select id="bdStatus">
-        {% for s in bd_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
-      </select>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:.85rem;">
+      <i class="bi bi-person-x" style="font-size:1.4rem;opacity:.6;"></i><br/>
+      No driver names recorded in this filter window.
     </div>
-    <div class="form-group" style="flex:1;min-width:200px;">
-      <label>Description / Issue</label>
-      <textarea id="bdDesc" placeholder="Describe the breakdown or issue…" rows="1"></textarea>
-    </div>
-    <div class="form-group" style="flex:1;min-width:160px;">
-      <label>Remarks</label>
-      <input type="text" id="bdRemarks" placeholder="Optional remarks">
-    </div>
-    <div class="form-group" style="justify-content:flex-end;">
-      <button class="btn btn-maroon btn-sm" style="height:34px;" onclick="addBreakdown()">
-        <i class="bi bi-plus-lg me-1"></i>Add Log
-      </button>
-    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -334,6 +393,23 @@
               {% endif %}
               {% endfor %}
             </select>
+            {#
+              ERP equipment label fallback. When the FixFlo job order
+              couldn't be matched to a Plate in master data (typically
+              trailers, generators, and other equipment not registered
+              as fleet plates), the sync still captures the original
+              equipment.name from FixFlo. Surface it here so the row
+              still identifies what was repaired — read-only context,
+              not editable, distinguished visually from real plate
+              data via italic + muted color + info icon.
+            #}
+            {% if not log.plate_id and log.equipment_name %}
+            <div style="font-size:.7rem;color:var(--muted);margin:3px 0 0 4px;
+                        font-style:italic;line-height:1.2;"
+                 title="From FixFlo — not in master data">
+              <i class="bi bi-info-circle me-1" style="opacity:.55;"></i>{{ log.equipment_name }}
+            </div>
+            {% endif %}
           </td>
           <td>
             <textarea class="bd-inline" rows="1"
@@ -571,6 +647,54 @@ function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── MANUAL ERP SYNC ──────────────────────────────────────────────────────
+// Calls the same /api/joborders/sync-now endpoint that the always-on task
+// hits every 10 minutes. Useful when the dispatcher just filed a request
+// in the ERP and doesn't want to wait for the next polling cycle, or
+// when validating that the latest code is actually being used (a
+// completed manual sync proves the sync worker is healthy and current).
+async function syncFromERP() {
+  const btn = document.getElementById('bdSyncBtn');
+  const indicator = document.getElementById('bdLastSync');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing…';
+  if (indicator) indicator.textContent = '';
+
+  try {
+    const r = await fetch('/api/joborders/sync-now', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    '{}',
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+
+    if (j.error) {
+      alert('Sync failed: ' + j.error);
+      return;
+    }
+
+    const msg = `Fetched ${j.records_fetched || 0}, `
+              + `created ${j.created || 0}, `
+              + `updated ${j.updated || 0}, `
+              + `unmatched ${j.plate_unmatched || 0}`
+              + (j.errors && j.errors.length
+                  ? `, errors ${j.errors.length}` : '');
+    if (indicator) indicator.textContent = msg;
+
+    // Reload the page so the updated rows show up. Small delay so the
+    // dispatcher can read the toast before the reload kicks in.
+    setTimeout(() => location.reload(), 800);
+  } catch (e) {
+    alert('Sync request failed: ' + e.message);
+    console.error('syncFromERP error:', e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
 /* ── Breakdowns-by-Plate bar chart ──────────────────────────────
    The server hands us {{ plate_breakdown_chart|length }} pre-sorted
    data points (descending by count). Render as a horizontal bar
@@ -586,10 +710,25 @@ function escHtml(s) {
 
   const labels = dataPoints.map(d => d.label);
   const counts = dataPoints.map(d => d.count);
-  /* Highlight the top offender in the deeper maroon-dark so the
-     eye lands on the worst unit immediately; the rest get the
-     standard brand maroon with a touch of transparency for hierarchy. */
-  const bg = counts.map((_, i) => i === 0 ? '#6B1420' : 'rgba(139, 26, 43, .82)');
+  /* Per-bar colour resolves in priority order:
+       1. Unmapped equipment (from FixFlo equipment.name, no master-
+          data plate)  -> slate grey so it reads as 'context, not
+          fleet'. Lets the dispatcher see trailer counts without
+          confusing them for real plate stats.
+       2. The top bar of the chart                 -> maroon-dark
+          accent so the worst offender catches the eye first.
+       3. Everything else                          -> brand maroon
+          at 82% alpha — soft hierarchy without graphic noise. */
+  const bg = dataPoints.map((d, i) => {
+    if (d.is_equipment) return 'rgba(107, 114, 128, .75)';
+    if (i === 0)        return '#6B1420';
+    return 'rgba(139, 26, 43, .82)';
+  });
+  /* Borders match the bar palette so the equipment-vs-plate
+     distinction reads cleanly even on low-DPR displays. */
+  const borders = dataPoints.map((d) =>
+    d.is_equipment ? '#4B5563' : '#6B1420'
+  );
 
   new Chart(canvas.getContext('2d'), {
     type: 'bar',
@@ -599,7 +738,7 @@ function escHtml(s) {
         label: 'Breakdown records',
         data: counts,
         backgroundColor: bg,
-        borderColor: '#6B1420',
+        borderColor: borders,
         borderWidth: 1,
         borderRadius: 4,
         maxBarThickness: 22,
@@ -609,11 +748,238 @@ function escHtml(s) {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      /* Click any bar → open the unit-detail modal with that unit's
+         job orders. Plate bars resolve by plate_id, equipment bars by
+         label (the equipment_name string). Empty `elements` means a
+         click on whitespace inside the chart area — ignore. */
+      onClick: (_evt, elements) => {
+        if (!elements || !elements.length) return;
+        const d = dataPoints[elements[0].index];
+        if (d) openUnitDetailModal(d);
+      },
+      /* Hover cursor switches to pointer over a bar so the click
+         affordance is obvious; cursor reverts otherwise. Chart.js
+         doesn't ship this out of the box — set via DOM listener
+         below. */
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}`,
+            label: (ctx) => {
+              const d = dataPoints[ctx.dataIndex];
+              const suffix = d.is_equipment ? ' (equipment, not in master)' : '';
+              return `${ctx.parsed.x} record${ctx.parsed.x === 1 ? '' : 's'}${suffix}`;
+            },
+            afterBody: () => '\nClick to see job orders →',
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { precision: 0, stepSize: 1 },
+          grid: { color: 'rgba(0,0,0,.05)' },
+        },
+        y: {
+          ticks: { font: { weight: '600' } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+})();
+
+/* ── Unit-detail modal ─────────────────────────────────────────────
+   Opened by the Plate-chart onClick. Filter context (year/month/
+   status) comes from the page's current URL — read once at module
+   load so we don't drift if Chart.js fires the callback after a
+   future filter change (the page would reload anyway, but be
+   defensive). escHtml is already defined above. */
+const _UDM_YEAR   = '{{ year }}';
+const _UDM_MONTH  = '{{ month }}';
+const _UDM_STATUS = '{{ filter_status }}';
+
+async function openUnitDetailModal(d) {
+  const titleEl = document.getElementById('unitDetailTitleText');
+  const bodyEl  = document.getElementById('unitDetailBody');
+  titleEl.textContent = `${d.label} — loading…`;
+  bodyEl.innerHTML = `
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border" role="status" style="color:var(--maroon);"></div>
+    </div>`;
+
+  /* Show the modal immediately so the user sees feedback even on a
+     slow connection. Bootstrap 5.3 bundle is loaded globally via
+     base.html, so `bootstrap` is always defined here. */
+  const modal = new bootstrap.Modal(document.getElementById('unitDetailModal'));
+  modal.show();
+
+  /* Determine which kind of bar was clicked:
+     - 'aliases' field present (even if empty array)  -> driver bar
+     - 'is_equipment' true                            -> equipment bar
+     - otherwise                                      -> plate bar
+     The two chart datasets carry different shapes so this is the
+     cheapest reliable dispatch. */
+  const isDriver = (d.aliases !== undefined);
+  const params = new URLSearchParams({
+    year:   _UDM_YEAR,
+    month:  _UDM_MONTH,
+    status: _UDM_STATUS,
+  });
+  if (isDriver) {
+    params.set('type', 'driver');
+    params.set('label', d.label);
+    /* Aliases is always populated for driver bars (one entry when
+       no merge happened, multiple when the server folded spellings).
+       Each alias goes into the IN-list on the backend. */
+    const names = d.aliases.length > 0 ? d.aliases : [d.label];
+    names.forEach(n => params.append('name', n));
+  } else if (d.is_equipment) {
+    params.set('type', 'equipment');
+    params.set('name', d.label);
+  } else {
+    params.set('type', 'plate');
+    params.set('id',   d.plate_id);
+  }
+
+  let j;
+  try {
+    const r = await fetch('/api/breakdown/unit-logs?' + params.toString());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    j = await r.json();
+  } catch (e) {
+    titleEl.textContent = d.label;
+    bodyEl.innerHTML = `
+      <div class="p-4 text-center text-danger">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Could not load job orders: ${escHtml(e.message)}
+      </div>`;
+    return;
+  }
+
+  titleEl.textContent = `${j.label} — ${j.count} record${j.count === 1 ? '' : 's'}`;
+
+  if (!j.logs.length) {
+    bodyEl.innerHTML = `
+      <div class="p-4 text-center text-muted">
+        No job orders for this unit in the selected filter window.
+      </div>`;
+    return;
+  }
+
+  /* Render as a compact table. JO ref links out to the ERP when
+     jo_url is populated — otherwise the ref number renders as
+     plain text. Status uses the existing bd-badge classes so the
+     colour palette matches the main breakdown table. */
+  let html = `
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" style="font-size:.82rem;">
+        <thead style="position:sticky;top:0;background:var(--maroon-pale);">
+          <tr>
+            <th style="white-space:nowrap;">Date</th>
+            <th>JO</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th style="white-space:nowrap;">Started</th>
+            <th style="white-space:nowrap;">Ended</th>
+            <th class="text-end">Hrs</th>
+            <th>Operator</th>
+            <th>Mechanic / Remarks</th>
+          </tr>
+        </thead>
+        <tbody>`;
+  j.logs.forEach(l => {
+    const joCell = l.jo_url
+      ? `<a href="${escHtml(l.jo_url)}" target="_blank" rel="noopener">${escHtml(l.jo_ref_no || '')}</a>`
+      : escHtml(l.jo_ref_no || '—');
+    const statusBadge = l.status
+      ? `<span class="bd-badge bd-${(l.status || '').replace(/\s+/g, '-')}">${escHtml(l.status)}</span>`
+      : '';
+    html += `
+      <tr>
+        <td style="white-space:nowrap;">${escHtml(l.date || '')}</td>
+        <td style="white-space:nowrap;">${joCell}</td>
+        <td>${escHtml(l.description || '')}</td>
+        <td>${statusBadge}</td>
+        <td style="white-space:nowrap;">${escHtml(l.started_at || '—')}</td>
+        <td style="white-space:nowrap;">${escHtml(l.ended_at || '—')}</td>
+        <td class="text-end" style="color:#0891B2;font-weight:600;">${l.duration_hours != null ? l.duration_hours.toFixed(1) : '—'}</td>
+        <td>${escHtml(l.operator_name || '—')}</td>
+        <td>${escHtml(l.remarks || '')}</td>
+      </tr>`;
+  });
+  html += `
+        </tbody>
+      </table>
+    </div>`;
+  bodyEl.innerHTML = html;
+}
+
+/* ── Breakdowns-by-Driver bar chart ──────────────────────────────
+   Mirrors the by-plate chart's structure but coloured in slate-blue
+   to read as a sibling section. Same auto-render-on-page-load
+   lifecycle. Empty-state path is handled by Jinja above (the canvas
+   isn't even emitted when the data is empty), so this initialiser
+   bails fast if the element is missing. */
+(function initBreakdownByDriverChart() {
+  const dataPoints = {{ operator_breakdown_chart|tojson }};
+  if (!dataPoints || dataPoints.length === 0) return;
+  const canvas = document.getElementById('breakdownByDriverChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = dataPoints.map(d => d.label);
+  const counts = dataPoints.map(d => d.count);
+  /* Top offender in the deepest slate; rest in slate-blue with
+     slight transparency for hierarchy. Distinct from the plate
+     chart's maroon palette so the two charts don't visually fuse. */
+  const bg = counts.map((_, i) => i === 0 ? '#142B47' : 'rgba(31, 58, 95, .82)');
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Breakdown reports',
+        data: counts,
+        backgroundColor: bg,
+        borderColor: '#142B47',
+        borderWidth: 1,
+        borderRadius: 4,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      /* Click any driver bar → open the unit-detail modal scoped to
+         that driver's job orders. Reuses the same modal as the plate
+         chart; the opener detects driver vs plate vs equipment via
+         the data-point shape and builds the right query. */
+      onClick: (_evt, elements) => {
+        if (!elements || !elements.length) return;
+        const d = dataPoints[elements[0].index];
+        if (d) openUnitDetailModal(d);
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.x} report${ctx.parsed.x === 1 ? '' : 's'}`,
+            /* When the server-side grouping merged two-or-more
+               spellings into this bar, list them under the count
+               so the dispatcher can audit the merge. Quiet when
+               only one spelling exists. */
+            afterBody: (ctxs) => {
+              const d = dataPoints[ctxs[0].dataIndex];
+              if (d && d.aliases && d.aliases.length > 1) {
+                return ['', 'Merged spellings:'].concat(
+                  d.aliases.map(a => '  • ' + a),
+                  '', 'Click to see job orders →'
+                );
+              }
+              return '\nClick to see job orders →';
+            },
           },
         },
       },

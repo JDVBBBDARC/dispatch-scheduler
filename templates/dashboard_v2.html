@@ -42,7 +42,8 @@
     ('Total Trips',     total,                              '#8B1A2B', 'bi-truck',            '100%',  'All units'),
     ('Delivered',       by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
     ('In Transit',      by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
-    ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'excl. canceled'),
+    ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'manual entry from receipts'),
+    ('GPS Toll',        gps_toll_total|default(0),          '#7C3AED', 'bi-broadcast',         '100%',  (gps_toll_count|default(0))|string + ' auto-detected today'),
     ('Breakdown Hours', total_breakdown_hours,              '#DC2626', 'bi-tools',             '100%',  'click for J.O. details'),
     ('Pending',         by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
     ('Canceled',        by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
@@ -52,14 +53,14 @@
   {% set kpi_id = label|replace(' ','-') %}
   <div class="col-6 col-md-4 col-lg">
     <div class="card h-100 kpi-card" style="border-left: 4px solid {{ color }}; border-radius:10px; cursor:pointer;"
-         onclick="openKpiModal('{{ label }}', '{{ status_key }}', '{{ color }}')">
+         onclick="{% if label == 'GPS Toll' %}window.location.href='/toll-log'{% else %}openKpiModal('{{ label }}', '{{ status_key }}', '{{ color }}'){% endif %}">
       <div class="card-body py-3 px-3">
         <div class="d-flex align-items-start justify-content-between mb-2">
           <div>
             <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);">{{ label }}</div>
             <div id="kpi-val-{{ kpi_id }}" style="font-size:2rem;font-weight:700;line-height:1.1;color:{{ color }};"
                  data-raw="{{ value }}">
-              {% if label == 'Toll Fee' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
+              {% if label == 'Toll Fee' or label == 'GPS Toll' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
             </div>
           </div>
           <div style="width:38px;height:38px;border-radius:10px;background:{{ color }}18;display:flex;align-items:center;justify-content:center;">
@@ -70,7 +71,7 @@
           <div id="kpi-bar-{{ kpi_id }}" style="height:100%;width:{{ pct }};background:{{ color }};border-radius:4px;transition:width .6s;"></div>
         </div>
         <div id="kpi-sub-{{ kpi_id }}" style="font-size:.72rem;color:var(--muted);margin-top:4px;">
-          {% if label == 'Toll Fee' %}{{ sub }}{% else %}{{ pct }} — {{ sub }}{% endif %}
+          {% if label == 'Toll Fee' or label == 'GPS Toll' %}{{ sub }}{% else %}{{ pct }} — {{ sub }}{% endif %}
         </div>
       </div>
     </div>
@@ -226,6 +227,76 @@
   </div>
 </div>
 
+<!-- ── ROW 2.55: TRUCK CYCLE TIME WIDGET (Cartrack-derived) ────────────── -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="card-title">
+          <i class="bi bi-clock-history me-2" style="color:#7c3aed;"></i>
+          Truck Cycle Time
+          &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">
+            Home base round-trips · live from Cartrack
+          </small>
+        </span>
+        <a href="{{ url_for('truck_cycle_time') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-right-short"></i> Open page
+        </a>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3">
+            <div class="p-2 rounded text-center" style="background:#f3e8ff;">
+              <div class="small text-muted text-uppercase" style="font-size:.65rem;">Open Cycles</div>
+              <div class="fs-4 fw-bold" style="color:#7c3aed;" id="dashCycleOpen">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-2 rounded text-center" style="background:#dcfce7;">
+              <div class="small text-muted text-uppercase" style="font-size:.65rem;">Closed Today</div>
+              <div class="fs-4 fw-bold" style="color:#16a34a;" id="dashCycleClosedToday">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-2 rounded text-center" style="background:#dbeafe;">
+              <div class="small text-muted text-uppercase" style="font-size:.65rem;">Avg (7d)</div>
+              <div class="fs-4 fw-bold" style="color:#2563eb;" id="dashCycleAvg">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-2 rounded text-center" style="background:#fef3c7;">
+              <div class="small text-muted text-uppercase" style="font-size:.65rem;">Long (7d)</div>
+              <div class="fs-4 fw-bold" style="color:#d97706;" id="dashCycleLong">—</div>
+            </div>
+          </div>
+        </div>
+        <div id="dashOpenCyclesList" style="max-height:140px;overflow-y:auto;font-size:.82rem;">
+          <div class="text-muted text-center py-2"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="card-title">
+          <i class="bi bi-bar-chart-line me-2" style="color:#dc2626;"></i>
+          Idling Rate — Top 8 Trucks
+          &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">
+            Last 7 days · % time idle at geofences
+          </small>
+        </span>
+      </div>
+      <div class="card-body">
+        <div style="position:relative;height:240px;width:100%;">
+          <canvas id="dashIdlingChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── ROW 2.6: DRIVER / TRUCK RATIO ────────────────────────────────────── -->
 <div class="row g-4 mb-4">
   <div class="col-12">
@@ -372,6 +443,17 @@
 .kpi-card:active {
   transform: translateY(0);
 }
+/* Clickable trip rows in the KPI drill-down modal */
+.kpi-trip-row {
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.kpi-trip-row:hover {
+  background: rgba(139, 26, 43, 0.06);
+}
+.kpi-trip-row:hover .kpi-trip-row-hint {
+  opacity: 1 !important;
+}
 .trend-btn {
   padding: 3px 10px;
   font-size: .75rem;
@@ -393,6 +475,7 @@
 const ALL_TRIPS = [
   {% for t in trips %}
   {
+    id:        {{ t.id }},
     date:      "{{ t.wave.date.isoformat() if t.wave else '' }}",
     truck:     "{{ t.wave.truck_type.name if t.wave and t.wave.truck_type else '' }}",
     truckColor:"{{ t.wave.truck_type.color if t.wave and t.wave.truck_type else '#999' }}",
@@ -425,6 +508,14 @@ const STATUS_BADGE_CLASS = {
 
 let _kpiBaseRows = [];
 let _kpiStatusKey = 'all';
+
+// Navigate from a KPI-modal trip row into the Schedule page for that date.
+// Hash `#trip-<id>` is forwarded so the Schedule page can scroll to / highlight
+// the specific row (harmless if the page doesn't read the hash).
+function navigateToScheduleTrip(date, tripId) {
+  if (!date) return;
+  window.location.href = `/schedule/${date}#trip-${tripId}`;
+}
 
 function openKpiModal(label, statusKey, color) {
   _kpiStatusKey = statusKey;
@@ -579,6 +670,10 @@ function renderKpiTable(truckFilter) {
   const fmtPeso = v => '₱' + Number(v).toLocaleString('en-PH', {minimumFractionDigits: 2});
 
   document.getElementById('kpiModalBody').innerHTML = `
+    <div class="px-3 pt-2 pb-1" style="background:#f8f9fa;border-bottom:1px solid var(--border);font-size:.75rem;color:var(--muted);">
+      <i class="bi bi-info-circle me-1"></i>
+      Click a row to open that trip on the Schedule page.
+    </div>
     <div class="scrollable-x">
       <table class="tbl" style="font-size:.82rem;">
         <thead>
@@ -590,11 +685,14 @@ function renderKpiTable(truckFilter) {
             ${showStatus ? '<th>Status</th>' : ''}
             ${showToll   ? '<th>Toll Fee</th>' : ''}
             <th>Notes</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
         ${rows.map(t => `
-          <tr>
+          <tr class="kpi-trip-row" data-date="${escHtml(t.date)}" data-trip-id="${t.id}"
+              onclick="navigateToScheduleTrip('${escHtml(t.date)}', ${t.id})"
+              title="Click to open in Schedule">
             <td style="white-space:nowrap;">${escHtml(t.date)}</td>
             <td><span class="truck-type-dot" style="background:${t.truckColor};"></span>${escHtml(t.truck)}</td>
             <td style="white-space:nowrap;">${escHtml(t.wave)}</td>
@@ -611,6 +709,9 @@ function renderKpiTable(truckFilter) {
             ${showStatus ? `<td><span class="s-badge s-${t.status.replace(/ /g,'-')}">${escHtml(t.status)}</span></td>` : ''}
             ${showToll   ? `<td class="fw-bold" style="color:#0891B2;white-space:nowrap;">${t.toll_fee ? fmtPeso(t.toll_fee) : '—'}</td>` : ''}
             <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(t.notes)}">${escHtml(t.notes)||'—'}</td>
+            <td style="white-space:nowrap;font-size:.7rem;color:var(--maroon);opacity:0;" class="kpi-trip-row-hint">
+              Open <i class="bi bi-arrow-right-short"></i>
+            </td>
           </tr>`).join('')}
         </tbody>
         ${showToll ? `
@@ -1349,7 +1450,117 @@ function loadDashActivity() {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDashActivity();
-  setInterval(() => { if (!document.hidden) loadDashActivity(); }, POLL_INTERVAL_MS);
+  loadCycleWidget();
+  loadIdlingWidget();
+  setInterval(() => {
+    if (!document.hidden) {
+      loadDashActivity();
+      loadCycleWidget();
+      loadIdlingWidget();
+    }
+  }, POLL_INTERVAL_MS);
 });
+
+// ── Truck Cycle Time dashboard widget ──────────────────────────────────
+function fmtHours(h) {
+  if (h == null) return '—';
+  if (h < 1) return Math.round(h * 60) + 'm';
+  return h.toFixed(1) + 'h';
+}
+
+async function loadCycleWidget() {
+  try {
+    const r = await fetch('/api/cycle-time/summary');
+    const j = await r.json();
+    document.getElementById('dashCycleOpen').textContent          = j.open_count;
+    document.getElementById('dashCycleClosedToday').textContent   = j.today.closed_cycles;
+    document.getElementById('dashCycleAvg').textContent           = fmtHours(j.week.avg_hours);
+    document.getElementById('dashCycleLong').textContent          = j.week.by_category.long;
+
+    const list = document.getElementById('dashOpenCyclesList');
+    if (!j.open || j.open.length === 0) {
+      list.innerHTML = `<div class="text-center text-muted py-3">
+        <i class="bi bi-house-check fs-4 d-block opacity-50"></i>
+        All trucks at home base.
+      </div>`;
+    } else {
+      list.innerHTML = j.open.slice(0, 6).map(c => `
+        <div class="d-flex align-items-center justify-content-between py-1 border-bottom"
+             style="border-color:#f0f0f0 !important;">
+          <span><i class="bi bi-truck text-info me-1"></i><strong>${c.plate_no}</strong></span>
+          <small class="text-muted">out ${fmtHours(c.elapsed_hours)}</small>
+        </div>
+      `).join('');
+      if (j.open.length > 6) {
+        list.innerHTML += `<div class="text-center mt-2"><small class="text-muted">+${j.open.length - 6} more</small></div>`;
+      }
+    }
+  } catch (e) {
+    console.warn('cycle widget load failed:', e);
+  }
+}
+
+let _dashIdlingChart = null;
+async function loadIdlingWidget() {
+  try {
+    // last 7 days
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 86400 * 1000);
+    const fmt = d => d.toISOString().slice(0, 10);
+    const params = new URLSearchParams({date_from: fmt(weekAgo), date_to: fmt(today)});
+
+    const r = await fetch('/api/cycle-time/idling?' + params.toString());
+    const j = await r.json();
+    const top = (j.rows || []).slice(0, 8);
+
+    const ctx = document.getElementById('dashIdlingChart');
+    if (!ctx) return;
+    if (_dashIdlingChart) _dashIdlingChart.destroy();
+
+    if (top.length === 0) {
+      // Show empty state via overlay
+      ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+      return;
+    }
+
+    _dashIdlingChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: top.map(r => r.plate_no),
+        datasets: [{
+          label: 'Idling %',
+          data: top.map(r => r.idling_pct),
+          backgroundColor: top.map(r =>
+            r.idling_pct > 50 ? '#dc2626' :
+            r.idling_pct > 30 ? '#ea580c' :
+            r.idling_pct > 15 ? '#d97706' : '#16a34a'
+          ),
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const r = top[ctx.dataIndex];
+                return `${r.idling_pct}% (${r.idling_minutes}min / ${r.total_minutes}min)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+          y: { ticks: { font: { size: 10 } } },
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('idling widget load failed:', e);
+  }
+}
 </script>
 {% endblock %}

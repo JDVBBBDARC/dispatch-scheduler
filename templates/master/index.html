@@ -239,7 +239,22 @@
       <span class="master-card-title"><i class="bi bi-truck me-1"></i>PLATE NUMBERS BY TRUCK TYPE</span>
       <span style="font-size:.72rem;color:var(--muted);" id="cnt-plates">{{ plates|length }} records</span>
     </div>
-    <div class="master-list" id="list-plates" style="max-height:320px;">
+
+    <!-- Cartrack sync toolbar -->
+    <div class="px-3 py-2" style="background:#eef6fc;border-bottom:1px solid #d6e9f5;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.78rem;">
+      <i class="bi bi-broadcast-pin" style="color:#0891B2;font-size:1rem;"></i>
+      <strong style="color:#0891B2;">Cartrack GPS</strong>
+      <span id="cartrack-status" style="color:var(--muted);">checking status…</span>
+      <span style="flex:1;"></span>
+      <button class="btn btn-xs btn-ghost" onclick="cartrackAutoMap()">
+        <i class="bi bi-magic"></i> Auto-map all
+      </button>
+      <button class="btn btn-xs btn-ghost" onclick="cartrackPollNow()">
+        <i class="bi bi-lightning-charge"></i> Poll Now
+      </button>
+    </div>
+
+    <div class="master-list" id="list-plates" style="max-height:340px;">
       {% for p in plates %}
       <div class="master-item {% if not p.active %}inactive-item{% endif %}" data-id="{{ p.id }}" data-cat="plates">
         <div>
@@ -248,12 +263,46 @@
             <span class="truck-type-dot" style="background:{{ p.truck_type.color }};"></span>
             {% endif %}
             {{ p.display }}
+            {% if p.cartrack_vehicle_id %}
+            <span class="badge ms-1" style="background:#0891B2;color:#fff;font-size:.6rem;font-weight:600;"
+                  title="Mapped to Cartrack vehicle #{{ p.cartrack_vehicle_id }}">
+              <i class="bi bi-broadcast"></i> CT #{{ p.cartrack_vehicle_id }}
+            </span>
+            {% else %}
+            <span class="badge ms-1 bg-secondary" style="font-size:.6rem;font-weight:500;opacity:.6;"
+                  title="Not yet linked to Cartrack GPS">
+              <i class="bi bi-broadcast-pin"></i> unmapped
+            </span>
+            {% endif %}
           </div>
-          <div class="master-item-sub">{{ p.truck_type.name if p.truck_type else 'Unassigned' }}</div>
+          <div class="master-item-sub">
+            {{ p.truck_type.name if p.truck_type else 'Unassigned' }}
+            {# Toll-class chip — gives admin a one-glance check that
+               vans (Class 1) and light trucks (Class 2) aren't being
+               billed at Class 3 (heavy truck) rates by the GPS toll
+               auto-fill. Colour-coded so misconfigurations stand out. #}
+            {% set _cls = p.toll_class or 'Class 3' %}
+            {% if _cls == 'Class 1' %}
+              {% set _cls_color = '#2563EB' %}{# blue — light vehicle #}
+            {% elif _cls == 'Class 2' %}
+              {% set _cls_color = '#D97706' %}{# amber — medium #}
+            {% else %}
+              {% set _cls_color = '#7F1D1D' %}{# dark red — heavy #}
+            {% endif %}
+            <span class="badge ms-1"
+                  style="background:{{ _cls_color }};color:#fff;font-size:.58rem;font-weight:600;padding:1px 6px;"
+                  title="Toll-fee class used by GPS auto-fill — change via Edit if wrong">
+              {{ _cls }}
+            </span>
+          </div>
         </div>
         <div class="d-flex gap-1">
+          <button class="btn btn-ghost btn-xs" title="Map to Cartrack vehicle"
+                  onclick="openCartrackMapModal({{ p.id }}, '{{ p.display|replace("'","\\'") }}', {{ p.cartrack_vehicle_id or 'null' }})">
+            <i class="bi bi-broadcast" style="color:#0891B2;"></i>
+          </button>
           <button class="btn btn-ghost btn-xs"
-                  onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }})">
+                  onclick="editPlate({{ p.id }},'{{ p.plate_no }}','{{ p.body_no or '' }}',{{ p.truck_type_id or 'null' }},'{{ p.toll_class or 'Class 3' }}')">
             <i class="bi bi-pencil"></i>
           </button>
           <button class="btn btn-xs {% if p.active %}btn-ghost{% else %}btn-success{% endif %}" onclick="toggleItem('plates',{{ p.id }},this)">
@@ -269,6 +318,11 @@
         {% for tt in truck_types %}
         <option value="{{ tt.id }}">{{ tt.name }}</option>
         {% endfor %}
+      </select>
+      <select id="new-plate-class" style="max-width:115px;" title="Toll fee class">
+        <option value="Class 3" selected>Class 3 (heavy)</option>
+        <option value="Class 2">Class 2 (light truck)</option>
+        <option value="Class 1">Class 1 (van/SUV)</option>
       </select>
       <input type="text" id="new-plate-body" placeholder="Body No. e.g. DT01" style="max-width:130px;">
       <input type="text" id="new-plate-no"   placeholder="Plate No. e.g. ABC 1234" onkeydown="if(event.key==='Enter')addPlate()">
@@ -344,14 +398,20 @@ function addItem(cat) {
 
 // ── ADD PLATE ─────────────────────────────────────────────────────────────
 function addPlate() {
-  const plateNo = document.getElementById('new-plate-no').value.trim();
-  const bodyNo  = document.getElementById('new-plate-body').value.trim();
-  const ttId    = document.getElementById('new-plate-truck').value;
+  const plateNo    = document.getElementById('new-plate-no').value.trim();
+  const bodyNo     = document.getElementById('new-plate-body').value.trim();
+  const ttId       = document.getElementById('new-plate-truck').value;
+  const tollClass  = document.getElementById('new-plate-class').value || 'Class 3';
   if (!plateNo) { document.getElementById('new-plate-no').focus(); return; }
 
   fetch('/api/master/plates/add', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({name: plateNo, body_no: bodyNo, truck_type_id: ttId || null})
+    body: JSON.stringify({
+      name:          plateNo,
+      body_no:       bodyNo,
+      truck_type_id: ttId || null,
+      toll_class:    tollClass,
+    })
   })
   .then(r => r.json())
   .then(data => {
@@ -505,10 +565,11 @@ function editItem(cat, id, currentName) {
   setTimeout(() => document.getElementById('editValue').focus(), 200);
 }
 
-function editPlate(id, plateNo, bodyNo, ttId) {
+function editPlate(id, plateNo, bodyNo, ttId, tollClass) {
   editCat = 'plates'; editId = id;
   document.getElementById('editModalTitle').textContent = 'Edit Plate';
   const ttOpts = document.getElementById('new-plate-truck').innerHTML;
+  const currentClass = tollClass || 'Class 3';
   document.getElementById('editModalBody').innerHTML = `
     <div class="mb-2">
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Body No.</label>
@@ -518,9 +579,20 @@ function editPlate(id, plateNo, bodyNo, ttId) {
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Plate No.</label>
       <input type="text" id="editPlateNo" class="form-control mt-1" value="${escHtml(plateNo)}">
     </div>
-    <div>
+    <div class="mb-2">
       <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Truck Type</label>
       <select id="editTruckType" class="form-select mt-1">${ttOpts}</select>
+    </div>
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Toll Class</label>
+      <select id="editTollClass" class="form-select mt-1">
+        <option value="Class 1" ${currentClass === 'Class 1' ? 'selected' : ''}>Class 1 (van / SUV — e.g. L300)</option>
+        <option value="Class 2" ${currentClass === 'Class 2' ? 'selected' : ''}>Class 2 (light truck / bus)</option>
+        <option value="Class 3" ${currentClass === 'Class 3' ? 'selected' : ''}>Class 3 (heavy truck / trailer)</option>
+      </select>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">
+        Used by GPS toll auto-fill to look up the right rate. Defaults to Class 3 for heavy trucks.
+      </div>
     </div>`;
   if (ttId) document.getElementById('editTruckType').value = ttId;
   editModal.show();
@@ -530,9 +602,10 @@ function saveEdit() {
   let payload = {};
   if (editCat === 'plates') {
     payload = {
-      plate_no: document.getElementById('editPlateNo')?.value.trim(),
-      body_no:  document.getElementById('editBodyNo')?.value.trim(),
+      plate_no:      document.getElementById('editPlateNo')?.value.trim(),
+      body_no:       document.getElementById('editBodyNo')?.value.trim(),
       truck_type_id: document.getElementById('editTruckType')?.value || null,
+      toll_class:    document.getElementById('editTollClass')?.value || 'Class 3',
     };
   } else {
     const val = document.getElementById('editValue')?.value.trim();
@@ -579,5 +652,126 @@ function updateCount(cat, listEl) {
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── CARTRACK GPS INTEGRATION ─────────────────────────────────────────────
+
+// Show overall Cartrack mapping status in the toolbar
+function loadCartrackStatus() {
+  fetch('/api/cartrack/status')
+    .then(r => r.json())
+    .then(d => {
+      const el = document.getElementById('cartrack-status');
+      if (!el) return;
+      if (!d.cartrack_configured) {
+        el.innerHTML = '<span style="color:#b54600;">⚠ Not configured (set CARTRACK_USERNAME/PASSWORD env vars)</span>';
+        return;
+      }
+      const totalMapped = d.plates_mapped || 0;
+      const totalPlates = d.plates_total || 0;
+      const fills = d.auto_fills_today || 0;
+      el.innerHTML = `${totalMapped}/${totalPlates} plates mapped · ${fills} auto-fills today`
+        + (d.open_trips ? ` · ${d.open_trips} trips being tracked` : '');
+    })
+    .catch(() => {
+      const el = document.getElementById('cartrack-status');
+      if (el) el.textContent = 'status unavailable';
+    });
+}
+
+// Auto-load status on page load
+document.addEventListener('DOMContentLoaded', loadCartrackStatus);
+
+// Auto-map all unmapped plates by registration match
+function cartrackAutoMap() {
+  if (!confirm('Auto-match all unmapped plates with Cartrack vehicles? Existing mappings are preserved.')) return;
+  showToast('Auto-mapping…');
+  fetch('/api/cartrack/auto-map', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Error: ' + d.error); return; }
+      const msg = `Auto-map done: ${d.matched_count} matched, ${d.ambiguous_count} ambiguous, ${d.unmatched_count} unmatched`;
+      showToast(msg);
+      setTimeout(() => location.reload(), 1200);
+    })
+    .catch(e => showToast('Auto-map failed: ' + e));
+}
+
+// Manually trigger one polling cycle
+function cartrackPollNow() {
+  showToast('Polling Cartrack…');
+  fetch('/api/cartrack/poll-now', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Error: ' + d.error); return; }
+      let msg = `Poll done: ${d.vehicles_seen} vehicles seen, ${d.plates_tracked} tracked`;
+      if (d.enters_detected) msg += `, ${d.enters_detected} entries`;
+      if (d.exits_detected)  msg += `, ${d.exits_detected} exits`;
+      if (d.trips_closed)    msg += `, ${d.trips_closed} trips closed`;
+      if (d.toll_fees_filled) msg += `, ${d.toll_fees_filled} toll fees filled`;
+      if (d.errors && d.errors.length) msg += ' — errors: ' + d.errors.join(', ');
+      showToast(msg);
+      loadCartrackStatus();
+    })
+    .catch(e => showToast('Poll failed: ' + e));
+}
+
+// Open mapping modal for a specific plate
+function openCartrackMapModal(plateId, plateDisplay, currentCartrackId) {
+  // Fetch the list of Cartrack vehicles
+  fetch('/api/cartrack/vehicles')
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { showToast('Cartrack: ' + d.error); return; }
+      const vehicles = d.vehicles || [];
+
+      // Build modal body with a searchable list
+      const opts = vehicles.map(v =>
+        `<option value="${v.vehicle_id}" ${v.vehicle_id == currentCartrackId ? 'selected' : ''}>
+           ${escHtml(v.vehicle_name || v.registration)} (ID: ${v.vehicle_id})
+         </option>`
+      ).join('');
+
+      editCat = 'cartrack-map';
+      editId  = plateId;
+      document.getElementById('editModalTitle').textContent = `Map ${plateDisplay} to Cartrack`;
+      document.getElementById('editModalBody').innerHTML = `
+        <div class="mb-2">
+          <label style="font-size:.78rem;color:var(--muted);font-weight:700;text-transform:uppercase;">Cartrack Vehicle</label>
+          <select id="cartrackVehicleSelect" class="form-select mt-1">
+            <option value="">— Not mapped —</option>
+            ${opts}
+          </select>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:6px;">
+            Select the Cartrack vehicle that corresponds to <strong>${escHtml(plateDisplay)}</strong>.
+            The polling worker uses this mapping to track this truck's GPS for toll auto-fill.
+          </div>
+        </div>`;
+      editModal.show();
+    })
+    .catch(e => showToast('Cartrack: ' + e));
+}
+
+// Hook into saveEdit() for the cartrack-map case
+const _origSaveEdit = window.saveEdit;
+window.saveEdit = function () {
+  if (editCat === 'cartrack-map') {
+    const sel = document.getElementById('cartrackVehicleSelect');
+    const cartrackId = sel ? sel.value : '';
+    fetch(`/api/cartrack/plate/${editId}/map`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ cartrack_vehicle_id: cartrackId || null }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.error) { alert(d.error); return; }
+      editModal.hide();
+      location.reload();
+    });
+    return;
+  }
+  // Fall through to the original saveEdit for other categories
+  if (typeof _origSaveEdit === 'function') _origSaveEdit();
+};
 </script>
 {% endblock %}

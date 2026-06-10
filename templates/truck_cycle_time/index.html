@@ -1,0 +1,1070 @@
+{% extends 'base.html' %}
+{% block title %}Truck Cycle Time{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <i class="bi bi-clock-history" style="font-size:2rem;color:#7c3aed;"></i>
+      <div>
+        <h4 class="mb-0 fw-bold">Truck Cycle Time</h4>
+        <small class="text-muted">
+          Round-trip duration from <span id="homeLabel" class="fw-semibold">home base</span>,
+          and per-truck idling rate at geofences.
+          <span class="ms-2 badge bg-light text-dark" id="thresholdBadge" title="Visits shorter than this are treated as drive-bys (not real stops)">
+            Min dwell: <span id="minDwellMin">5</span> min
+          </span>
+        </small>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshAll()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+      <button class="btn btn-sm btn-outline-info" onclick="syncGeofences()">
+        <i class="bi bi-cloud-download"></i> Sync Geofences
+      </button>
+      <button class="btn btn-sm btn-outline-dark" onclick="openSettingsModal()"
+              title="Adjust dwell + stop-detection thresholds">
+        <i class="bi bi-gear"></i> Settings
+      </button>
+      <button class="btn btn-sm btn-success" onclick="exportToExcel()">
+        <i class="bi bi-file-earmark-excel"></i> Export to Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal — admin-only writes; everyone can read -->
+  <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background:#8B1A2B;color:white;">
+          <h5 class="modal-title"><i class="bi bi-gear me-1"></i> Truck Cycle Time Settings</h5>
+          <button type="button" class="btn-close btn-close-white"
+                  data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info small mb-3" id="settingsRoleNote">
+            <i class="bi bi-info-circle"></i> Loading…
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Minimum visit dwell (minutes)
+            </label>
+            <input type="number" id="settingMinVisit" class="form-control"
+                   min="1" max="120" value="5">
+            <div class="form-text">
+              Geofence visits shorter than this are marked drive-by
+              (filtered out of analytics by default).
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Stop detection (minutes)
+            </label>
+            <input type="number" id="settingStopMin" class="form-control"
+                   min="1" max="240" value="10">
+            <div class="form-text">
+              Truck stopped <strong>outside any known geofence</strong>
+              for this long gets logged as an ad-hoc stop with address.
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Admin-only: Clear Logs — destructive action with
+               multi-gate confirmation. Requires both a cutoff date AND
+               typing the word CLEAR. Full wipes are NOT allowed at the
+               API layer — every clear must specify a 'before' date. -->
+          <div id="settingsAdminSection" class="d-none">
+            <h6 class="text-danger mb-2">
+              <i class="bi bi-exclamation-triangle"></i> Danger zone — Admin only
+            </h6>
+            <p class="small text-muted mb-2">
+              Purges <strong>tracking records older than the cutoff
+              date</strong>: site visits, truck cycles, GPS plaza events.
+              Records on or after the cutoff are kept. Master data, trip
+              records, and toll fees are <strong>always preserved</strong>.
+            </p>
+
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1">
+                Delete records BEFORE this date
+              </label>
+              <input type="date" id="clearBeforeDate" class="form-control form-control-sm"
+                     onchange="updateClearButtonState()">
+              <div class="form-text">
+                e.g., pick today's date to wipe everything up to yesterday.
+                Future-dated records are never touched.
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1">
+                Type <code class="text-danger">CLEAR</code> to confirm
+              </label>
+              <input type="text" id="clearConfirmText" class="form-control form-control-sm"
+                     placeholder="CLEAR" autocomplete="off"
+                     oninput="updateClearButtonState()">
+            </div>
+
+            <button class="btn btn-outline-danger btn-sm" id="clearLogsBtn"
+                    onclick="clearTrackingLogs()" disabled>
+              <i class="bi bi-trash"></i> <span id="clearLogsBtnLabel">Clear logs before [pick a date]</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary"
+                  data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-maroon" id="settingsSaveBtn"
+                  onclick="saveSettings()" style="background:#8B1A2B;color:white;">
+            <i class="bi bi-check2"></i> Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100"
+           style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-white bg-opacity-25 rounded-3 p-2">
+              <i class="bi bi-broadcast-pin" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="small text-white-50">Open Cycles</div>
+              <div class="fs-3 fw-bold" id="kpiOpen">—</div>
+              <small class="text-white-50" id="kpiOpenSub">trucks currently out</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-success bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-check-circle text-success" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Closed Today</div>
+              <div class="fs-3 fw-bold" id="kpiClosedToday">—</div>
+              <small class="text-muted" id="kpiClosedTodaySub">last 7d: —</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-stopwatch text-primary" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Avg Cycle Time</div>
+              <div class="fs-3 fw-bold" id="kpiAvg">—</div>
+              <small class="text-muted" id="kpiAvgSub">7d average</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning bg-opacity-10 rounded-3 p-2">
+              <i class="bi bi-hourglass-split text-warning" style="font-size:1.75rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Long Cycles (7d)</div>
+              <div class="fs-3 fw-bold" id="kpiLong">—</div>
+              <small class="text-muted">multi-day journeys</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (Open cycles snapshot removed — replaced by Plate Status table below
+       which shows open cycles inline as the top rows.) -->
+
+  <!-- Two-column: idling chart + filters -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
+          <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+            <i class="bi bi-bar-chart-line me-1"></i> Top 15 Trucks by Idling %
+          </h6>
+        </div>
+        <div class="card-body">
+          <canvas id="idlingChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-white border-bottom" style="border-radius:1rem 1rem 0 0;">
+          <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+            <i class="bi bi-funnel me-1"></i> Filters
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small text-muted">From Date</label>
+              <input type="date" class="form-control form-control-sm" id="filterDateFrom" onchange="loadAll()">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">To Date</label>
+              <input type="date" class="form-control form-control-sm" id="filterDateTo" onchange="loadAll()">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Truck Type</label>
+              <select class="form-select form-select-sm" id="filterTruckType" onchange="onTruckTypeChange()">
+                <option value="">All types</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Plate</label>
+              <select class="form-select form-select-sm" id="filterPlate" onchange="loadPlates()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Cycle Length</label>
+              <select class="form-select form-select-sm" id="filterCategory" onchange="loadPlates()">
+                <option value="">All</option>
+                <option value="short">Short (&lt;12h)</option>
+                <option value="standard">Standard (12–24h)</option>
+                <option value="long">Long (&gt;24h)</option>
+                <option value="ongoing">Ongoing</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted">Status</label>
+              <select class="form-select form-select-sm" id="filterStatus" onchange="loadPlates()">
+                <option value="all">All</option>
+                <option value="closed">Closed only</option>
+                <option value="open">Open only</option>
+              </select>
+            </div>
+            <div class="col-12 d-flex align-items-end">
+              <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()">
+                <i class="bi bi-x-circle"></i> Clear filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plate Status table (plate-centric live view; click to expand) -->
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center"
+         style="border-radius:1rem 1rem 0 0;">
+      <h6 class="mb-0 fw-bold text-muted text-uppercase small">
+        <i class="bi bi-truck me-1"></i> Plate Status
+        <span class="badge bg-info ms-2" id="plateOpenCount" title="Trucks currently on the road">0 active</span>
+        <span class="badge bg-secondary ms-1" id="plateParkedCount" title="Trucks at a home base">0 at home</span>
+      </h6>
+      <div class="d-flex align-items-center gap-2">
+        <small class="text-muted">Click any row to expand · Auto-refresh (60s)</small>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th class="small text-muted text-uppercase" style="width:38px;"></th>
+              <th class="small text-muted text-uppercase">Plate</th>
+              <th class="small text-muted text-uppercase">Status</th>
+              <th class="small text-muted text-uppercase">Currently At</th>
+              <th class="small text-muted text-uppercase">Last Departure</th>
+              <th class="small text-muted text-uppercase">Out For</th>
+              <th class="small text-muted text-uppercase text-center">Stops</th>
+              <th class="small text-muted text-uppercase">Location</th>
+            </tr>
+          </thead>
+          <tbody id="platesTbody">
+            <tr><td colspan="8" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js (already loaded sa base.html if not, ensure here) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+let _idlingChart = null;
+let _autoRefreshTimer = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatHours(h) {
+  if (h == null) return '—';
+  if (h < 1) return Math.round(h * 60) + 'm';
+  return h.toFixed(1) + 'h';
+}
+
+function formatDT(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleString('en-PH', {
+    year: '2-digit', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+const CATEGORY_BADGE = {
+  short:    '<span class="badge bg-success">SHORT</span>',
+  standard: '<span class="badge bg-primary">STANDARD</span>',
+  long:     '<span class="badge bg-warning text-dark">LONG</span>',
+  ongoing:  '<span class="badge bg-info">ONGOING</span>',
+};
+
+// Live status of a truck — computed by CartrackTruckState.live_status from
+// ignition + idling + speed. Colors mirror the typical 'is this productive?'
+// scale: green = good, yellow = warning, red = bad, grey = inactive.
+const STATUS_BADGE = {
+  DRIVING:  { label: 'DRIVING', cls: 'bg-success',         icon: 'bi-truck'           },
+  IDLING:   { label: 'IDLING',  cls: 'bg-warning text-dark', icon: 'bi-hourglass-split' },
+  STOPPED:  { label: 'STOPPED', cls: 'bg-info text-dark',  icon: 'bi-pause-circle'    },
+  OFF:      { label: 'OFF',     cls: 'bg-secondary',       icon: 'bi-power'           },
+  UNKNOWN:  { label: 'NO DATA', cls: 'bg-light text-muted',icon: 'bi-question-circle' },
+};
+
+// ── Loaders ───────────────────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const r = await fetch('/api/cycle-time/summary');
+    const j = await r.json();
+
+    document.getElementById('kpiOpen').textContent          = j.open_count;
+    document.getElementById('kpiOpenSub').textContent       = j.open_count === 0
+      ? 'all trucks at home' : `${j.open_count} on the road`;
+    document.getElementById('kpiClosedToday').textContent   = j.today.closed_cycles;
+    document.getElementById('kpiClosedTodaySub').textContent = `last 7d: ${j.week.closed_cycles}`;
+    document.getElementById('kpiAvg').textContent           = formatHours(j.week.avg_hours);
+    document.getElementById('kpiAvgSub').textContent        = `today: ${formatHours(j.today.avg_hours)}`;
+    document.getElementById('kpiLong').textContent          = j.week.by_category.long;
+
+    if (j.home_geofence) {
+      document.getElementById('homeLabel').textContent = j.home_geofence;
+    }
+    if (j.min_visit_minutes != null) {
+      document.getElementById('minDwellMin').textContent = j.min_visit_minutes;
+    }
+
+    // (Open cycles list removed — the new Plate Status table below
+    // shows the same information inline with sortable columns.)
+  } catch (e) {
+    console.error('loadSummary error:', e);
+  }
+}
+
+// All plates returned by /filters — kept in memory so we can re-filter
+// the Plate dropdown when the user picks a truck type.
+let _allPlates = [];
+
+async function loadFilters() {
+  try {
+    const r = await fetch('/api/cycle-time/filters');
+    const j = await r.json();
+    _allPlates = j.plates || [];
+
+    // Truck Type dropdown — e.g., "DT — Dump Truck", "TH — Trailer Hauler"
+    const ttSel = document.getElementById('filterTruckType');
+    (j.truck_types || []).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = `${t.code} — ${t.name}`;
+      ttSel.appendChild(opt);
+    });
+
+    // Plate dropdown — initially shows all plates with cycle history
+    rebuildPlateOptions('');
+  } catch (e) {
+    console.error('loadFilters error:', e);
+  }
+}
+
+// Rebuild the Plate dropdown, optionally restricted to a single truck type.
+// Preserves the current selection if it still matches the active type.
+function rebuildPlateOptions(truckTypeId) {
+  const sel = document.getElementById('filterPlate');
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="">All</option>';
+  const ttId = truckTypeId ? String(truckTypeId) : '';
+  let stillValid = false;
+  _allPlates
+    .filter(p => !ttId || String(p.truck_type_id || '') === ttId)
+    .forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.plate_no;   // already "DT15 / NHF9508" format
+      if (String(p.id) === prevValue) stillValid = true;
+      sel.appendChild(opt);
+    });
+  sel.value = stillValid ? prevValue : '';
+}
+
+// User picked a truck type → narrow the Plate dropdown to that type,
+// then reload the table + chart with both filters applied.
+function onTruckTypeChange() {
+  const ttId = document.getElementById('filterTruckType').value;
+  rebuildPlateOptions(ttId);
+  loadAll();
+}
+
+async function loadIdling() {
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const tt = document.getElementById('filterTruckType').value;
+  const params = new URLSearchParams();
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (tt) params.set('truck_type_id', tt);
+
+  try {
+    const r = await fetch('/api/cycle-time/idling?' + params.toString());
+    const j = await r.json();
+    const top = j.rows.slice(0, 15);
+
+    if (_idlingChart) _idlingChart.destroy();
+    const ctx = document.getElementById('idlingChart').getContext('2d');
+    _idlingChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: top.map(r => r.plate_no),
+        datasets: [{
+          label: 'Idling %',
+          data: top.map(r => r.idling_pct),
+          backgroundColor: top.map(r =>
+            r.idling_pct > 50 ? '#dc2626' :
+            r.idling_pct > 30 ? '#ea580c' :
+            r.idling_pct > 15 ? '#d97706' : '#16a34a'
+          ),
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const r = top[ctx.dataIndex];
+                return `${r.idling_pct}% (${r.idling_minutes}min of ${r.total_minutes}min across ${r.visits} visits)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, max: 100, title: { display: true, text: 'Idling %' } },
+          y: { ticks: { font: { size: 11 } } },
+        }
+      }
+    });
+  } catch (e) {
+    console.error('loadIdling error:', e);
+  }
+}
+
+// Render relative time like "4h 23m"
+function formatElapsed(hours) {
+  if (hours == null) return '—';
+  const totalMin = Math.round(hours * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+// Plate-centric loader — replaces the old cycle-history view.
+// Returns one row per active Plate, sorted: open cycles first (longest
+// elapsed first), then parked plates alphabetically at the bottom.
+async function loadPlates() {
+  const params = new URLSearchParams();
+  const tt = document.getElementById('filterTruckType').value;
+  if (tt) params.set('truck_type_id', tt);
+
+  try {
+    const r = await fetch('/api/cycle-time/plates?' + params.toString());
+    const j = await r.json();
+    const tbody = document.getElementById('platesTbody');
+    document.getElementById('plateOpenCount').textContent = `${j.open_count} active`;
+    document.getElementById('plateParkedCount').textContent = `${j.parked_count} at home`;
+
+    if (!j.plates || j.plates.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-2 d-block opacity-30"></i>
+        <small>No plates match the truck-type filter.</small>
+      </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = j.plates.map(p => {
+      const isOpen = !!p.is_open;
+      const sInfo  = STATUS_BADGE[p.live_status] || STATUS_BADGE.UNKNOWN;
+      const speedTxt = (p.live_status === 'DRIVING' && p.speed) ? ` ${p.speed} km/h` : '';
+
+      // Currently At cell — geofence name, in-progress stop, in transit, or at home
+      let currentAtHtml;
+      if (p.current_geofences && p.current_geofences.length) {
+        currentAtHtml = `<span class="text-success">
+          <i class="bi bi-geo-alt-fill"></i> ${escHtml(p.current_geofences.join(', '))}
+        </span>`;
+      } else if (isOpen && p.ad_hoc_stop) {
+        // Real-time in-progress ad-hoc stop — show address + dwell so
+        // users see the truck "currently here" even before it resumes.
+        const addr = p.ad_hoc_stop.address || 'unknown location';
+        const dwell = p.ad_hoc_stop.duration_minutes || 0;
+        currentAtHtml = `<span class="text-warning fw-semibold">
+          <i class="bi bi-pause-circle-fill"></i> Stopped — ${dwell}m
+          <small class="text-muted d-block ms-3"
+                 style="font-weight:normal;font-size:0.78em;"
+                 title="${escHtml(addr)}">
+            ${escHtml(addr.length > 50 ? addr.slice(0, 50) + '…' : addr)}
+          </small>
+        </span>`;
+      } else if (isOpen) {
+        currentAtHtml = `<span class="text-muted">
+          <i class="bi bi-signpost-split"></i> In transit
+        </span>`;
+      } else {
+        currentAtHtml = `<span class="text-muted fst-italic">
+          <i class="bi bi-house-check"></i> At home
+        </span>`;
+      }
+
+      // Last Departure cell
+      let lastDepHtml;
+      if (isOpen && p.open_cycle && p.open_cycle.started_at) {
+        const depTime = formatDT(p.open_cycle.started_at);
+        const fromLoc = p.last_departure && p.last_departure.location
+          ? p.last_departure.location
+          : 'Home base';
+        lastDepHtml = `<small>
+          <i class="bi bi-arrow-up-right-circle text-info"></i>
+          <span class="fw-semibold">${depTime}</span>
+          <span class="text-muted d-block ms-3">from ${escHtml(fromLoc)}</span>
+        </small>`;
+      } else {
+        lastDepHtml = `<small class="text-muted">—</small>`;
+      }
+
+      // Out For (cycle elapsed)
+      const outForHtml = isOpen && p.open_cycle
+        ? `<span class="fw-semibold ${p.open_cycle.elapsed_hours > 24 ? 'text-warning' : 'text-info'}">
+             ${formatElapsed(p.open_cycle.elapsed_hours)}
+           </span>`
+        : `<small class="text-muted">—</small>`;
+
+      // Stops count
+      const stopsHtml = isOpen
+        ? `<span class="badge bg-light text-dark">${p.visit_count}</span>`
+        : `<small class="text-muted">—</small>`;
+
+      // Location address
+      const locHtml = p.location
+        ? `<small class="text-truncate d-block" style="max-width:240px;" title="${escHtml(p.location)}">
+             <i class="bi bi-pin-map text-muted me-1"></i>${escHtml(p.location)}
+           </small>`
+        : `<small class="text-muted">—</small>`;
+
+      const rowClass = isOpen ? '' : 'text-muted';
+      const rowStyle = isOpen ? '' : 'background:#fafafa;opacity:0.75;';
+
+      return `
+        <tr class="plate-row ${rowClass}" style="cursor:pointer;${rowStyle}"
+            data-plate-id="${p.plate_id}"
+            onclick="togglePlateExpand(${p.plate_id}, this)">
+          <td class="text-center"><i class="bi bi-chevron-right plate-chevron"></i></td>
+          <td class="fw-semibold small">${escHtml(p.display)}</td>
+          <td><span class="badge ${sInfo.cls}" style="font-size:.7rem;">
+            <i class="bi ${sInfo.icon} me-1"></i>${sInfo.label}${speedTxt}
+          </span></td>
+          <td>${currentAtHtml}</td>
+          <td>${lastDepHtml}</td>
+          <td>${outForHtml}</td>
+          <td class="text-center">${stopsHtml}</td>
+          <td>${locHtml}</td>
+        </tr>
+        <tr class="plate-expand-row d-none" data-plate-id="${p.plate_id}">
+          <td colspan="8" class="bg-light">
+            <div class="p-3 text-muted small" id="plateExpand-${p.plate_id}">
+              <i class="bi bi-hourglass-split me-1"></i>
+              Loading cycle history… <em>(Phase 2 — coming next)</em>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error('loadPlates error:', e);
+  }
+}
+
+// Toggle expand/collapse of a plate row. On expand, fetches the
+// plate's cycle list and renders the cycle-picker chips. Selecting
+// a chip loads that cycle's audit-trail timeline below.
+async function togglePlateExpand(plateId, rowEl) {
+  const expandRow = document.querySelector(
+    `tr.plate-expand-row[data-plate-id="${plateId}"]`);
+  if (!expandRow) return;
+  const chevron = rowEl.querySelector('.plate-chevron');
+  const isExpanding = expandRow.classList.contains('d-none');
+  if (isExpanding) {
+    expandRow.classList.remove('d-none');
+    if (chevron) chevron.classList.replace('bi-chevron-right', 'bi-chevron-down');
+    await loadPlateCycles(plateId);
+  } else {
+    expandRow.classList.add('d-none');
+    if (chevron) chevron.classList.replace('bi-chevron-down', 'bi-chevron-right');
+  }
+}
+
+// Fetch and render the cycle-picker chips for one plate.
+// Called when a plate row is expanded.
+async function loadPlateCycles(plateId) {
+  const container = document.getElementById(`plateExpand-${plateId}`);
+  if (!container) return;
+  container.innerHTML = `
+    <div class="text-muted small">
+      <div class="spinner-border spinner-border-sm me-2"></div>
+      Loading cycle history…
+    </div>`;
+  try {
+    // Honour the date range filter on the page so the picker shows
+    // only cycles within the same window.
+    const df = document.getElementById('filterDateFrom').value;
+    const dt = document.getElementById('filterDateTo').value;
+    const params = new URLSearchParams();
+    if (df) params.set('date_from', df);
+    if (dt) params.set('date_to', dt);
+    const r = await fetch(`/api/cycle-time/plate/${plateId}/cycles?` + params.toString());
+    const j = await r.json();
+    if (!j.cycles || j.cycles.length === 0) {
+      container.innerHTML = `
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-inbox d-block fs-3 opacity-30"></i>
+          No cycles recorded for this plate yet.
+        </div>`;
+      return;
+    }
+    // Build cycle-chip row + an empty timeline holder
+    const chips = j.cycles.map((c, idx) => {
+      const isOpen = c.is_open;
+      const dur = c.duration_hours
+        ? (c.duration_hours < 1 ? `${Math.round(c.duration_hours * 60)}m`
+                                : `${c.duration_hours}h`)
+        : '—';
+      const dateLabel = c.started_at
+        ? new Date(c.started_at).toLocaleDateString('en-PH',
+            {month: 'short', day: '2-digit'})
+        : '?';
+      const cls = isOpen
+        ? 'btn-info'
+        : 'btn-outline-secondary';
+      const badge = isOpen
+        ? '<span class="badge bg-light text-info ms-1">OPEN</span>'
+        : '';
+      return `
+        <button class="btn btn-sm ${cls} cycle-chip"
+                data-cycle-id="${c.id}"
+                data-plate-id="${plateId}"
+                onclick="loadCycleTimeline(${plateId}, ${c.id}, this)">
+          #${c.id} · ${dateLabel} · ${dur}${badge}
+          <small class="ms-1 opacity-75">(${c.visit_count} stops)</small>
+        </button>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="mb-2 small text-muted fw-semibold">
+        <i class="bi bi-list-task me-1"></i> Cycle history (${j.count})
+        <span class="ms-2 text-info">— click a chip below to view the audit trail</span>
+      </div>
+      <div class="d-flex flex-wrap gap-1 mb-3" id="cycleChips-${plateId}">
+        ${chips}
+      </div>
+      <div id="cycleTimeline-${plateId}" class="border-top pt-3 mt-2">
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-arrow-up-circle d-block fs-4 opacity-30"></i>
+          Pick a cycle above to load its full timeline.
+        </div>
+      </div>`;
+
+    // Auto-load the first cycle (which is the open one if any, else newest closed)
+    if (j.cycles.length > 0) {
+      const firstBtn = container.querySelector('.cycle-chip');
+      if (firstBtn) firstBtn.click();
+    }
+  } catch (e) {
+    container.innerHTML = `<div class="text-danger small">Error loading cycles: ${e.message}</div>`;
+  }
+}
+
+// Render the audit-trail timeline for one cycle.
+// Called when a cycle chip is clicked.
+async function loadCycleTimeline(plateId, cycleId, chipBtn) {
+  // Highlight the active chip
+  const chipsRow = document.getElementById(`cycleChips-${plateId}`);
+  if (chipsRow) {
+    chipsRow.querySelectorAll('.cycle-chip').forEach(b => {
+      b.classList.add('btn-outline-secondary');
+      b.classList.remove('btn-secondary');
+    });
+    if (chipBtn) {
+      chipBtn.classList.remove('btn-outline-secondary');
+      chipBtn.classList.add('btn-secondary');
+    }
+  }
+  const holder = document.getElementById(`cycleTimeline-${plateId}`);
+  if (!holder) return;
+  holder.innerHTML = `
+    <div class="text-muted small">
+      <div class="spinner-border spinner-border-sm me-2"></div>
+      Loading timeline…
+    </div>`;
+  try {
+    const r = await fetch(`/api/cycle-time/cycle/${cycleId}/timeline`);
+    const j = await r.json();
+    if (!j.events || j.events.length === 0) {
+      holder.innerHTML = `
+        <div class="text-muted small text-center py-3">
+          <i class="bi bi-inbox d-block fs-3 opacity-30"></i>
+          No events recorded for this cycle. Did polling miss it?
+        </div>`;
+      return;
+    }
+    const lines = j.events.map((ev, idx) => {
+      const ts = formatDT(ev.ts);
+      const kind = ev.kind;
+      const adHoc = ev.is_ad_hoc;
+
+      // Icon + colour per event kind
+      const iconMap = {
+        'departed':     { ic: 'bi-arrow-up-right-circle-fill', cls: 'text-success'  },
+        'arrived':      { ic: 'bi-geo-alt-fill',               cls: 'text-info'     },
+        'stopped':      { ic: 'bi-pause-circle-fill',          cls: 'text-warning'  },
+        'plaza_enter':  { ic: 'bi-sign-merge-left',            cls: 'text-primary'  },
+        'plaza_exit':   { ic: 'bi-sign-merge-right',           cls: 'text-primary'  },
+        'trip_closed':  { ic: 'bi-cash-coin',                  cls: 'text-success'  },
+      };
+      const meta = iconMap[kind] || { ic: 'bi-dot', cls: 'text-muted' };
+
+      let label;
+      switch (kind) {
+        case 'departed':  label = 'DEPARTED'; break;
+        case 'arrived':   label = 'ARRIVED';  break;
+        case 'stopped':   label = 'STOPPED';  break;
+        case 'plaza_enter': label = 'PLAZA IN'; break;
+        case 'plaza_exit':  label = 'PLAZA OUT'; break;
+        case 'trip_closed': label = 'TOLL FILLED'; break;
+        default: label = kind.toUpperCase();
+      }
+
+      // Compose extras
+      const extras = [];
+      if (ev.duration_minutes != null && ev.duration_minutes > 0) {
+        extras.push(`${ev.duration_minutes}m dwell`);
+      }
+      if (ev.idling_pct != null) {
+        extras.push(`${ev.idling_pct.toFixed ? ev.idling_pct.toFixed(0) : ev.idling_pct}% idle`);
+      }
+      if (ev.toll_fee != null) {
+        extras.push(`₱${Number(ev.toll_fee).toFixed(2)}`);
+      }
+      if (ev.expressway) {
+        extras.push(ev.expressway);
+      }
+      if (adHoc) {
+        extras.push('ad-hoc stop');
+      }
+      const extrasHtml = extras.length
+        ? `<small class="text-muted ms-2">${extras.map(escHtml).join(' · ')}</small>`
+        : '';
+
+      return `
+        <div class="timeline-item d-flex align-items-start mb-2">
+          <div class="me-2" style="font-size:1.1rem;">
+            <i class="bi ${meta.ic} ${meta.cls}"></i>
+          </div>
+          <div class="flex-grow-1 small">
+            <span class="text-muted me-2">${ts}</span>
+            <span class="fw-bold ${meta.cls}">${label}</span>
+            <span class="ms-2">${escHtml(ev.location || '')}</span>
+            ${extrasHtml}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Header
+    const totalDur = j.duration_minutes;
+    const header = `
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold small text-muted text-uppercase">
+          <i class="bi bi-stopwatch me-1"></i> Cycle #${j.cycle_id} timeline
+          <span class="badge bg-light text-dark ms-1">${j.count} events</span>
+          ${j.is_open
+            ? '<span class="badge bg-info ms-1">OPEN</span>'
+            : `<span class="badge bg-secondary ms-1">CLOSED · ${
+                totalDur ? (totalDur < 60 ? totalDur + 'm' : (totalDur/60).toFixed(1)+'h') : '?'
+              }</span>`}
+        </h6>
+      </div>`;
+    holder.innerHTML = header + lines;
+  } catch (e) {
+    holder.innerHTML = `<div class="text-danger small">Error loading timeline: ${e.message}</div>`;
+  }
+}
+
+// ── Actions ───────────────────────────────────────────────────────────
+function refreshAll() {
+  loadSummary();
+  loadIdling();
+  loadPlates();
+}
+
+function loadAll() {
+  loadIdling();
+  loadPlates();
+}
+
+function clearFilters() {
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  document.getElementById('filterTruckType').value = '';
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('filterStatus').value = 'all';
+  // Rebuild plate dropdown to show everyone again, and clear its selection.
+  rebuildPlateOptions('');
+  document.getElementById('filterPlate').value = '';
+  loadAll();
+}
+
+function toggleAutoRefresh() {
+  if (_autoRefreshTimer) {
+    clearInterval(_autoRefreshTimer);
+    _autoRefreshTimer = null;
+  }
+  if (document.getElementById('autoRefresh').checked) {
+    _autoRefreshTimer = setInterval(refreshAll, 60000);
+  }
+}
+
+function exportToExcel() {
+  const params = new URLSearchParams();
+  const df = document.getElementById('filterDateFrom').value;
+  const dt = document.getElementById('filterDateTo').value;
+  const tt = document.getElementById('filterTruckType').value;
+  const pl = document.getElementById('filterPlate').value;
+  const ca = document.getElementById('filterCategory').value;
+  if (df) params.set('date_from', df);
+  if (dt) params.set('date_to', dt);
+  if (tt) params.set('truck_type_id', tt);
+  if (pl) params.set('plate_id', pl);
+  if (ca) params.set('category', ca);
+  window.location.href = '/api/cycle-time/export?' + params.toString();
+}
+
+// ── Settings modal ────────────────────────────────────────────────────
+// One-time bootstrap modal instance.
+let _settingsModal = null;
+
+async function openSettingsModal() {
+  if (!_settingsModal) {
+    _settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+  }
+  // Pre-load current values from server
+  try {
+    const r = await fetch('/api/cycle-time/settings');
+    const j = await r.json();
+    document.getElementById('settingMinVisit').value = j.min_visit_minutes;
+    document.getElementById('settingStopMin').value  = j.stop_detection_minutes;
+
+    // Admin-only section toggle + role note + save-button enable
+    const note  = document.getElementById('settingsRoleNote');
+    const adminBox = document.getElementById('settingsAdminSection');
+    const saveBtn  = document.getElementById('settingsSaveBtn');
+    const minIn = document.getElementById('settingMinVisit');
+    const stopIn = document.getElementById('settingStopMin');
+    if (j.is_admin) {
+      note.innerHTML = '<i class="bi bi-shield-check"></i> You\'re signed in as admin — changes save instantly.';
+      note.className = 'alert alert-success small mb-3';
+      adminBox.classList.remove('d-none');
+      saveBtn.disabled = false;
+      minIn.disabled = false;
+      stopIn.disabled = false;
+    } else {
+      note.innerHTML = '<i class="bi bi-info-circle"></i> Read-only — only admins can change these values.';
+      note.className = 'alert alert-secondary small mb-3';
+      adminBox.classList.add('d-none');
+      saveBtn.disabled = true;
+      minIn.disabled = true;
+      stopIn.disabled = true;
+    }
+  } catch (e) {
+    console.error('settings load error:', e);
+  }
+  _settingsModal.show();
+}
+
+async function saveSettings() {
+  const minVisit = parseInt(document.getElementById('settingMinVisit').value);
+  const stopMin  = parseInt(document.getElementById('settingStopMin').value);
+  if (!minVisit || minVisit < 1 || !stopMin || stopMin < 1) {
+    alert('Both values must be at least 1 minute.');
+    return;
+  }
+  try {
+    const r = await fetch('/api/cycle-time/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        min_visit_minutes:      minVisit,
+        stop_detection_minutes: stopMin,
+      }),
+    });
+    const j = await r.json();
+    if (j.error) {
+      alert('Save failed: ' + j.error);
+      return;
+    }
+    alert(`Settings saved!\n\nMin visit: ${minVisit}m\nStop detection: ${stopMin}m\n\nNext poll picks them up automatically.`);
+    _settingsModal.hide();
+    // Refresh KPI cards so the threshold badge updates
+    loadSummary();
+  } catch (e) {
+    alert('Save request failed: ' + e.message);
+  }
+}
+
+// Enable the Clear button only when a valid date is picked AND
+// the user has typed CLEAR exactly. Called on input change of either.
+function updateClearButtonState() {
+  const dateEl = document.getElementById('clearBeforeDate');
+  const textEl = document.getElementById('clearConfirmText');
+  const btn    = document.getElementById('clearLogsBtn');
+  const label  = document.getElementById('clearLogsBtnLabel');
+  const date   = dateEl.value;
+  const txt    = textEl.value;
+
+  const dateOk = !!date;
+  const txtOk  = txt === 'CLEAR';
+
+  if (dateOk && txtOk) {
+    btn.disabled = false;
+    label.textContent = `Clear logs before ${date}`;
+  } else {
+    btn.disabled = true;
+    if (!dateOk) {
+      label.textContent = 'Clear logs before [pick a date]';
+    } else if (!txtOk) {
+      label.textContent = `Type CLEAR to enable (before ${date})`;
+    }
+  }
+}
+
+async function clearTrackingLogs() {
+  const date = document.getElementById('clearBeforeDate').value;
+  const txt  = document.getElementById('clearConfirmText').value;
+  // Defensive — should be blocked by disabled state, but double-check.
+  if (!date || txt !== 'CLEAR') {
+    alert('Pick a cutoff date and type CLEAR first.');
+    return;
+  }
+  if (!confirm(
+    `This will delete tracking records BEFORE ${date}.\n\n` +
+    `On-or-after records are preserved.\n` +
+    `Master data, trip records, and toll fees are untouched.\n\n` +
+    `Continue?`
+  )) return;
+
+  try {
+    const r = await fetch('/api/cycle-time/clear-logs', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ before: date, confirm: 'CLEAR' }),
+    });
+    const j = await r.json();
+    if (j.error) {
+      alert('Clear failed: ' + j.error + (j.hint ? '\n\n' + j.hint : ''));
+      return;
+    }
+    const d = j.deleted || {};
+    alert(
+      `Cleared records before ${j.cutoff}:\n` +
+      `  • ${d.site_visits||0} site visits\n` +
+      `  • ${d.truck_cycles||0} truck cycles\n` +
+      `  • ${d.cartrack_events||0} GPS events\n\n` +
+      `Records from ${j.cutoff} onward are preserved.`
+    );
+    // Reset the confirmation fields so it can't be re-fired by accident
+    document.getElementById('clearConfirmText').value = '';
+    updateClearButtonState();
+    _settingsModal.hide();
+    refreshAll();
+  } catch (e) {
+    alert('Clear request failed: ' + e.message);
+  }
+}
+
+async function syncGeofences() {
+  if (!confirm('Pull all geofences from Cartrack and refresh the local cache?\n\nThis is safe to run anytime — it only adds new geofences and updates existing ones.')) return;
+  try {
+    const r = await fetch('/api/cycle-time/sync-geofences', { method: 'POST' });
+    const j = await r.json();
+    if (j.error) {
+      alert('Sync failed: ' + j.error);
+      return;
+    }
+    alert(`Geofence sync complete!\n\nFetched: ${j.total_fetched}\nCreated: ${j.created}\nUpdated: ${j.updated}\nName changes: ${j.name_changed}`);
+    refreshAll();
+  } catch (e) {
+    alert('Sync request failed: ' + e.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadFilters();
+  refreshAll();
+});
+</script>
+{% endblock %}

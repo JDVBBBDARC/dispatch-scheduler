@@ -1,7 +1,30 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
+
+
+def utc_now():
+    """Return the current UTC time as a NAIVE datetime (no tzinfo).
+
+    Drop-in replacement for `datetime.utcnow()`, which Python 3.12+
+    deprecated and which is scheduled for removal in a future version.
+    The recommended modern API is `datetime.now(UTC)` — but that returns
+    a tz-aware datetime, and this codebase consistently stores naive UTC
+    in SQLite (column defaults, comparisons, etc. all assume naive). So
+    we get the current UTC moment via the new API, then strip tzinfo to
+    match the existing convention.
+
+    Use this helper anywhere you previously wrote `datetime.utcnow()`:
+
+        from models_v2 import utc_now
+
+        record.updated_at = utc_now()
+
+    The output is BYTE-IDENTICAL to the old utcnow() result. Storage,
+    indexes, and joins are unaffected.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # ── Truck type seed data ───────────────────────────────────────────────────
 # point_per_leg / daily_target_points control fleet utilization scoring.
@@ -152,6 +175,19 @@ class Plate(db.Model):
     body_no       = db.Column(db.String(20))
     truck_type_id = db.Column(db.Integer, db.ForeignKey('truck_type_defs.id'), nullable=True)
     active        = db.Column(db.Boolean, default=True)
+    # Cartrack GPS provider linkage. When set, the polling worker can fetch
+    # this truck's live position and detect toll plaza crossings to
+    # auto-fill toll fees on TripRecord. NULL = not yet mapped to Cartrack.
+    cartrack_vehicle_id = db.Column(db.Integer, nullable=True, index=True)
+    # NLEX/SCTEX toll class used to look up the fee matrix during GPS-based
+    # toll auto-fill. PH expressways charge different rates per class:
+    #   Class 1 — cars / vans / SUVs (e.g., L300)
+    #   Class 2 — light trucks / buses (e.g., mini dump)
+    #   Class 3 — heavy trucks / trailers (e.g., 10W, 12W, tractor heads)
+    # Default is 'Class 3' because the majority of the fleet is heavy
+    # haulers — admins flip the class to 1 or 2 per-plate via the Master
+    # Data UI for vans/light trucks.
+    toll_class    = db.Column(db.String(10), default='Class 3', nullable=False)
 
     truck_type  = db.relationship('TruckTypeDef', back_populates='plates')
     trips       = db.relationship('TripRecord', foreign_keys='TripRecord.plate_id', back_populates='plate')
@@ -296,7 +332,32 @@ class BreakdownLog(db.Model):
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # ── ERP Repair Request integration fields ────────────────────────
+    # Populated by joborders_sync.py when a breakdown is sourced from the
+    # gainersand.ph ERP. NULL on all manually-entered rows. These columns
+    # are added via an idempotent ALTER TABLE in init_db() so existing
+    # databases pick them up automatically on the next app reload.
+    #
+    # jo_external_id is the unique link back to the ERP repair-request
+    # record — used as the upsert key by the sync worker so the same ERP
+    # record always maps to the same local row (no duplicates on re-poll).
+    jo_external_id          = db.Column(db.Integer, nullable=True, index=True)
+    jo_ref_no               = db.Column(db.String(30))   # equipment ref_no, e.g. 'D26E06'
+    equipment_name          = db.Column(db.String(200))  # e.g. 'Sharman Dumptruck #29 (10W)'
+    equipment_brand         = db.Column(db.String(100))
+    operator_name           = db.Column(db.String(100))  # driver listed on the request
+    requested_by            = db.Column(db.String(100))  # dispatcher who filed
+    approved_by_dispatcher  = db.Column(db.String(100))
+    approved_by_maintenance = db.Column(db.String(100))
+    jo_url                  = db.Column(db.String(300))  # deep link back to the ERP UI
+    last_synced_at          = db.Column(db.DateTime)     # set on every successful upsert
+
     plate = db.relationship('Plate', back_populates='breakdowns')
+
+    @property
+    def is_erp_sourced(self):
+        """True if this row was pulled from the ERP, False if manually entered."""
+        return self.jo_external_id is not None
 
     @property
     def duration_hours(self):
@@ -320,6 +381,243 @@ class BreakdownLog(db.Model):
             'remarks':       self.remarks or '',
             'updated_by':    self.updated_by or '',
         }
+
+
+# ── Cartrack GPS integration ──────────────────────────────────────────────
+class CartrackTruckState(db.Model):
+    """Per-plate state for the Cartrack polling worker. One row per plate.
+
+    Tracks which toll plazas a truck is currently inside (so we can detect
+    enter/exit transitions between polls), plus the running trip-tracking
+    state (entry plaza, current exit candidate) used to compute toll fees.
+    """
+    __tablename__ = 'cartrack_truck_state'
+    id              = db.Column(db.Integer, primary_key=True)
+    plate_id        = db.Column(db.Integer, db.ForeignKey('plates.id'), nullable=False, unique=True, index=True)
+    # Comma-separated list of plaza names the truck is currently inside.
+    # e.g., "Pulilan" or "" (none). Updated every poll.
+    current_plazas  = db.Column(db.Text, default='')
+    # Trip-tracking state — the FIRST plaza entered in an "open" trip
+    entry_plaza     = db.Column(db.String(80))
+    # Latest plaza touched (becomes the exit when trip closes)
+    last_plaza      = db.Column(db.String(80))
+    # When we last saw plaza activity (used for the 30-min idle close rule)
+    last_event_ts   = db.Column(db.DateTime)
+    # Last GPS position seen (for diagnostics)
+    last_lat        = db.Column(db.Float)
+    last_lng        = db.Column(db.Float)
+    last_position_at= db.Column(db.DateTime)
+    # Live status fields — written every poll so the dispatcher UI can show
+    # where a truck is and what it's doing without hitting Cartrack on every
+    # page refresh. All fields refresh on every poll, even if state hasn't
+    # changed (so 'last seen' age can be computed from updated_at).
+    last_position_description = db.Column(db.String(300))   # "Dolores Rd, Porac, Pampanga"
+    last_idling     = db.Column(db.Boolean, default=False)
+    last_ignition   = db.Column(db.Boolean, default=False)
+    last_speed      = db.Column(db.Integer, default=0)       # km/h
+    # Comma-separated Cartrack geofence UUIDs currently inside (for the
+    # "currently at SITE-X" badge in the Open Cycles list).
+    last_geofence_uuids = db.Column(db.Text, default='')
+    # Which TripRecord this state maps to (for auto-fill). Set when entry detected.
+    open_trip_id    = db.Column(db.Integer, db.ForeignKey('trip_records.id'), nullable=True)
+    # Bookkeeping
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    plate = db.relationship('Plate')
+
+    # Ad-hoc stop detection — tracks the start of an ongoing stationary
+    # period so we can log it as a SiteVisit (with geofence_id=NULL)
+    # when the truck eventually resumes moving. See cartrack_poll.py.
+    last_stop_started_at = db.Column(db.DateTime)
+    last_stop_lat        = db.Column(db.Float)
+    last_stop_lng        = db.Column(db.Float)
+    # Address at the start of the stop — captured from
+    # cartrack get_status position_description so we don't need a
+    # separate reverse-geocode step.
+    last_stop_address    = db.Column(db.String(300))
+
+    @property
+    def live_status(self):
+        """Computed status code from ignition/idling/speed."""
+        if not self.last_ignition:
+            return 'OFF'
+        if self.last_speed and self.last_speed > 5:   # >5 km/h = actually moving
+            return 'DRIVING'
+        if self.last_idling:
+            return 'IDLING'
+        return 'STOPPED'
+
+
+class CartrackEvent(db.Model):
+    """Audit log of plaza entry/exit events detected by the polling worker.
+
+    Used for debugging, dashboards, and post-hoc analysis.
+    Auto-pruned to last 60 days to keep storage bounded.
+    """
+    __tablename__ = 'cartrack_events'
+    id          = db.Column(db.Integer, primary_key=True)
+    plate_id    = db.Column(db.Integer, db.ForeignKey('plates.id'), nullable=False, index=True)
+    event_type  = db.Column(db.String(20), nullable=False)   # 'enter' | 'exit' | 'trip_closed'
+    plaza_name  = db.Column(db.String(80))                   # normalized plaza name
+    expressway  = db.Column(db.String(50))                   # which expressway it belongs to
+    lat         = db.Column(db.Float)
+    lng         = db.Column(db.Float)
+    trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'), nullable=True)
+    # For trip_closed events: the computed toll fee
+    toll_fee    = db.Column(db.Float)
+    toll_entry  = db.Column(db.String(80))
+    toll_exit   = db.Column(db.String(80))
+    # Bookkeeping
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    notes       = db.Column(db.String(200))
+
+    plate = db.relationship('Plate')
+
+
+# ── Cartrack Geofences (synced from Cartrack account) ─────────────────────
+class CartrackGeofence(db.Model):
+    """Mirrors the geofences configured in the Cartrack Fleet account.
+
+    Synced periodically via cc.list_geofences(). The Cartrack-side UUID is
+    the source of truth; we keep a local cache so the app can categorize,
+    annotate, and join geofences without hitting Cartrack on every read.
+
+    Categories are auto-assigned at sync time based on name patterns
+    (e.g., 'BIG BEN SCM' -> 'home', 'SHELL ...' -> 'fuel') and can be
+    edited manually later if needed.
+    """
+    __tablename__ = 'cartrack_geofences'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    # Cartrack's stable UUID for this geofence — primary lookup key.
+    cartrack_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    name        = db.Column(db.String(200), nullable=False, index=True)
+    description = db.Column(db.Text)
+    position_description = db.Column(db.Text)   # human-readable address
+    colour      = db.Column(db.String(20))      # hex from Cartrack
+    # Polygon as raw WKT (POLYGON((lng lat, lng lat, ...))) — we don't run
+    # geometric ops in the app (Cartrack does that via geofence_ids in
+    # /rest/vehicles/status), so storage as text is fine.
+    polygon_wkt = db.Column(db.Text)
+    # Auto-assigned category — see _categorize_geofence() in cartrack_poll.py.
+    # Values: 'home', 'customer', 'quarry', 'fuel', 'toll', 'operations', 'other'
+    category    = db.Column(db.String(30), default='other', index=True)
+    # True if this is a depot/home base. BIG BEN SCM should be the only one
+    # marked True initially; admins can flip the flag for other depots later.
+    is_home     = db.Column(db.Boolean, default=False, index=True)
+    # When we last pulled this geofence from Cartrack — useful for stale
+    # detection (e.g., the Cartrack-side entry was deleted but ours lingers).
+    last_synced_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ── Site Visits (per-truck enter/exit tracking) ───────────────────────────
+class SiteVisit(db.Model):
+    """One row per plate × geofence × visit (enter -> exit pair).
+
+    Opened when the polling worker first sees a truck inside a geofence
+    that it wasn't inside on the previous poll. Closed when the truck
+    leaves the geofence (or after a long idle timeout).
+
+    Idling time is accumulated across the visit — each poll where the
+    truck reports idling=True AND is inside this geofence adds the
+    polling interval (default 60s) to idling_seconds.
+    """
+    __tablename__ = 'site_visits'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    plate_id    = db.Column(db.Integer, db.ForeignKey('plates.id'),
+                            nullable=False, index=True)
+    # NULLABLE: when NULL, this row represents an AD-HOC STOP — a place
+    # where the truck stopped for >= STOP_DETECTION_MINUTES outside any
+    # known geofence. address/lat/lng fields below describe the spot.
+    geofence_id = db.Column(db.Integer, db.ForeignKey('cartrack_geofences.id'),
+                            nullable=True, index=True)
+    enter_at    = db.Column(db.DateTime, nullable=False, index=True)
+    exit_at     = db.Column(db.DateTime)                       # null = ongoing
+    # Cached duration (seconds). Computed when exit_at is set.
+    duration_seconds = db.Column(db.Integer, default=0)
+    # Cumulative idle time during this visit (seconds).
+    idling_seconds = db.Column(db.Integer, default=0)
+    # Idle percentage: idling / duration × 100. Computed on close.
+    idling_pct  = db.Column(db.Float)
+    # True if the visit was shorter than the minimum dwell threshold
+    # (default 5 min) — i.e., the truck just passed through or briefly
+    # touched the geofence edge. UI hides these by default since they
+    # don't represent real delivery/pickup stops.
+    is_drive_by = db.Column(db.Boolean, default=False, index=True)
+    # Ad-hoc stop fields (populated when geofence_id IS NULL).
+    # Captured from CartrackTruckState at the start of the stop.
+    address  = db.Column(db.String(300))   # human-readable reverse geocode
+    lat      = db.Column(db.Float)         # decimal degrees
+    lng      = db.Column(db.Float)
+    # Link to the TripRecord this visit belongs to, when we can match
+    # by date + driver/plate (filled by a separate matcher pass).
+    trip_id     = db.Column(db.Integer, db.ForeignKey('trip_records.id'),
+                            nullable=True, index=True)
+    # Link to the open TruckCycle this visit happened during.
+    cycle_id    = db.Column(db.Integer, db.ForeignKey('truck_cycles.id'),
+                            nullable=True, index=True)
+    # Outside-poll hysteresis counter — protects non-toll visits from
+    # false EXITs caused by GPS jitter or transient Cartrack signal loss.
+    # Incremented each poll where Cartrack reports the truck OUTSIDE the
+    # geofence; reset to 0 when the truck re-appears inside on the next
+    # poll. The visit is only closed once the counter reaches
+    # OUTSIDE_POLL_THRESHOLD (default 2). Toll-plaza visits bypass this
+    # check — their real transits are ~30-90s, so we want immediate close.
+    outside_poll_count = db.Column(db.Integer, default=0)
+
+    plate    = db.relationship('Plate')
+    geofence = db.relationship('CartrackGeofence')
+
+    @property
+    def is_ad_hoc(self):
+        """True if this row is an ad-hoc stop (no associated geofence)."""
+        return self.geofence_id is None
+
+    @property
+    def location_label(self):
+        """Display name for the UI: geofence name if known, address otherwise."""
+        if self.geofence is not None:
+            return self.geofence.name
+        return self.address or '(unknown location)'
+
+
+# ── Truck Cycles (home -> ... -> home round trips) ────────────────────────
+class TruckCycle(db.Model):
+    """One full round trip: truck leaves home -> visits sites -> returns home.
+
+    Opened the moment a truck exits the home geofence (BIG BEN SCM).
+    Closed when the same truck re-enters home. Visits made along the way
+    are linked via SiteVisit.cycle_id.
+
+    Multi-day cycles are fully supported — ended_at can be hours or days
+    after started_at. While ended_at is NULL, the cycle is 'ongoing'.
+    """
+    __tablename__ = 'truck_cycles'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    plate_id     = db.Column(db.Integer, db.ForeignKey('plates.id'),
+                             nullable=False, index=True)
+    started_at   = db.Column(db.DateTime, nullable=False, index=True)
+    ended_at     = db.Column(db.DateTime, index=True)             # null = ongoing
+    duration_minutes = db.Column(db.Integer)                       # computed on close
+    # Number of distinct geofence visits during this cycle.
+    visit_count  = db.Column(db.Integer, default=0)
+    # Cumulative idling minutes across all visits in this cycle.
+    total_idling_minutes = db.Column(db.Integer, default=0)
+    # Category, auto-assigned when cycle closes:
+    #   'short'    — under 12 hours (typical single-day round trip)
+    #   'standard' — 12-24 hours (long single-day or quick overnight)
+    #   'long'     — over 24 hours (multi-day journey)
+    #   'ongoing'  — cycle still open (truck hasn't returned home)
+    category     = db.Column(db.String(20), default='ongoing', index=True)
+
+    plate = db.relationship('Plate')
+
+    @property
+    def is_open(self):
+        return self.ended_at is None
 
 
 # ── App Settings (key/value store) ────────────────────────────────────────

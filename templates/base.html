@@ -262,6 +262,18 @@
         <i class="bi bi-cash-coin"></i><span>Toll Calculator</span>
       </a>
     </li>
+    <li>
+      <a href="{{ url_for('toll_log') }}"
+         class="sidebar-link {% if request.endpoint == 'toll_log' %}active{% endif %}">
+        <i class="bi bi-broadcast"></i><span>Toll Log</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('truck_cycle_time') }}"
+         class="sidebar-link {% if request.endpoint == 'truck_cycle_time' %}active{% endif %}">
+        <i class="bi bi-clock-history"></i><span>Truck Cycle Time</span>
+      </a>
+    </li>
 
     <li class="nav-section">DATA</li>
     <li>

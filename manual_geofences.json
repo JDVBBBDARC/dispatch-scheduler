@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Parking Plant 1",
+    "category": "home",
+    "lat": 14.905736228258116,
+    "lng": 120.83485242883499,
+    "radius_m": 200
+  },
+  {
+    "name": "San Ildefonso Quarry",
+    "category": "quarry",
+    "lat": 15.0857,
+    "lng": 121.0125,
+    "radius_m": 400,
+    "_note": "Coords are placeholder approximations. Replace with exact center from Cartrack map: right-click the geofence -> copy coordinates, then paste into lat/lng here."
+  }
+]
