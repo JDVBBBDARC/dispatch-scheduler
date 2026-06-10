@@ -295,6 +295,7 @@ def schedule(date_str):
 
 # ── API: WAVES ─────────────────────────────────────────────────────────────
 @app.route('/api/wave/add', methods=['POST'])
+@login_required
 def api_wave_add():
     data          = request.get_json()
     date_str      = data.get('date')
@@ -317,6 +318,7 @@ def api_wave_add():
 
 
 @app.route('/api/wave/<int:wid>/delete', methods=['POST'])
+@login_required
 def api_wave_delete(wid):
     if not check_can_delete():
         return jsonify({'error': 'You do not have permission to delete.'}), 403
@@ -330,6 +332,7 @@ def api_wave_delete(wid):
 
 # ── API: TRIPS ──────────────────────────────────────────────────────────────
 @app.route('/api/trip/save', methods=['POST'])
+@login_required
 def api_trip_save():
     data     = request.get_json()
     trip_id  = data.get('trip_id')
@@ -392,6 +395,7 @@ def api_trip_save():
 
 
 @app.route('/api/trip/<int:tid>/delete', methods=['POST'])
+@login_required
 def api_trip_delete(tid):
     if not check_can_delete():
         return jsonify({'error': 'You do not have permission to delete.'}), 403
@@ -992,6 +996,7 @@ def master():
 
 
 @app.route('/api/master/<category>/add', methods=['POST'])
+@login_required
 def api_master_add(category):
     data = request.get_json()
     name = (data.get('name') or '').strip()
@@ -1045,6 +1050,7 @@ def api_master_add(category):
 
 
 @app.route('/api/master/<category>/<int:item_id>/update', methods=['POST'])
+@login_required
 def api_master_update(category, item_id):
     data = request.get_json()
     model_map = {'drivers': Driver, 'helpers': Helper,
@@ -1111,6 +1117,7 @@ def api_truck_type_update(tt_id):
 
 
 @app.route('/api/master/<category>/<int:item_id>/toggle', methods=['POST'])
+@login_required
 def api_master_toggle(category, item_id):
     if not check_can_delete():
         return jsonify({'error': 'You do not have permission to deactivate records.'}), 403
@@ -1156,6 +1163,7 @@ def reports():
 
 
 @app.route('/reports/export')
+@login_required
 def export():
     year        = request.args.get('year',  ph_today().year,  type=int)
     month       = request.args.get('month', ph_today().month, type=int)
@@ -1292,6 +1300,7 @@ def attendance():
 
 
 @app.route('/api/attendance/set', methods=['POST'])
+@login_required
 def api_attendance_set():
     data      = request.get_json()
     driver_id = data.get('driver_id')
@@ -1788,6 +1797,7 @@ def _parse_dt(s):
     return None
 
 @app.route('/api/breakdown/add', methods=['POST'])
+@login_required
 def api_breakdown_add():
     data = request.get_json()
     plate_id    = data.get('plate_id') or None
@@ -1821,6 +1831,7 @@ def api_breakdown_add():
 
 
 @app.route('/api/breakdown/<int:lid>/update', methods=['POST'])
+@login_required
 def api_breakdown_update(lid):
     data = request.get_json()
     log  = BreakdownLog.query.get_or_404(lid)
@@ -1854,6 +1865,7 @@ def api_breakdown_update(lid):
 
 
 @app.route('/api/breakdown/<int:lid>/delete', methods=['POST'])
+@login_required
 def api_breakdown_delete(lid):
     if not check_can_delete():
         return jsonify({'error': 'You do not have permission to delete.'}), 403
@@ -2297,12 +2309,14 @@ def find_toll_route(entry, exit_point, toll_class, data):
     return best_cost, best_segs
 
 @app.route('/api/toll/expressways')
+@login_required
 def api_toll_expressways():
     data = get_toll_data()
     result = [{'key': k, 'name': v.get('name', k)} for k, v in data.items()]
     return jsonify(result)
 
 @app.route('/api/toll/all-stations')
+@login_required
 def api_toll_all_stations():
     """Return every station across all expressways with which expressway(s) it belongs to."""
     data = get_toll_data()
@@ -2318,6 +2332,7 @@ def api_toll_all_stations():
     return jsonify(result)
 
 @app.route('/api/toll/stations/<expressway>')
+@login_required
 def api_toll_stations(expressway):
     data = get_toll_data()
     exp = data.get(expressway, {})
@@ -2326,6 +2341,7 @@ def api_toll_stations(expressway):
     return jsonify(stations)
 
 @app.route('/api/toll/calculate', methods=['POST'])
+@login_required
 def api_toll_calculate():
     req = request.get_json()
     expressway  = req.get('expressway', '')   # optional – auto-detected if blank
@@ -3684,6 +3700,10 @@ def api_sync_to_sheets():
             return jsonify({'error': result.get('error', 'Unknown error from Google Sheets')}), 500
 
     except Exception as ex:
+        # If the failure happened between AppSetting.set() and commit, the
+        # session is dirty — roll back or every later request on this
+        # worker dies with PendingRollbackError.
+        db.session.rollback()
         return jsonify({'error': str(ex)}), 500
 
 
@@ -3818,6 +3838,7 @@ def api_restore_from_sheets():
 
 
 @app.route('/api/sync-to-sheets/last')
+@login_required
 def api_last_sync():
     return jsonify({'last_sync': AppSetting.get('last_sheets_sync', None)})
 
@@ -3836,6 +3857,7 @@ def api_save_webhook():
 
 # ── COLLAB API ─────────────────────────────────────────────────────────────
 @app.route('/api/settings/save', methods=['POST'])
+@login_required
 def api_settings_save():
     data = request.get_json() or {}
     for key in DOC_HEADER_DEFAULTS:
@@ -3846,6 +3868,7 @@ def api_settings_save():
 
 
 @app.route('/api/search')
+@login_required
 def api_search():
     q = request.args.get('q', '').strip()
     if len(q) < 2:
@@ -3891,6 +3914,7 @@ def api_search():
 
 
 @app.route('/api/activity')
+@login_required
 def api_activity():
     since_ts = request.args.get('since', 0, type=float)
     since_dt = datetime.fromtimestamp(since_ts) if since_ts else None
@@ -3914,6 +3938,7 @@ def api_activity():
 
 
 @app.route('/api/set-user', methods=['POST'])
+@login_required
 def api_set_user():
     name = (request.get_json() or {}).get('name', '').strip()
     if name:
