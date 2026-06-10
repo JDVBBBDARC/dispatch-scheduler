@@ -100,7 +100,7 @@ def document_control_page():
                   'statement reconciliation. Manual rebrand: all '
                   'remaining compliance-framework framing removed; '
                   'Schedule trip-count badge documented.'])
-    rows.append(['1.4', DOC_DATE, 'B.4',
+    rows.append(['1.4', 'June 2026', 'B.4',
                   'Breakdown analytics documented: filter bar gains a '
                   'Plate dropdown (grouped by truck type); two new bar '
                   'charts — Breakdowns by Plate (grey bars mark FixFlo '
@@ -114,27 +114,15 @@ def document_control_page():
                   'equipment name below the plate selector. What Gets '
                   'Synced table extended with Operator and Equipment '
                   'fields.'])
+    rows.append(['1.5', DOC_DATE, 'Doc Control, F',
+                  'Slimmed to a pure application user manual: removed '
+                  'the Forms and Records register (FM-001..008 — '
+                  'paper forms the operation does not use) and the '
+                  'Document Control distribution table. Appendix '
+                  'renumbered: Quick Reference is now F.2, Contact '
+                  'Information F.3.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
-    out.append(sp(20))
-
-    out.append(h2('Distribution'))
-    out.append(p(
-        'This manual is shared with operational and technical staff who '
-        'use or maintain the Dispatch Scheduler system. Each holder is '
-        'responsible for replacing their copy when a new version is '
-        'released.'))
-    out.append(sp(4))
-    dist_rows = [['Holder Role', 'Function', 'Format']]
-    dist_rows += [
-        ['Operations Manager',  'Day-to-day fleet operations',     'Digital (PDF)'],
-        ['Dispatch Supervisor', 'Schedule planning and approval',  'Digital (PDF) + Print'],
-        ['Dispatcher',          'Daily schedule encoding',          'Digital (PDF)'],
-        ['Fleet Manager',       'Vehicle assignments + maintenance','Digital (PDF)'],
-        ['IT Administrator',    'System maintenance and deployment','Digital (PDF)'],
-    ]
-    out.append(std_table(dist_rows,
-                          col_widths=[4.5 * cm, 7 * cm, 5 * cm]))
     out.append(PageBreak())
     return out
 

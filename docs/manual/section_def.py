@@ -326,8 +326,8 @@ def section_f():
     out.append(h_section('Section F — Appendices'))
     out.append(lead(
         'Reference material that supports the operational sections of '
-        'this manual: troubleshooting, forms, contact information, and '
-        'a quick-reference cheat sheet.'))
+        'this manual: troubleshooting, a quick-reference cheat sheet, '
+        'and contact information.'))
 
     # ── F.1 Troubleshooting Guide ─────────────────────────────────────
     out.append(h1('F.1 Troubleshooting Guide'))
@@ -371,27 +371,8 @@ def section_f():
     ]
     out.append(std_table(ts_rows, col_widths=[5 * cm, 5.5 * cm, 6 * cm]))
 
-    # ── F.2 Forms & Records ──────────────────────────────────────────
-    out.append(h1('F.2 Forms and Records'))
-    out.append(p('The following forms support the SOPs. Each form is '
-                  'identified by a unique code (FM-XXX) and held by '
-                  'the role indicated in the Custodian column.'))
-    fm_rows = [
-        ['Code', 'Title', 'Used in SOP', 'Custodian'],
-        ['FM-001', 'Training Acknowledgement Record',     'All SOPs',     'Operations Manager'],
-        ['FM-002', 'Daily Dispatch Plan (printed copy)',  'SOP-001',      'Dispatch Supervisor'],
-        ['FM-003', 'End-of-Day Reconciliation Checklist', 'SOP-002',      'Dispatcher'],
-        ['FM-004', 'Breakdown Notification Slip',         'SOP-003',      'Fleet Manager'],
-        ['FM-005', 'Weekly Toll Reconciliation Worksheet','SOP-004',      'Finance Officer'],
-        ['FM-006', 'Backup / Restore Drill Log',          'SOP-005',      'IT Administrator'],
-        ['FM-007', 'User Access Request / Revocation',    'SOP-005',      'IT Administrator'],
-        ['FM-008', 'Weekly Cycle Time Briefing',          'SOP-006',      'Fleet Manager'],
-    ]
-    out.append(std_table(fm_rows,
-                          col_widths=[2 * cm, 7 * cm, 3 * cm, 4.5 * cm]))
-
-    # ── F.3 Quick Reference ──────────────────────────────────────────
-    out.append(h1('F.3 Quick Reference — Common Tasks'))
+    # ── F.2 Quick Reference ──────────────────────────────────────────
+    out.append(h1('F.2 Quick Reference — Common Tasks'))
 
     qr_rows = [
         ['Task', 'Module', 'Steps'],
@@ -452,8 +433,8 @@ def section_f():
     ]
     out.append(std_table(qr_rows, col_widths=[5.5 * cm, 3.5 * cm, 7.5 * cm]))
 
-    # ── F.4 Contact Information ──────────────────────────────────────
-    out.append(h1('F.4 Contact Information'))
+    # ── F.3 Contact Information ──────────────────────────────────────
+    out.append(h1('F.3 Contact Information'))
     out.append(p('Key contacts for system support. Update this table '
                   'before printing.'))
     contact_rows = [
