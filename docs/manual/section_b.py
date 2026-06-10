@@ -338,8 +338,69 @@ def section_b():
         ['Description',   'Built from FixFlo JO reference codes and request titles'],
         ['Remarks',       'Mechanic names + the latest status log line'],
         ['Resolution',    'Resolution notes captured by the mechanic on close-out'],
+        ['Operator',      'The "Operator Name" on the job order — the driver associated with the incident. Feeds the Breakdowns-by-Driver chart.'],
+        ['Equipment',     'The original FixFlo equipment name (e.g. "Howo Trailer Dump #14"). Shown when the job order could not be matched to a registered fleet plate — typically trailers and other non-plate assets.'],
     ]
     out.append(std_table(sync_rows, col_widths=[4.5 * cm, 12 * cm]))
+    out.append(p(
+        'Rows whose equipment is not registered in Master Data show the '
+        'FixFlo equipment name in small italic text below the (empty) '
+        'plate selector, so the record still identifies what was '
+        'repaired.'))
+
+    out.append(h2('Filtering'))
+    out.append(pj(
+        'A filter bar sits between the KPI cards and the charts. Four '
+        'dropdowns — <b>Year</b>, <b>Month</b>, <b>Status</b>, and '
+        '<b>Plate</b> (grouped by truck type) — apply immediately on '
+        'change and drive everything below them: the charts, the '
+        'breakdown table, and the bar-click detail modal all show the '
+        'same filtered window. Equipment that is not registered as a '
+        'fleet plate cannot be reached by the Plate dropdown — use its '
+        'bar on the Breakdowns-by-Plate chart instead (see below).'))
+
+    out.append(h2('Breakdown Analytics (Bar Charts)'))
+    out.append(pj(
+        'Two ranked bar charts summarise the filtered window, drawn '
+        'one below the other between the filter bar and the table.'))
+    chart_rows = [
+        ['Chart', 'What it shows'],
+        ['Breakdowns by Plate',
+         'One bar per unit, ranked by breakdown count. Maroon bars are '
+         'registered fleet plates (the worst offender is drawn in a '
+         'darker shade). Grey bars are FixFlo equipment with no '
+         'matching plate in Master Data — typically trailers — so '
+         'trailer incidents stay visible in the ranking without being '
+         'mistaken for fleet plates.'],
+        ['Breakdowns by Driver',
+         'One bar per driver (slate blue), counted from the job '
+         'order\'s Operator Name. Spelling variants of the same '
+         'person — e.g. "JIM LAYAG" and "J.LAYAG", or one-letter '
+         'surname typos — are merged automatically into a single bar; '
+         'hovering shows the list of merged spellings so any wrong '
+         'merge is visible at a glance. Records with no operator '
+         'listed are excluded.'],
+    ]
+    out.append(std_table(chart_rows, col_widths=[4.5 * cm, 12 * cm]))
+
+    out.append(h2('Drilling into a Bar (Job-Order Modal)'))
+    for x in numbered_list([
+        'Click any bar on either chart.',
+        'A dialog opens listing every job order behind that bar — '
+        'date, JO reference, description, status, start and end '
+        'times, repair hours, operator, and remarks.',
+        'The list respects the current Year / Month / Status filters, '
+        'so the modal always matches the chart you clicked.',
+        'Where FixFlo provides a link, the JO reference opens the '
+        'original job order in FixFlo in a new tab.',
+    ]): out.append(x)
+    out.append(callout(
+        'Why this matters for trailers',
+        'Equipment that is not in Master Data (grey bars) cannot be '
+        'selected in the Plate filter dropdown. The bar-click modal is '
+        'the way to review a trailer\'s repair history — click its '
+        'grey bar and the full job-order list appears.',
+        kind='note'))
 
     out.append(h2('Breakdown Statuses'))
     bd_rows = [

@@ -87,7 +87,7 @@ def document_control_page():
                   'descriptions. Schedule trip-save race condition fix. '
                   'Toll EXIT event symmetry fix. datetime API '
                   'modernization.'])
-    rows.append(['1.3', DOC_DATE, 'B.1, B.2, B.4, B.5, C-001..004, D.4',
+    rows.append(['1.3', 'June 2026', 'B.1, B.2, B.4, B.5, C-001..004, D.4',
                   'Breakdown module rewritten as a read-only mirror of '
                   'FixFlo (workshop management system); all manual-entry '
                   'workflow removed. Toll plaza GPS auto-fill content '
@@ -100,6 +100,20 @@ def document_control_page():
                   'statement reconciliation. Manual rebrand: all '
                   'remaining compliance-framework framing removed; '
                   'Schedule trip-count badge documented.'])
+    rows.append(['1.4', DOC_DATE, 'B.4',
+                  'Breakdown analytics documented: filter bar gains a '
+                  'Plate dropdown (grouped by truck type); two new bar '
+                  'charts — Breakdowns by Plate (grey bars mark FixFlo '
+                  'equipment not registered as fleet plates, e.g. '
+                  'trailers) and Breakdowns by Driver (name-spelling '
+                  'variants merged automatically; hover shows the merged '
+                  'spellings). Clicking any bar opens a job-order detail '
+                  'modal scoped to the current filter window, with JO '
+                  'references linking back to FixFlo. Unmapped rows in '
+                  'the breakdown table now show the original FixFlo '
+                  'equipment name below the plate selector. What Gets '
+                  'Synced table extended with Operator and Equipment '
+                  'fields.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(sp(20))
