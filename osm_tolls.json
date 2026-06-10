@@ -1,0 +1,5841 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-06-10T00:38:13Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 12093526,
+  "lat": 15.1779660,
+  "lon": 120.6057934,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dau",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 27367236,
+  "lat": 14.1927953,
+  "lon": 121.1419450,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 29273489,
+  "lat": 14.3817987,
+  "lon": 121.0394969,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Susana Heights",
+    "old_name": "Muntinlupa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 33626133,
+  "lat": 14.5132163,
+  "lon": 121.0337100,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 36230148,
+  "lat": 14.4119505,
+  "lon": 121.0407938,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Filinvest",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 36230150,
+  "lat": 14.4120694,
+  "lon": 121.0408362,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Filinvest",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 148901195,
+  "lat": 14.9072605,
+  "lon": 120.8170667,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Pulilan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 148901956,
+  "lat": 14.8616243,
+  "lon": 120.8575175,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Santa Rita",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 243676249,
+  "lat": 14.9076568,
+  "lon": 120.8183559,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Pulilan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 253125628,
+  "lat": 14.4133689,
+  "lon": 121.0449320,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Alabang",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 253125862,
+  "lat": 14.4105903,
+  "lon": 121.0424847,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Filinvest",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 253127717,
+  "lat": 14.4105916,
+  "lon": 121.0423983,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Filinvest",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 261663161,
+  "lat": 14.3338299,
+  "lon": 121.0529349,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Southwoods",
+    "old_name": "Biñan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 261762466,
+  "lat": 14.3238197,
+  "lon": 121.0636161,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Carmona Toll Plaza B",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 262432613,
+  "lat": 14.4221540,
+  "lon": 121.0456560,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Alabang",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 262432616,
+  "lat": 14.4880498,
+  "lon": 121.0449925,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 281157436,
+  "lat": 13.9416019,
+  "lon": 121.1360611,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Lipa City",
+    "old_name": "Tambo",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 299382573,
+  "lat": 14.4878314,
+  "lon": 121.0437216,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Bicutan"
+  }
+},
+{
+  "type": "node",
+  "id": 299382651,
+  "lat": 14.4879389,
+  "lon": 121.0436150,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Bicutan"
+  }
+},
+{
+  "type": "node",
+  "id": 306940334,
+  "lat": 14.4880363,
+  "lon": 121.0443928,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "SLEX Bicutan Exit"
+  }
+},
+{
+  "type": "node",
+  "id": 313470387,
+  "lat": 14.0872203,
+  "lon": 121.1329943,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Tanauan City",
+    "old_name": "Sambat",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 316010705,
+  "lat": 14.4545073,
+  "lon": 121.0455673,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Sucat",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 316174238,
+  "lat": 15.4332867,
+  "lon": 120.6652793,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Hacienda Luisita",
+    "source": "Bing"
+  }
+},
+{
+  "type": "node",
+  "id": 317179566,
+  "lat": 15.1797868,
+  "lon": 120.6027686,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dau",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 318268683,
+  "lat": 13.9421075,
+  "lon": 121.1404916,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Lipa City",
+    "old_name": "Tambo",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 318300535,
+  "lat": 13.9421457,
+  "lon": 121.1404004,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Lipa City",
+    "old_name": "Tambo",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 318300542,
+  "lat": 13.9416481,
+  "lon": 121.1359678,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Lipa City",
+    "old_name": "Tambo",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 318300553,
+  "lat": 14.0873654,
+  "lon": 121.1323428,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Tanauan City",
+    "old_name": "Sambat",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 318300554,
+  "lat": 14.0852013,
+  "lon": 121.1319610,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Tanauan City",
+    "old_name": "Sambat",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 322051815,
+  "lat": 15.1615566,
+  "lon": 120.6107930,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Angeles",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 323077720,
+  "lat": 14.2407829,
+  "lon": 121.1130340,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 340220562,
+  "lat": 14.1940402,
+  "lon": 121.1412197,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 340221223,
+  "lat": 14.1923868,
+  "lon": 121.1405361,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 344566005,
+  "lat": 14.4861928,
+  "lon": 121.0454031,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 344566109,
+  "lat": 14.4859207,
+  "lon": 121.0448713,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 347274736,
+  "lat": 15.0514545,
+  "lon": 120.6955801,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "description": "San Fernando Toll Gate",
+    "name": "San Fernando",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 358796047,
+  "lat": 14.2543427,
+  "lon": 121.1070969,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Eton City",
+    "old_name": "Greenfield",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 360189014,
+  "lat": 14.2415110,
+  "lon": 121.1103262,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 360190643,
+  "lat": 14.2852042,
+  "lon": 121.0898739,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Santa Rosa",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 378845243,
+  "lat": 13.7971798,
+  "lon": 121.0766526,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Batangas City Toll Plaza",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 379019519,
+  "lat": 14.6785968,
+  "lon": 121.0003336,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "R-8",
+    "name": "Balintawak Toll Plaza A",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 379019520,
+  "lat": 14.6785865,
+  "lon": 121.0006084,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "R-8",
+    "name": "Balintawak Toll Plaza A",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 379119563,
+  "lat": 14.8024353,
+  "lon": 120.9424231,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Bocaue Toll Plaza A",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 379119565,
+  "lat": 14.8021854,
+  "lon": 120.9419191,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Bocaue Toll Plaza A",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 382982957,
+  "lat": 14.3679103,
+  "lon": 121.0423312,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "San Pedro",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 391725074,
+  "lat": 14.8372096,
+  "lon": 120.8680872,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Tabang Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 391988327,
+  "lat": 14.8374860,
+  "lon": 120.8681199,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Tabang Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 393731176,
+  "lat": 15.1812080,
+  "lon": 120.5719402,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark South"
+  }
+},
+{
+  "type": "node",
+  "id": 393731800,
+  "lat": 15.1812287,
+  "lon": 120.5718851,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark South"
+  }
+},
+{
+  "type": "node",
+  "id": 408653963,
+  "lat": 14.5175660,
+  "lon": 121.0179603,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 410579306,
+  "lat": 14.3817697,
+  "lon": 121.0393175,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Susana Heights",
+    "old_name": "Muntinlupa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 419019691,
+  "lat": 14.2007778,
+  "lon": 121.1358916,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Batino",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 441527354,
+  "lat": 14.7476302,
+  "lon": 120.9723694,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Meycauayan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 441527355,
+  "lat": 14.7447702,
+  "lon": 120.9726718,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Meycauayan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 446063386,
+  "lat": 15.4341077,
+  "lon": 120.6679395,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Hacienda Luisita",
+    "source": "Bing"
+  }
+},
+{
+  "type": "node",
+  "id": 448809409,
+  "lat": 14.9917422,
+  "lon": 120.7493909,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Simon",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 457322052,
+  "lat": 15.0481890,
+  "lon": 120.6952030,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Fernando",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 458768118,
+  "lat": 14.2850785,
+  "lon": 121.0873141,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Santa Rosa",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 467070141,
+  "lat": 13.8384913,
+  "lon": 121.1207124,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Ibaan",
+    "old_name": "Malainin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 480772480,
+  "lat": 14.8631791,
+  "lon": 120.8598377,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Santa Rita",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 480772504,
+  "lat": 14.8631271,
+  "lon": 120.8597119,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Santa Rita",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 481704792,
+  "lat": 14.8616090,
+  "lon": 120.8576338,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Santa Rita",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 498715153,
+  "lat": 15.1617297,
+  "lon": 120.6107205,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Angeles",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 506851735,
+  "lat": 14.7093035,
+  "lon": 120.9927555,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "R-8",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 538627621,
+  "lat": 14.9915324,
+  "lon": 120.7488522,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Simon",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 542953291,
+  "lat": 14.4219937,
+  "lon": 121.0451711,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Alabang",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 554200178,
+  "lat": 14.5116379,
+  "lon": 121.0319783,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 642932378,
+  "lat": 15.1229595,
+  "lon": 120.5114315,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Porac",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 642933646,
+  "lat": 15.1228763,
+  "lon": 120.5113880,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Porac",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 642934283,
+  "lat": 15.0153791,
+  "lon": 120.4740428,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Floridablanca",
+    "payment:autosweep_rfid": "no",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 642968642,
+  "lat": 15.0153462,
+  "lon": 120.4741374,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Floridablanca",
+    "payment:autosweep_rfid": "no",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 657880294,
+  "lat": 13.7969885,
+  "lon": 121.0766587,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Batangas City Toll Plaza",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 666537276,
+  "lat": 14.2300047,
+  "lon": 121.1174269,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Silangan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 669534567,
+  "lat": 14.2129272,
+  "lon": 121.1297274,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Mayapa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 671193387,
+  "lat": 14.3338909,
+  "lon": 121.0530943,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Southwoods",
+    "old_name": "Biñan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 674048192,
+  "lat": 15.1783839,
+  "lon": 120.6048044,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dau",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 765801665,
+  "lat": 15.1821241,
+  "lon": 120.5695400,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark South"
+  }
+},
+{
+  "type": "node",
+  "id": 771346159,
+  "lat": 14.6935318,
+  "lon": 121.0174305,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "description": "Pass-thru due to suspended Toll Operations by the LGU following the reported RFID glitches",
+    "name": "NLEX Mindanao Toll Plaza",
+    "payment:autosweep_rfid": "only",
+    "payment:easytrip": "only",
+    "source": "survey"
+  }
+},
+{
+  "type": "node",
+  "id": 775398756,
+  "lat": 15.0431323,
+  "lon": 120.6934217,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 807356376,
+  "lat": 15.0376025,
+  "lon": 120.6769918,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 832367837,
+  "lat": 14.4547925,
+  "lon": 121.0438757,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "motor_vehicle": "yes",
+    "name": "Sucat"
+  }
+},
+{
+  "type": "node",
+  "id": 848331335,
+  "lat": 14.4547369,
+  "lon": 121.0439427,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "motor_vehicle": "yes",
+    "name": "Sucat"
+  }
+},
+{
+  "type": "node",
+  "id": 911785242,
+  "lat": 13.8413283,
+  "lon": 121.1207488,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Ibaan",
+    "old_name": "Malainin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 911790153,
+  "lat": 13.8412600,
+  "lon": 121.1214270,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Ibaan",
+    "old_name": "Malainin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 921133940,
+  "lat": 14.2853178,
+  "lon": 121.0897517,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Santa Rosa",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 964505932,
+  "lat": 14.9092137,
+  "lon": 120.8155646,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Pulilan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 966465075,
+  "lat": 15.2290850,
+  "lon": 120.5613551,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark North",
+    "operator": "Metro Pacific Tollways",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 967632643,
+  "lat": 15.2291703,
+  "lon": 120.5612420,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark North",
+    "operator": "Metro Pacific Tollways",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 967633043,
+  "lat": 15.1973423,
+  "lon": 120.5834182,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Mabiga",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 981197333,
+  "lat": 14.2115579,
+  "lon": 121.1288491,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Mayapa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 981197509,
+  "lat": 14.2108503,
+  "lon": 121.1297504,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Mayapa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1040604171,
+  "lat": 14.2836127,
+  "lon": 121.0967119,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 1042281243,
+  "lat": 14.1273526,
+  "lon": 121.1400647,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Santo Tomas",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1044313828,
+  "lat": 14.3232214,
+  "lon": 121.0634044,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Carmona Toll Plaza A",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1044630491,
+  "lat": 14.2960493,
+  "lon": 120.9817302,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "1"
+  }
+},
+{
+  "type": "node",
+  "id": 1065128763,
+  "lat": 14.3325966,
+  "lon": 121.0554942,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Southwoods",
+    "old_name": "Biñan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1067896499,
+  "lat": 14.0854565,
+  "lon": 121.1327612,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Tanauan City",
+    "old_name": "Sambat",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1078514243,
+  "lat": 14.1252315,
+  "lon": 121.1392711,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Santo Tomas",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078541451,
+  "lat": 14.2294690,
+  "lon": 121.1198036,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "exit": "R-3",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Silangan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1078541491,
+  "lat": 14.2293885,
+  "lon": 121.1198889,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Silangan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078541520,
+  "lat": 14.2415404,
+  "lon": 121.1104735,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1078541524,
+  "lat": 14.2408176,
+  "lon": 121.1131697,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1078541547,
+  "lat": 14.2299584,
+  "lon": 121.1175731,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Silangan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078571001,
+  "lat": 14.3035027,
+  "lon": 121.0801800,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Mamplasan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078571060,
+  "lat": 14.3032942,
+  "lon": 121.0762658,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Mamplasan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078571078,
+  "lat": 14.3032058,
+  "lon": 121.0763775,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Mamplasan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078571101,
+  "lat": 14.3035781,
+  "lon": 121.0800754,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Mamplasan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1078599677,
+  "lat": 14.3679193,
+  "lon": 121.0422414,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "San Pedro",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1081489208,
+  "lat": 14.8081222,
+  "lon": 120.9393571,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "R-8",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1096202490,
+  "lat": 14.0388367,
+  "lon": 121.1510569,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Malvar",
+    "old_name": "Bulihan",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1127578243,
+  "lat": 15.2399326,
+  "lon": 120.5719753,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Dolores"
+  }
+},
+{
+  "type": "node",
+  "id": 1127578249,
+  "lat": 15.2400556,
+  "lon": 120.5719303,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Dolores"
+  }
+},
+{
+  "type": "node",
+  "id": 1127700474,
+  "lat": 15.1821644,
+  "lon": 120.5694559,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Clark South"
+  }
+},
+{
+  "type": "node",
+  "id": 1128955855,
+  "lat": 15.1082600,
+  "lon": 120.6631017,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Mexico",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1128955874,
+  "lat": 15.1082238,
+  "lon": 120.6629933,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Mexico",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129050334,
+  "lat": 15.0512795,
+  "lon": 120.6954831,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Fernando",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129050391,
+  "lat": 15.0497494,
+  "lon": 120.6939195,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Fernando",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129127392,
+  "lat": 14.9888419,
+  "lon": 120.7510865,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Simon",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129127394,
+  "lat": 14.9092935,
+  "lon": 120.8169803,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Pulilan",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129127463,
+  "lat": 14.8076551,
+  "lon": 120.9388664,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Bocaue",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129127472,
+  "lat": 14.9888668,
+  "lon": 120.7502471,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "San Simon",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1129127553,
+  "lat": 14.7074823,
+  "lon": 120.9930457,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "NLEX (R-8)",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1250002655,
+  "lat": 14.4224971,
+  "lon": 121.0438262,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "South Station",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1275415451,
+  "lat": 14.0398806,
+  "lon": 121.1492600,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Malvar",
+    "old_name": "Bulihan",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1275415467,
+  "lat": 14.0373400,
+  "lon": 121.1507053,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Malvar",
+    "old_name": "Bulihan",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1282830642,
+  "lat": 14.6707001,
+  "lon": 120.2802817,
+  "tags": {
+    "barrier": "toll_booth",
+    "note": "fee of 10 peso per person"
+  }
+},
+{
+  "type": "node",
+  "id": 1307705473,
+  "lat": 14.2320042,
+  "lon": 120.9987918,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1307705634,
+  "lat": 14.2319352,
+  "lon": 121.0010629,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Silang East",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1307705643,
+  "lat": 14.2327591,
+  "lon": 120.9989047,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "2",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1307705739,
+  "lat": 14.2326756,
+  "lon": 121.0011661,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "name": "Silang East",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1342944012,
+  "lat": 14.5077099,
+  "lon": 121.0268067,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "operator": "CAVITEX Infrastructure Inc.",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 1407775144,
+  "lat": 14.8550670,
+  "lon": 120.4561835,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dinalupihan",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1407775145,
+  "lat": 14.8549854,
+  "lon": 120.4561481,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dinalupihan",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1410727328,
+  "lat": 14.4226403,
+  "lon": 121.0431721,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1415695712,
+  "lat": 14.5184559,
+  "lon": 121.0177515,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 1435176243,
+  "lat": 15.5129489,
+  "lon": 120.6660196,
+  "tags": {
+    "addr:city": "Tarlac City",
+    "addr:province": "Tarlac",
+    "addr:street": "Tarlac-Pangasinan-La Union Expressway",
+    "addr:village": "San Pascual",
+    "barrier": "toll_booth",
+    "name": "Tarlac Central Toll Plaza",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1447619473,
+  "lat": 14.8422186,
+  "lon": 120.3544573,
+  "tags": {
+    "addr:province": "Bataan",
+    "addr:town": "Hermosa",
+    "addr:village": "Tipo",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Tipo",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1517444746,
+  "lat": 14.2849791,
+  "lon": 121.0871168,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Santa Rosa",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1539148800,
+  "lat": 14.3326117,
+  "lon": 121.0556772,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Southwoods",
+    "old_name": "Biñan",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1559364524,
+  "lat": 14.2520476,
+  "lon": 121.1023567,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Eton City",
+    "old_name": "Greenfield",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1583696930,
+  "lat": 14.3027125,
+  "lon": 120.9562405,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee:car": "Php20",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1641396017,
+  "lat": 14.8416456,
+  "lon": 120.3538984,
+  "tags": {
+    "addr:province": "Bataan",
+    "addr:town": "Hermosa",
+    "addr:village": "Tipo",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Tipo",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1651147906,
+  "lat": 14.8417819,
+  "lon": 120.3537765,
+  "tags": {
+    "addr:province": "Bataan",
+    "addr:town": "Hermosa",
+    "addr:village": "Tipo",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Tipo",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1663949355,
+  "lat": 14.3934952,
+  "lon": 120.9046927,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "2",
+    "name": "Lancaster New City - Imus/General Trias Border Checkpoint"
+  }
+},
+{
+  "type": "node",
+  "id": 1730790865,
+  "lat": 14.4879137,
+  "lon": 120.9826079,
+  "tags": {
+    "barrier": "toll_booth",
+    "exit": "R-1",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "note": "End of tolled section for E3",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 1730790888,
+  "lat": 14.4880859,
+  "lon": 120.9823634,
+  "tags": {
+    "barrier": "toll_booth",
+    "exit": "R-1",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "note": "End of tolled section for E3",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 1730790928,
+  "lat": 14.4881851,
+  "lon": 120.9822351,
+  "tags": {
+    "barrier": "toll_booth",
+    "barrier:personnel": "yes",
+    "exit": "R-1",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "note": "Toll section begins for SB E3",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 1730790967,
+  "lat": 14.4883357,
+  "lon": 120.9820403,
+  "tags": {
+    "barrier": "toll_booth",
+    "exit": "R-1",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "note": "Toll section begins for SB E3",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 1761823196,
+  "lat": 14.7766563,
+  "lon": 120.9573099,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Marilao",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1761916420,
+  "lat": 14.7722927,
+  "lon": 120.9563880,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Marilao",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1860773635,
+  "lat": 15.5127949,
+  "lon": 120.6657956,
+  "tags": {
+    "addr:city": "Tarlac City",
+    "addr:province": "Tarlac",
+    "addr:street": "Tarlac-Pangasinan-La Union Expressway",
+    "addr:village": "San Pascual",
+    "barrier": "toll_booth",
+    "name": "Tarlac Central Toll Plaza",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1938118763,
+  "lat": 14.1920516,
+  "lon": 121.1412162,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2030091127,
+  "lat": 14.2521781,
+  "lon": 121.1022955,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Eton City",
+    "old_name": "Greenfield",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2030091177,
+  "lat": 14.2544766,
+  "lon": 121.1070311,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Eton City",
+    "old_name": "Greenfield",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2138782158,
+  "lat": 14.5141027,
+  "lon": 121.0342510,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2147281074,
+  "lat": 14.8408747,
+  "lon": 120.8996331,
+  "tags": {
+    "alt_name": "Plaridel Toll Plaza",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Balagtas Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2147281086,
+  "lat": 14.8407147,
+  "lon": 120.8994625,
+  "tags": {
+    "alt_name": "Plaridel Toll Plaza",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Balagtas Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2420433004,
+  "lat": 15.5425546,
+  "lon": 120.6428924,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2420433006,
+  "lat": 15.5426651,
+  "lon": 120.6428017,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2448967010,
+  "lat": 15.6157986,
+  "lon": 120.6342039,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2448967015,
+  "lat": 15.6159626,
+  "lon": 120.6340495,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2509499556,
+  "lat": 15.8736288,
+  "lon": 120.6201721,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2509499557,
+  "lat": 15.8737456,
+  "lon": 120.6200317,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2509506921,
+  "lat": 15.7180032,
+  "lon": 120.6159609,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2509506927,
+  "lat": 15.7179392,
+  "lon": 120.6160791,
+  "tags": {
+    "alt_name": "Moncada",
+    "barrier": "toll_booth",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2593930741,
+  "lat": 15.6655195,
+  "lon": 120.6181008,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2604115244,
+  "lat": 15.6654338,
+  "lon": 120.6181191,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2707065217,
+  "lat": 14.4215247,
+  "lon": 121.0443578,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2707065220,
+  "lat": 14.4215288,
+  "lon": 121.0444071,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2707065223,
+  "lat": 14.4214063,
+  "lon": 121.0436222,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 2789787462,
+  "lat": 14.1936719,
+  "lon": 121.1423643,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2848209089,
+  "lat": 14.4436155,
+  "lon": 121.0454545,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "bus": "no",
+    "emergency": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Hillsborough Toll Plaza",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "no",
+    "tourist_bus": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2890622165,
+  "lat": 13.8384122,
+  "lon": 121.1214168,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Ibaan",
+    "old_name": "Malainin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 2894898573,
+  "lat": 14.3232632,
+  "lon": 121.0633122,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Carmona Toll Plaza A",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2942007531,
+  "lat": 14.5168607,
+  "lon": 120.9992158,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:Pesos": "yes",
+    "fee": "yes",
+    "fee:bus": "Php69",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "payment:cash": "yes",
+    "payment:rfid_card": "yes",
+    "ref:fee": "TRB;NAIAX"
+  }
+},
+{
+  "type": "node",
+  "id": 2942008741,
+  "lat": 14.5192806,
+  "lon": 120.9908391,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "2"
+  }
+},
+{
+  "type": "node",
+  "id": 2956984395,
+  "lat": 14.4528860,
+  "lon": 121.0450358,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Sucat",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2956984398,
+  "lat": 14.4545914,
+  "lon": 121.0449547,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Sucat",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3012404104,
+  "lat": 14.8418248,
+  "lon": 120.3537623,
+  "tags": {
+    "addr:province": "Bataan",
+    "addr:town": "Hermosa",
+    "addr:village": "Tipo",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Tipo",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3074682771,
+  "lat": 14.5083440,
+  "lon": 121.0029409,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 3089095521,
+  "lat": 13.9736712,
+  "lon": 121.1491666,
+  "tags": {
+    "alt_name": "Balete",
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Santo Toribio",
+    "old_name": "Bulacnin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 3089095522,
+  "lat": 13.9734185,
+  "lon": 121.1484086,
+  "tags": {
+    "alt_name": "Balete",
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Santo Toribio",
+    "old_name": "Bulacnin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 3089095533,
+  "lat": 13.9752543,
+  "lon": 121.1487375,
+  "tags": {
+    "alt_name": "Balete",
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Santo Toribio",
+    "old_name": "Bulacnin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 3089095534,
+  "lat": 13.9755469,
+  "lon": 121.1494185,
+  "tags": {
+    "alt_name": "Balete",
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "designated",
+    "name": "Santo Toribio",
+    "old_name": "Bulacnin",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 3110961436,
+  "lat": 14.5204928,
+  "lon": 121.0274689,
+  "tags": {
+    "barrier": "toll_booth",
+    "motor_vehicle": "yes",
+    "name": "Nichols Toll Gate B"
+  }
+},
+{
+  "type": "node",
+  "id": 3110961446,
+  "lat": 14.5189510,
+  "lon": 121.0284360,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "private",
+    "foot": "use_sidepath",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Nichols Toll Gate A"
+  }
+},
+{
+  "type": "node",
+  "id": 3133428752,
+  "lat": 14.5130878,
+  "lon": 121.0324980,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Runway Toll Plaza"
+  }
+},
+{
+  "type": "node",
+  "id": 3148607089,
+  "lat": 14.2122712,
+  "lon": 121.1305466,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Mayapa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3152310087,
+  "lat": 14.3217016,
+  "lon": 121.0617475,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Carmona",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3152310104,
+  "lat": 14.3223059,
+  "lon": 121.0625815,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Carmona",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3159878145,
+  "lat": 14.3767083,
+  "lon": 121.0114972,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:car": "Php45"
+  }
+},
+{
+  "type": "node",
+  "id": 3415306361,
+  "lat": 14.8249369,
+  "lon": 120.3341711,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "SBMA Checkpoint",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3415306368,
+  "lat": 14.8250674,
+  "lon": 120.3341696,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "SBMA Checkpoint",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3415486025,
+  "lat": 14.4543656,
+  "lon": 120.9168011,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "fee": "yes",
+    "fee:bus": "Php129",
+    "fee:car": "Php64",
+    "fee:hgv": "Php194",
+    "name": "Kawit Toll Plaza",
+    "operator": "PEATC",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "source": "Schadow1 Expeditions;DP24 Research"
+  }
+},
+{
+  "type": "node",
+  "id": 3415486026,
+  "lat": 14.4541387,
+  "lon": 120.9171670,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "fee": "yes",
+    "fee:bus": "Php129",
+    "fee:car": "Php64",
+    "fee:hgv": "Php194",
+    "name": "Kawit Toll Plaza",
+    "operator": "PEATC",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "source": "Schadow1 Expeditions;DP24 Research"
+  }
+},
+{
+  "type": "node",
+  "id": 3429707884,
+  "lat": 14.4528943,
+  "lon": 121.0455692,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Sucat",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3433789199,
+  "lat": 16.4127283,
+  "lon": 120.5952517,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 3461035950,
+  "lat": 14.5128667,
+  "lon": 121.0316270,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 3477881964,
+  "lat": 14.4121510,
+  "lon": 121.0408555,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Filinvest",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3557388319,
+  "lat": 14.6937918,
+  "lon": 120.9768105,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "description": "Pass-thru due to suspended Toll Operations by the LGU following the reported RFID glitches",
+    "name": "Karuhatan Toll Plaza",
+    "payment:autosweep_rfid": "only",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 3648745752,
+  "lat": 14.3761901,
+  "lon": 121.0178834,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php34",
+    "fee:car": "Php17",
+    "fee:hgv": "Php51",
+    "name": "MCX Toll Plaza",
+    "payment:coins": "yes",
+    "payment:electronic_purses": "E-Tap;RFID",
+    "payment:notes": "yes",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 3648745757,
+  "lat": 14.3765351,
+  "lon": 121.0177662,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php34",
+    "fee:car": "Php17",
+    "fee:hgv": "Php51",
+    "name": "MCX Toll Plaza",
+    "payment:coins": "yes",
+    "payment:electronic_purses": "E-Tap;RFID",
+    "payment:notes": "yes",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 3664010392,
+  "lat": 14.4927277,
+  "lon": 120.9867153,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:car": "Php8",
+    "maxheight": "2.5",
+    "name": "Kabihasnan Toll Plaza",
+    "payment:cash": "yes",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 3664010393,
+  "lat": 14.4857265,
+  "lon": 120.9809892,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee": "yes",
+    "opening_hours": "24/7",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4127292338,
+  "lat": 15.1790556,
+  "lon": 120.6038742,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Dau",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 4127294438,
+  "lat": 15.2220037,
+  "lon": 120.5880530,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Santa Ines Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 4127294439,
+  "lat": 15.2218827,
+  "lon": 120.5879403,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Santa Ines Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes",
+    "payment:mastercard": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 4157287291,
+  "lat": 15.1979536,
+  "lon": 120.5829408,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Mabiga",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4177675458,
+  "lat": 14.3817843,
+  "lon": 121.0394061,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Susana Heights",
+    "old_name": "Muntinlupa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4178318025,
+  "lat": 14.3817609,
+  "lon": 121.0392387,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Susana Heights",
+    "old_name": "Muntinlupa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4237265822,
+  "lat": 14.5217275,
+  "lon": 121.0143052,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4293878184,
+  "lat": 16.0496565,
+  "lon": 120.5645509,
+  "tags": {
+    "access": "permissive",
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 4293878185,
+  "lat": 16.0496915,
+  "lon": 120.5644427,
+  "tags": {
+    "access": "permissive",
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4330395648,
+  "lat": 14.3242996,
+  "lon": 120.9414531,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "lanes": "2"
+  }
+},
+{
+  "type": "node",
+  "id": 4411320447,
+  "lat": 14.5171099,
+  "lon": 120.9989670,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php69",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "ref:fee": "TRB;NAIAX"
+  }
+},
+{
+  "type": "node",
+  "id": 4428595845,
+  "lat": 14.5151333,
+  "lon": 120.9929218,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 4566740002,
+  "lat": 14.5224422,
+  "lon": 121.0133790,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4783122448,
+  "lat": 14.7913734,
+  "lon": 120.9502688,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Philippine Arena",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4783122449,
+  "lat": 14.7914322,
+  "lon": 120.9504494,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Philippine Arena",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5126916735,
+  "lat": 14.6528413,
+  "lon": 120.9975333,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5175750779,
+  "lat": 14.3013815,
+  "lon": 120.9584526,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee:bus": "Php40",
+    "fee:car": "Php20",
+    "name": "Open Carpark",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5175765591,
+  "lat": 14.2238423,
+  "lon": 121.1239956,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5235594959,
+  "lat": 14.3045233,
+  "lon": 120.9711060,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "toll": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5235594961,
+  "lat": 14.3100607,
+  "lon": 120.9879468,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "1"
+  }
+},
+{
+  "type": "node",
+  "id": 5241234747,
+  "lat": 14.3014471,
+  "lon": 120.9556034,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Front Parking A",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5241234748,
+  "lat": 14.3002417,
+  "lon": 120.9572758,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Front Parking B",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5261991373,
+  "lat": 14.3231915,
+  "lon": 120.9539501,
+  "tags": {
+    "access": "permissive",
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5261991374,
+  "lat": 14.3232614,
+  "lon": 120.9539208,
+  "tags": {
+    "access": "permissive",
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5262018907,
+  "lat": 14.3281375,
+  "lon": 120.9428449,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5276803128,
+  "lat": 16.1297763,
+  "lon": 120.5257460,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Pozorrubio"
+  }
+},
+{
+  "type": "node",
+  "id": 5276803134,
+  "lat": 16.1295844,
+  "lon": 120.5256280,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Pozorrubio"
+  }
+},
+{
+  "type": "node",
+  "id": 5348511835,
+  "lat": 14.2932597,
+  "lon": 120.9272133,
+  "tags": {
+    "alt_name": "General Trias",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "5",
+    "name": "Governor's Drive",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5352007709,
+  "lat": 15.1977350,
+  "lon": 120.5801644,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Mabiga",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5352007712,
+  "lat": 15.1974250,
+  "lon": 120.5803010,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Mabiga",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5357221716,
+  "lat": 14.5120334,
+  "lon": 121.0319270,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5359002012,
+  "lat": 14.3008602,
+  "lon": 120.9582140,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee:bicycle": "no",
+    "fee:motorcycle": "Php20",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5369470502,
+  "lat": 14.5174265,
+  "lon": 120.9879939,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5436681683,
+  "lat": 14.2810677,
+  "lon": 120.8657421,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5455400991,
+  "lat": 14.4125321,
+  "lon": 120.9413344,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5480697614,
+  "lat": 14.6935241,
+  "lon": 121.0164079,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "description": "Pass-thru due to suspended Toll Operations by the LGU following the reported RFID glitches",
+    "name": "NLEX Mindanao Toll Plaza",
+    "payment:autosweep_rfid": "only",
+    "payment:easytrip": "only",
+    "source": "survey"
+  }
+},
+{
+  "type": "node",
+  "id": 5496997292,
+  "lat": 14.5259296,
+  "lon": 121.0109072,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:car": "PHP35"
+  }
+},
+{
+  "type": "node",
+  "id": 5516394852,
+  "lat": 14.3120118,
+  "lon": 120.9323938,
+  "tags": {
+    "access": "yes",
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5534878942,
+  "lat": 14.6183961,
+  "lon": 120.9911516,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "España Toll Plaza",
+    "operator": "NLEX Corporation"
+  }
+},
+{
+  "type": "node",
+  "id": 5585628123,
+  "lat": 14.2498557,
+  "lon": 121.0574100,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Boulevard",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5585628127,
+  "lat": 14.2499471,
+  "lon": 121.0571508,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Boulevard",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5599624824,
+  "lat": 14.2778373,
+  "lon": 121.0548047,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Technopark",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5599624849,
+  "lat": 14.2553493,
+  "lon": 121.0574636,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Boulevard",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5599624887,
+  "lat": 14.2346467,
+  "lon": 121.0475432,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Santa Rosa City",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5659379769,
+  "lat": 14.2530997,
+  "lon": 120.9735499,
+  "tags": {
+    "alt_name": "Aguinaldo;Aguinaldo Highway",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "name": "Silang",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5678583018,
+  "lat": 14.2554880,
+  "lon": 121.0577012,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Boulevard",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5715611902,
+  "lat": 15.4628240,
+  "lon": 120.6757447,
+  "tags": {
+    "addr:city": "Tarlac City",
+    "addr:province": "Tarlac",
+    "addr:street": "Subic-Clark-Tarlac Expressway",
+    "addr:village": "Bantog",
+    "barrier": "toll_booth",
+    "name": "Tarlac City Toll Plaza",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5715611903,
+  "lat": 15.4627912,
+  "lon": 120.6758859,
+  "tags": {
+    "addr:city": "Tarlac City",
+    "addr:province": "Tarlac",
+    "addr:street": "Subic-Clark-Tarlac Expressway",
+    "addr:village": "Bantog",
+    "barrier": "toll_booth",
+    "name": "Tarlac City Toll Plaza",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5720654257,
+  "lat": 14.6800245,
+  "lon": 121.0004072,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "exit": "R-8",
+    "name": "Balintawak Toll Plaza B",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5835602953,
+  "lat": 14.3039385,
+  "lon": 120.9700433,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "toll": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 5952995653,
+  "lat": 14.6437898,
+  "lon": 120.9924190,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 6004089898,
+  "lat": 14.5119208,
+  "lon": 121.0029521,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 6149150550,
+  "lat": 14.3193799,
+  "lon": 120.9543592,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 6300698824,
+  "lat": 14.6894507,
+  "lon": 120.9699421,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Karuhatan",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6318699502,
+  "lat": 14.5161778,
+  "lon": 121.0408305,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "operator": "CAVITEX Infrastructure Inc.",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 6340974730,
+  "lat": 14.8009827,
+  "lon": 120.9433758,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Bocaue Toll Plaza B",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6379339135,
+  "lat": 14.2005189,
+  "lon": 121.1349126,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Batino",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6434727229,
+  "lat": 14.6312818,
+  "lon": 121.0102023,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Quezon Avenue Northbound Entry"
+  }
+},
+{
+  "type": "node",
+  "id": 6437794039,
+  "lat": 15.3168155,
+  "lon": 120.6286565,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Concepcion"
+  }
+},
+{
+  "type": "node",
+  "id": 6437794040,
+  "lat": 15.3169122,
+  "lon": 120.6286510,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Concepcion"
+  }
+},
+{
+  "type": "node",
+  "id": 6437827490,
+  "lat": 16.0019982,
+  "lon": 120.5798644,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Urdaneta"
+  }
+},
+{
+  "type": "node",
+  "id": 6437827491,
+  "lat": 16.0020886,
+  "lon": 120.5798102,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Urdaneta"
+  }
+},
+{
+  "type": "node",
+  "id": 6441711696,
+  "lat": 14.0414424,
+  "lon": 121.1496664,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "motor_vehicle": "designated",
+    "name": "Malvar",
+    "old_name": "Bulihan",
+    "operator": "STAR Tollway Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes",
+    "payment:easytrip": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 6601945945,
+  "lat": 14.4447091,
+  "lon": 121.0453578,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "bus": "no",
+    "emergency": "yes",
+    "foot": "no",
+    "goods": "no",
+    "hgv": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "Hillsborough Toll Plaza",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "yes",
+    "tourist_bus": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 6634673610,
+  "lat": 14.5631648,
+  "lon": 121.0044526,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Buendia Southbound Exit",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6725455536,
+  "lat": 14.6898982,
+  "lon": 120.9705649,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Karuhatan",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6802528628,
+  "lat": 14.2346076,
+  "lon": 121.0474507,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Santa Rosa City",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6813133738,
+  "lat": 14.3282417,
+  "lon": 120.9603071,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 6816281516,
+  "lat": 14.2775818,
+  "lon": 121.0548386,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Laguna Technopark",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6911442828,
+  "lat": 14.2810290,
+  "lon": 120.8663059,
+  "tags": {
+    "access": "customers",
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "foot": "no",
+    "horse": "no",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6921661916,
+  "lat": 14.2918584,
+  "lon": 121.0680530,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Greenfield Toll Plaza",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7022784337,
+  "lat": 14.7928787,
+  "lon": 120.9466613,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "lanes": "3",
+    "mapillary": "5468417649896260",
+    "name": "Philippine Arena",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7025129268,
+  "lat": 14.8145038,
+  "lon": 120.9339189,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Tambubong",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7025129278,
+  "lat": 14.8146640,
+  "lon": 120.9373100,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Tambubong",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7059265349,
+  "lat": 16.2175367,
+  "lon": 120.4984483,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Rosario",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7059265350,
+  "lat": 16.2176270,
+  "lon": 120.4982273,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Rosario",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7142196843,
+  "lat": 14.6442680,
+  "lon": 120.9888056,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 7153152819,
+  "lat": 14.3008915,
+  "lon": 120.9582335,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 7157983258,
+  "lat": 14.2990238,
+  "lon": 120.9539437,
+  "tags": {
+    "barrier": "toll_booth",
+    "charge:car": "20 PHP",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7157983259,
+  "lat": 14.3004839,
+  "lon": 120.9530648,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7165940703,
+  "lat": 14.4213591,
+  "lon": 121.0436235,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 7264859883,
+  "lat": 16.1833023,
+  "lon": 120.5140196,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Sison"
+  }
+},
+{
+  "type": "node",
+  "id": 7264901597,
+  "lat": 16.1832924,
+  "lon": 120.5139108,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Sison"
+  }
+},
+{
+  "type": "node",
+  "id": 7309435770,
+  "lat": 15.2926742,
+  "lon": 120.6020722,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "name": "New Clark City",
+    "note": "toll gate closed most of the time, only open during special events"
+  }
+},
+{
+  "type": "node",
+  "id": 7309435771,
+  "lat": 15.2927065,
+  "lon": 120.6021585,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "name": "New Clark City",
+    "note": "toll gate closed most of the time, only open during special events"
+  }
+},
+{
+  "type": "node",
+  "id": 7710052201,
+  "lat": 14.4911039,
+  "lon": 120.9960362,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "name": "Sucat",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 7710052214,
+  "lat": 14.4909907,
+  "lon": 120.9959880,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "name": "Sucat Toll Plaza",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 7762929182,
+  "lat": 14.2932620,
+  "lon": 120.9274391,
+  "tags": {
+    "alt_name": "General Trias",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "4",
+    "name": "Governor's Drive",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7771221709,
+  "lat": 13.7914953,
+  "lon": 121.4070474,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "5"
+  }
+},
+{
+  "type": "node",
+  "id": 7884366088,
+  "lat": 14.5836970,
+  "lon": 121.0024295,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Plaza Azul",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7919250022,
+  "lat": 14.2919170,
+  "lon": 121.0679737,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Greenfield Toll Plaza",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8059369689,
+  "lat": 14.3291637,
+  "lon": 121.0436083,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee": "5 PHP",
+    "lanes": "1",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8175508904,
+  "lat": 14.3292019,
+  "lon": 121.0435930,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee": "5 PHP",
+    "lanes": "1",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8256018541,
+  "lat": 14.5805976,
+  "lon": 120.9996032,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "name": "Plaza Dilao",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash:lanes": "no|no|yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8327487971,
+  "lat": 14.8065687,
+  "lon": 120.9401646,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Bocaue",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8336898466,
+  "lat": 14.6415141,
+  "lon": 121.0060709,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Del Monte",
+    "opening_hours": "24/7"
+  }
+},
+{
+  "type": "node",
+  "id": 8336898467,
+  "lat": 14.6404946,
+  "lon": 121.0063748,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Del Monte",
+    "opening_hours": "24/7"
+  }
+},
+{
+  "type": "node",
+  "id": 8341325979,
+  "lat": 14.6249026,
+  "lon": 121.0155570,
+  "tags": {
+    "barrier": "toll_booth",
+    "mapillary": "1177136659397623",
+    "name": "Quezon Avenue"
+  }
+},
+{
+  "type": "node",
+  "id": 8354222460,
+  "lat": 14.4049262,
+  "lon": 121.0407048,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 8377981919,
+  "lat": 14.2224648,
+  "lon": 120.9700081,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 8447494406,
+  "lat": 14.6119543,
+  "lon": 121.0170262,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "E. Rodriguez Northbound Entry",
+    "operator": "Skyway Operations and Maintenance Corporation",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8663716172,
+  "lat": 14.5852434,
+  "lon": 121.0021770,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Nagtahan",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8663716183,
+  "lat": 14.6244759,
+  "lon": 121.0154043,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Quezon Avenue Southbound Entry"
+  }
+},
+{
+  "type": "node",
+  "id": 8945933133,
+  "lat": 14.5636238,
+  "lon": 121.0044723,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Buendia",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9129452415,
+  "lat": 14.4710535,
+  "lon": 120.9629256,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9153964929,
+  "lat": 14.6106953,
+  "lon": 121.0170750,
+  "tags": {
+    "barrier": "toll_booth",
+    "operator": "Skyway Operations and Maintenance Corporation",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9312489189,
+  "lat": 15.1475071,
+  "lon": 120.5220476,
+  "tags": {
+    "barrier": "toll_booth",
+    "exit": "SCTEX",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "yes",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 9312489190,
+  "lat": 15.1474583,
+  "lon": 120.5221564,
+  "tags": {
+    "barrier": "toll_booth",
+    "exit": "SCTEX",
+    "payment:autosweep_rfid": "only",
+    "payment:cash": "yes",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 9569904365,
+  "lat": 14.4414510,
+  "lon": 121.0455242,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Alabang",
+    "operator": "Skyway Operations & Management Corporation",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9630519513,
+  "lat": 14.6405017,
+  "lon": 121.0064234,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Del Monte",
+    "opening_hours": "24/7"
+  }
+},
+{
+  "type": "node",
+  "id": 9630598223,
+  "lat": 14.6401255,
+  "lon": 121.0065562,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Del Monte",
+    "opening_hours": "24/7"
+  }
+},
+{
+  "type": "node",
+  "id": 9650857733,
+  "lat": 14.3210528,
+  "lon": 120.7684312,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 9681478780,
+  "lat": 13.8300688,
+  "lon": 120.6245211,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "1",
+    "operator": "Municipality of Calatagan",
+    "payment:cash": "yes",
+    "payment:credit_cards": "no",
+    "payment:debit_cards": "no",
+    "payment:electronic_purses": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 9681478783,
+  "lat": 13.8301235,
+  "lon": 120.6250495,
+  "tags": {
+    "barrier": "toll_booth",
+    "lanes": "1",
+    "operator": "Municipality of Calatagan",
+    "payment:cash": "yes",
+    "payment:credit_cards": "no",
+    "payment:debit_cards": "no",
+    "payment:electronic_purses": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 9856708466,
+  "lat": 14.4926887,
+  "lon": 120.9866451,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:car": "Php8",
+    "maxheight": "2.5",
+    "name": "Kabihasnan Toll Plaza",
+    "payment:cash": "no",
+    "payment:easytrip": "only",
+    "source": "Schadow1 Expeditions"
+  }
+},
+{
+  "type": "node",
+  "id": 9880204610,
+  "lat": 14.5768615,
+  "lon": 120.9976982,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Quirino Avenue Toll Plaza"
+  }
+},
+{
+  "type": "node",
+  "id": 9956190557,
+  "lat": 14.7279537,
+  "lon": 120.9824784,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Lawang Bato",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10009020387,
+  "lat": 14.5731596,
+  "lon": 120.9938671,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 10020766451,
+  "lat": 14.5281586,
+  "lon": 121.0037919,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "motor_vehicle": "yes",
+    "motorcycle": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 10240067484,
+  "lat": 14.2909590,
+  "lon": 121.0672586,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10312134939,
+  "lat": 13.7558915,
+  "lon": 121.0429144,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 10312134940,
+  "lat": 13.7559360,
+  "lon": 121.0428947,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 10312424154,
+  "lat": 14.1277941,
+  "lon": 121.1369439,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Santo Tomas",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10572428838,
+  "lat": 14.1926776,
+  "lon": 121.1398852,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10607438483,
+  "lat": 14.1273628,
+  "lon": 121.1359309,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Santo Tomas",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10648011703,
+  "lat": 14.2552818,
+  "lon": 120.9768313,
+  "tags": {
+    "alt_name": "Aguinaldo;Aguinaldo Highway",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "name": "Silang",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10711094759,
+  "lat": 14.6184550,
+  "lon": 120.9912187,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "España Toll Plaza",
+    "operator": "NLEX Corporation"
+  }
+},
+{
+  "type": "node",
+  "id": 10720390417,
+  "lat": 14.3917741,
+  "lon": 120.9899118,
+  "tags": {
+    "access": "yes",
+    "barrier": "toll_booth",
+    "charge": "0 @ residents",
+    "colour": "blue",
+    "fee": "yes",
+    "fee:conditional": "no @ residents",
+    "mapillary": "345165627471726",
+    "operator": "North Springville Homeowners Association Incorporated"
+  }
+},
+{
+  "type": "node",
+  "id": 10750253391,
+  "lat": 14.4047108,
+  "lon": 120.9822026,
+  "tags": {
+    "access": "permit",
+    "barrier": "toll_booth",
+    "charge": "10.00 PHP",
+    "currency:PHP": "yes",
+    "fee": "yes",
+    "fee:conditional": "no @ residents; no @ (\"Bacoor City Solidarity Route\"); no @ 17:00-22:00",
+    "level": "0",
+    "lift_gate:type": "single",
+    "operator": "Gardenia Valley Homeowners Association Incorporated",
+    "payment:cash": "yes",
+    "start_date": "2023-03-15",
+    "toll": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10750253392,
+  "lat": 14.4051774,
+  "lon": 120.9846846,
+  "tags": {
+    "access": "permit",
+    "barrier": "toll_booth",
+    "charge": "10.00 PHP",
+    "currency:PHP": "yes",
+    "fee": "yes",
+    "fee:conditional": "no @ (\"Bacoor City Solidarity Route\"); no @ 17:00-22:00",
+    "level": "0",
+    "lift_gate:type": "single",
+    "operator": "Gardenia Valley Homeowners Association Incorporated",
+    "payment:cash": "yes",
+    "start_date": "2023-03-15",
+    "toll": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 10792280141,
+  "lat": 14.6185543,
+  "lon": 120.9913323,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "operator": "NLEX Corporation"
+  }
+},
+{
+  "type": "node",
+  "id": 10792280199,
+  "lat": 14.6183038,
+  "lon": 120.9910536,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "operator": "NLEX Corporation"
+  }
+},
+{
+  "type": "node",
+  "id": 10940858843,
+  "lat": 14.5860239,
+  "lon": 121.0019572,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Nagtahan"
+  }
+},
+{
+  "type": "node",
+  "id": 11021061527,
+  "lat": 14.3006699,
+  "lon": 120.9530008,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11040479104,
+  "lat": 14.2995179,
+  "lon": 120.9565590,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11089249509,
+  "lat": 14.4125635,
+  "lon": 120.9413349,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 11129046035,
+  "lat": 14.8155969,
+  "lon": 120.9350306,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "name": "Tambubong",
+    "operator": "NLEX Corporation",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11185674472,
+  "lat": 14.2551590,
+  "lon": 120.9767266,
+  "tags": {
+    "alt_name": "Aguinaldo;Aguinaldo Highway",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "lanes": "3",
+    "name": "Silang",
+    "operator": "MPCALA Holdings Inc.",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11260316475,
+  "lat": 13.9340265,
+  "lon": 121.1510818,
+  "tags": {
+    "barrier": "toll_booth",
+    "payment:cash": "yes",
+    "payment:coins": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11419716998,
+  "lat": 16.4039811,
+  "lon": 120.5862931,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 11508540557,
+  "lat": 14.5135224,
+  "lon": 121.0069260,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 11787275797,
+  "lat": 14.4876688,
+  "lon": 120.9957261,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "fee:bus": "Php70",
+    "fee:car": "Php35",
+    "fee:hgv": "Php104",
+    "name": "Sucat",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 12103641466,
+  "lat": 14.3754334,
+  "lon": 120.9794984,
+  "tags": {
+    "amenity": "parking_entrance",
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 12287803411,
+  "lat": 14.6318956,
+  "lon": 121.0098036,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "Maria Clara",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12498230697,
+  "lat": 14.3687229,
+  "lon": 121.0438949,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes",
+    "name": "San Pedro",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12498230698,
+  "lat": 14.3687205,
+  "lon": 121.0437298,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "name": "San Pedro",
+    "operator": "SMC Infrastructure",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12697808062,
+  "lat": 14.2822215,
+  "lon": 120.8656846,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "fee": "20",
+    "lift_gate:type": "single",
+    "opening_hours": "24/7",
+    "payment:gcash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12775625564,
+  "lat": 14.7221727,
+  "lon": 120.9845192,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Lawang Bato"
+  }
+},
+{
+  "type": "node",
+  "id": 12879858551,
+  "lat": 14.4158806,
+  "lon": 121.0470643,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13027619298,
+  "lat": 14.5963426,
+  "lon": 121.4274760,
+  "tags": {
+    "barrier": "toll_booth",
+    "charge:conditional": "100 PHP @ (wheels=4);50 PHP @ (wheels=3);20 PHP @ (wheels=2)",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13081073662,
+  "lat": 14.2814364,
+  "lon": 120.8649325,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13166014027,
+  "lat": 14.6123219,
+  "lon": 121.0170338,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13166014028,
+  "lat": 14.6125868,
+  "lon": 121.0170345,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13261174556,
+  "lat": 14.5127960,
+  "lon": 121.0075134,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13289681857,
+  "lat": 14.2115584,
+  "lon": 121.1288159,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Mayapa",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13339811483,
+  "lat": 14.6195257,
+  "lon": 121.0514014,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13339811484,
+  "lat": 14.6195384,
+  "lon": 121.0513202,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13339811485,
+  "lat": 14.6200516,
+  "lon": 121.0525175,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13339811486,
+  "lat": 14.6200192,
+  "lon": 121.0525870,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13381227671,
+  "lat": 14.5248239,
+  "lon": 121.0117514,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "foot": "no",
+    "horse": "no",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13396623877,
+  "lat": 14.4345179,
+  "lon": 120.9082795,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13396623878,
+  "lat": 14.4343143,
+  "lon": 120.9082972,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13551210795,
+  "lat": 14.4892492,
+  "lon": 120.9969594,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "name": "Sucat Toll Plaza",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 13551210796,
+  "lat": 14.4890944,
+  "lon": 120.9970976,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "name": "Sucat Toll Plaza",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 13551210797,
+  "lat": 14.4889189,
+  "lon": 120.9972544,
+  "tags": {
+    "barrier": "toll_booth",
+    "fee": "yes",
+    "name": "Sucat",
+    "operator": "CAVITEX Infrastructure Corporation",
+    "payment:cash": "no",
+    "payment:easytrip": "only"
+  }
+},
+{
+  "type": "node",
+  "id": 13601573433,
+  "lat": 14.5127067,
+  "lon": 120.9925816,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 13657616870,
+  "lat": 14.5065034,
+  "lon": 121.0419173,
+  "tags": {
+    "barrier": "toll_booth",
+    "motor_vehicle": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13670636750,
+  "lat": 14.1931079,
+  "lon": 121.1415374,
+  "tags": {
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "currency:PHP": "yes",
+    "currency:others": "no",
+    "motor_vehicle": "yes",
+    "name": "Calamba",
+    "operator": "South Luzon Tollway Corporation;Manila Toll Expressway Systems",
+    "payment:autosweep_rfid": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13680849601,
+  "lat": 14.2237475,
+  "lon": 121.1240330,
+  "tags": {
+    "access": "no",
+    "barrier": "toll_booth",
+    "currency:PHP": "yes",
+    "payment:autosweep_rfid": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 204901537,
+  "center": {
+    "lat": 14.8347130,
+    "lon": 120.8857792
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "layer": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 288444000,
+  "center": {
+    "lat": 14.4879236,
+    "lon": 121.0436574
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "layer": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 526500537,
+  "center": {
+    "lat": 15.1615657,
+    "lon": 120.6154064
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "demolished:building": "roof",
+    "description": "Former location of Angles Toll Plaza when the expressway was under PNCC.",
+    "name": "Angeles Toll Plaza"
+  }
+},
+{
+  "type": "way",
+  "id": 1098801126,
+  "center": {
+    "lat": 14.7928808,
+    "lon": 120.9466632
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Philippine Arena Southbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1155390447,
+  "center": {
+    "lat": 14.5768261,
+    "lon": 120.9977207
+  },
+  "tags": {
+    "addr:city": "Manila",
+    "addr:village": "Paco",
+    "barrier": "toll_booth",
+    "building": "roof",
+    "layer": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1204816396,
+  "center": {
+    "lat": 13.5085911,
+    "lon": 120.9469400
+  },
+  "tags": {
+    "access": "customers",
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "payment:cash": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221084,
+  "center": {
+    "lat": 15.2219566,
+    "lon": 120.5880035
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "2",
+    "name": "Santa Ines Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221089,
+  "center": {
+    "lat": 15.1797856,
+    "lon": 120.6027948
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Dau Southbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221090,
+  "center": {
+    "lat": 15.1790704,
+    "lon": 120.6038558
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Dau Southbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221091,
+  "center": {
+    "lat": 15.1779631,
+    "lon": 120.6057975
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Dau Northbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221092,
+  "center": {
+    "lat": 15.1783938,
+    "lon": 120.6047989
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "2",
+    "name": "Dau Northbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221095,
+  "center": {
+    "lat": 15.0497419,
+    "lon": 120.6939275
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "name": "San Fernando Southbound Exit"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221096,
+  "center": {
+    "lat": 15.0481642,
+    "lon": 120.6952223
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "roof",
+    "name": "San Fernando Southbound Entry"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221097,
+  "center": {
+    "lat": 15.0513365,
+    "lon": 120.6955174
+  },
+  "tags": {
+    "barrier": "toll_booth",
+    "building": "roof",
+    "name": "San Fernando Toll Plaza"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221099,
+  "center": {
+    "lat": 14.9917372,
+    "lon": 120.7494011
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "San Simon Northbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221102,
+  "center": {
+    "lat": 14.9092483,
+    "lon": 120.8155162
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Pulilan Southbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221103,
+  "center": {
+    "lat": 14.9092878,
+    "lon": 120.8169798
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Pulilan Northbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221104,
+  "center": {
+    "lat": 14.9076362,
+    "lon": 120.8183481
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Pulilan Northbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221105,
+  "center": {
+    "lat": 14.9072740,
+    "lon": 120.8170225
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Pulilan Southbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221106,
+  "center": {
+    "lat": 14.8631961,
+    "lon": 120.8598303
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Santa Rita Northbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221107,
+  "center": {
+    "lat": 14.8616489,
+    "lon": 120.8575962
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Santa Rita Southbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221108,
+  "center": {
+    "lat": 14.8408114,
+    "lon": 120.8995362
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Balagtas Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221109,
+  "center": {
+    "lat": 14.8373881,
+    "lon": 120.8680562
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Tabang Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221110,
+  "center": {
+    "lat": 14.8146625,
+    "lon": 120.9373286
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Tambubong Northbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221111,
+  "center": {
+    "lat": 14.8155735,
+    "lon": 120.9350247
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Tambubong Northbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221112,
+  "center": {
+    "lat": 14.8144974,
+    "lon": 120.9339090
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Tambubong Southbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221116,
+  "center": {
+    "lat": 14.8024042,
+    "lon": 120.9423403
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Bocaue Toll Plaza A",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221117,
+  "center": {
+    "lat": 14.8011270,
+    "lon": 120.9432737
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Bocaue Toll Plaza B",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221119,
+  "center": {
+    "lat": 14.7913706,
+    "lon": 120.9503204
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Philippine Arena Northbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221122,
+  "center": {
+    "lat": 14.7476299,
+    "lon": 120.9723777
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Meycauayan Northbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221123,
+  "center": {
+    "lat": 14.7447469,
+    "lon": 120.9726762
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Meycauayan Southbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221124,
+  "center": {
+    "lat": 14.7279472,
+    "lon": 120.9825233
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Lawang Bato Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221125,
+  "center": {
+    "lat": 14.7093232,
+    "lon": 120.9927315
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Paso de Blas Northbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221126,
+  "center": {
+    "lat": 14.7074718,
+    "lon": 120.9930212
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Paso de Blas Southbound Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221127,
+  "center": {
+    "lat": 14.6785943,
+    "lon": 121.0003651
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Balintawak Toll Plaza A",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221128,
+  "center": {
+    "lat": 14.6800104,
+    "lon": 121.0004033
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Balintawak Toll Plaza B",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221130,
+  "center": {
+    "lat": 14.6935102,
+    "lon": 121.0174143
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Mindanao Toll Plaza A",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221131,
+  "center": {
+    "lat": 14.6935196,
+    "lon": 121.0163883
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Mindanao Toll Plaza B",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1221221133,
+  "center": {
+    "lat": 14.6937687,
+    "lon": 120.9768087
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "Karuhatan Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1512455696,
+  "center": {
+    "lat": 15.1616546,
+    "lon": 120.6107255
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "bicycle": "no",
+    "building": "roof",
+    "currency:PHP": "yes",
+    "foot": "no",
+    "horse": "no",
+    "layer": "2",
+    "motor_vehicle": "yes",
+    "name": "Angeles Toll Plaza",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1512455697,
+  "center": {
+    "lat": 14.9888168,
+    "lon": 120.7511127
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "San Simon Northbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1512455698,
+  "center": {
+    "lat": 14.9915181,
+    "lon": 120.7488647
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "San Simon Southbound Exit",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 1512455699,
+  "center": {
+    "lat": 14.9888630,
+    "lon": 120.7502758
+  },
+  "tags": {
+    "area": "yes",
+    "barrier": "toll_booth",
+    "building": "yes",
+    "currency:PHP": "yes",
+    "layer": "1",
+    "name": "San Simon Southbound Entry",
+    "payment:cash": "yes",
+    "payment:easytrip": "yes"
+  }
+}
+
+  ]
+}

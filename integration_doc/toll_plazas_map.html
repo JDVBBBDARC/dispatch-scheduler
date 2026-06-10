@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Toll Plazas Map — 108 plazas across 9 expressways</title>
+<title>Toll Plazas Map — booth-accurate (Cartrack) + approximate (CSV)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -20,31 +20,209 @@
   #legend {
     background: rgba(255,255,255,.95); padding: 10px 14px;
     border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
-    font-size: .78rem; line-height: 1.7; max-width: 180px;
+    font-size: .76rem; line-height: 1.6; max-width: 220px;
   }
+  .legend-section { margin-top: 6px; padding-top: 6px;
+                    border-top: 1px dashed #ccc; }
+  .legend-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .legend-title { font-weight: 700; color: #8B1A2B; font-size: .78rem; }
   .legend-item { display: flex; align-items: center; gap: 6px; }
   .legend-dot {
     width: 12px; height: 12px; border-radius: 50%;
     border: 2px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,.4);
   }
+  .legend-dot.hollow { background: transparent; border: 2px dashed; }
   .leaflet-popup-content {
     font-size: .82rem;
   }
   .leaflet-popup-content b { color: #8B1A2B; }
   .leaflet-popup-content a { color: #2980B9; }
+  .accurate-badge { background: #16A34A; color: #fff; padding: 1px 6px;
+                    border-radius: 3px; font-size: .68rem; font-weight: 700;
+                    text-transform: uppercase; }
+  .approx-badge   { background: #6B7280; color: #fff; padding: 1px 6px;
+                    border-radius: 3px; font-size: .68rem; font-weight: 700;
+                    text-transform: uppercase; }
+  /* Permanent labels rendered above each approximate (hollow) marker so
+     the user can see at a glance which plazas still need to be drawn
+     in Cartrack. Restrained styling — white background, dark text,
+     small font — so 71 labels don't overwhelm the map. */
+  .approx-label {
+    background: rgba(255,255,255,.92) !important;
+    border: 1px solid #6B7280 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.2) !important;
+    color: #1F2937 !important;
+    font-size: .68rem !important;
+    font-weight: 600 !important;
+    padding: 1px 5px !important;
+    white-space: nowrap;
+  }
+  /* Hide the tooltip arrow that Leaflet renders by default — looks
+     cleaner with just the boxed text. */
+  .approx-label.leaflet-tooltip-top::before,
+  .approx-label.leaflet-tooltip-bottom::before,
+  .approx-label.leaflet-tooltip-left::before,
+  .approx-label.leaflet-tooltip-right::before {
+    border: none !important;
+  }
 </style>
 </head>
 <body>
 
 <div id="header">
-  <h1>🛣️ Toll Plazas Map — Philippine Expressways</h1>
-  <p>108 plazas across 9 expressways. Click any marker for details + Google Maps link.</p>
+  <h1>🛣️ Toll Plazas Map — Booth-accurate + Approximate</h1>
+  <p>59 plazas from your Cartrack drawings (booth-accurate) plus CSV fallback (approximate) for plazas not yet drawn.</p>
 </div>
 <div id="map"></div>
 
 <script>
-// Each expressway gets its own color so visual grouping is obvious.
-// Use distinct hues so colour-blind users can still tell them apart.
+// 59 booth-accurate plazas extracted from your Cartrack-drawn polygons.
+// Each tuple: [name, expressway, lat, lng, radius_m, source]
+// Coordinates are centroid of the polygon you drew in Cartrack Fleet Web.
+// Radius is the bounding circle of your polygon + 20m padding for jitter.
+const ACCURATE_PLAZAS = [
+  ["Toll - Angeles",            "NLEX / SCTEX",  15.161679, 120.610743,  85, "cartrack"],
+  ["Toll - Balagtas",           "NLEX / SCTEX",  14.840927, 120.899421,  94, "cartrack"],
+  ["Toll - Balintawak",         "NLEX / SCTEX",  14.678612, 121.000351,  68, "cartrack"],
+  ["Toll - Binalonan",          "TPLEX",         16.049817, 120.564537,  73, "cartrack"],
+  ["Toll - Bocaue",             "NLEX / SCTEX",  14.802092, 120.942443, 227, "cartrack"],
+  ["Toll - Carmen",             "TPLEX",         15.873864, 120.620198, 108, "cartrack"],
+  ["Toll - Ciudad De Victoria", "NLEX / SCTEX",  14.791490, 120.950273,  78, "cartrack"],
+  ["Toll - Concepcion",         "NLEX / SCTEX",  15.316891, 120.628537,  78, "cartrack"],
+  ["Toll - Dau 1",              "NLEX / SCTEX",  15.178013, 120.605784,  53, "cartrack"],
+  ["Toll - Dau 2",              "NLEX / SCTEX",  15.179824, 120.602744,  56, "cartrack"],
+  ["Toll - Dinalupihan",        "NLEX / SCTEX",  14.855140, 120.456088,  78, "cartrack"],
+  ["Toll - Dolores",            "NLEX / SCTEX",  15.240019, 120.571894,  75, "cartrack"],
+  ["Toll - España",             "NLEX Connector",14.618542, 120.990974,  96, "cartrack"],
+  ["Toll - Florida",            "NLEX / SCTEX",  15.015488, 120.474083,  76, "cartrack"],
+  ["Toll - Gerona",             "TPLEX",         15.615852, 120.634126,  85, "cartrack"],
+  ["Toll - Hacienda Luisita 1", "NLEX / SCTEX",  15.433379, 120.665203,  68, "cartrack"],
+  ["Toll - Hacienda Luisita 2", "NLEX / SCTEX",  15.434205, 120.667922,  73, "cartrack"],
+  ["Toll - Karuhatan",          "NLEX / SCTEX",  14.693737, 120.976846,  97, "cartrack"],
+  ["Toll - Lingunan",           "NLEX / SCTEX",  14.722207, 120.984543,  46, "cartrack"],
+  ["Toll - Mabiga 1",           "NLEX / SCTEX",  15.197366, 120.583428,  52, "cartrack"],
+  ["Toll - Mabiga 2",           "NLEX / SCTEX",  15.198004, 120.582945,  55, "cartrack"],
+  ["Toll - Mabiga 3",           "NLEX / SCTEX",  15.197775, 120.580252,  60, "cartrack"],
+  ["Toll - Mabiga 4",           "NLEX / SCTEX",  15.197437, 120.580227,  59, "cartrack"],
+  ["Toll - Marilao 1",          "NLEX / SCTEX",  14.772287, 120.956299,  57, "cartrack"],
+  ["Toll - Marilao 2",          "NLEX / SCTEX",  14.776683, 120.957279,  55, "cartrack"],
+  ["Toll - Mexico 1",           "NLEX / SCTEX",  15.108303, 120.663081,  60, "cartrack"],
+  ["Toll - Meycauayan 1",       "NLEX / SCTEX",  14.744778, 120.972471,  70, "cartrack"],
+  ["Toll - Meycauayan 2",       "NLEX / SCTEX",  14.747672, 120.972344,  47, "cartrack"],
+  ["Toll - Mindanao Avenue",    "NLEX / SCTEX",  14.693546, 121.017401,  73, "cartrack"],
+  ["Toll - Moncada",            "TPLEX",         15.718071, 120.616032,  77, "cartrack"],
+  ["Toll - Paniqui",            "TPLEX",         15.665494, 120.618075,  73, "cartrack"],
+  ["Toll - Porac",              "NLEX / SCTEX",  15.122911, 120.511440,  73, "cartrack"],
+  ["Toll - Pozorrubio",         "TPLEX",         16.129713, 120.525549,  98, "cartrack"],
+  ["Toll - Pulilan 1",          "NLEX / SCTEX",  14.909280, 120.815545,  52, "cartrack"],
+  ["Toll - Pulilan 2",          "NLEX / SCTEX",  14.909339, 120.817037,  64, "cartrack"],
+  ["Toll - Pulilan 3",          "NLEX / SCTEX",  14.907246, 120.817047,  50, "cartrack"],
+  ["Toll - Pulilan 4",          "NLEX / SCTEX",  14.907593, 120.818385,  48, "cartrack"],
+  ["Toll - Rosario",            "TPLEX",         16.217638, 120.498324, 101, "cartrack"],
+  ["Toll - San Fernando 1",     "NLEX / SCTEX",  15.048231, 120.695172,  74, "cartrack"],
+  ["Toll - San Fernando 2",     "NLEX / SCTEX",  15.049788, 120.693880,  64, "cartrack"],
+  ["Toll - San Fernando 3",     "NLEX / SCTEX",  15.051404, 120.695481,  77, "cartrack"],
+  ["Toll - San Simon 1",        "NLEX / SCTEX",  14.988886, 120.751030,  63, "cartrack"],
+  ["Toll - San Simon 2",        "NLEX / SCTEX",  14.988909, 120.750223,  55, "cartrack"],
+  ["Toll - Sison",              "TPLEX",         16.183321, 120.513868,  85, "cartrack"],
+  ["Toll - Sta Ines",           "NLEX / SCTEX",  15.221988, 120.587939,  65, "cartrack"],
+  ["Toll - Sta Rita 1",         "NLEX / SCTEX",  14.863195, 120.859890,  78, "cartrack"],
+  ["Toll - Sta Rita 2",         "NLEX / SCTEX",  14.861620, 120.857575,  76, "cartrack"],
+  ["Toll - Tabang 1",           "NLEX / SCTEX",  14.837456, 120.868084,  94, "cartrack"],
+  ["Toll - Tambubong 1",        "NLEX / SCTEX",  14.814720, 120.937266,  58, "cartrack"],
+  ["Toll - Tambubong 2",        "NLEX / SCTEX",  14.814540, 120.933915,  55, "cartrack"],
+  ["Toll - Tarlac",             "NLEX / SCTEX",  15.462897, 120.675779,  87, "cartrack"],
+  ["Toll - Tarlac 2",           "NLEX / SCTEX",  15.512896, 120.665790,  85, "cartrack"],
+  ["Toll - Tipo/SFEX 1",        "NLEX / SCTEX",  14.842278, 120.354357,  72, "cartrack"],
+  ["Toll - Tipo/SFEX 2",        "NLEX / SCTEX",  14.841799, 120.353912,  68, "cartrack"],
+  ["Toll - Urdaneta",           "TPLEX",         16.002084, 120.579823, 114, "cartrack"],
+  ["Toll - Valenzuela 1",       "NLEX / SCTEX",  14.709338, 120.992669,  53, "cartrack"],
+  ["Toll - Valenzuela 2",       "NLEX / SCTEX",  14.707545, 120.992961,  58, "cartrack"],
+  ["Toll - Valenzuela 3",       "NLEX / SCTEX",  14.727983, 120.982495,  35, "cartrack"],
+  ["Toll - Victoria",           "TPLEX",         15.542651, 120.642775,  71, "cartrack"],
+];
+
+// CSV fallback — plazas not yet drawn in Cartrack. Coords are public-
+// data approximations; ±50-100m off the actual booth. Will be rendered
+// as hollow dashed markers so the user knows they're not booth-accurate.
+const APPROXIMATE_PLAZAS_RAW = [
+  ["Toll - Greenfield", "CALAX", 14.291888, 121.068013, 80],  // osm-refined
+  ["Toll - Laguna Boulevard", "CALAX", 14.255419, 121.057582, 80],  // osm-refined
+  ["Toll - Mamplasan", "CALAX", 14.303395, 121.078225, 247],  // osm-refined
+  ["Toll - Santa Rosa-Tagaytay", "CALAX", 14.241000, 121.029000, 200],
+  ["Toll - Silang East", "CALAX", 14.232305, 121.001114, 80],  // osm-refined
+  ["Toll - Silang Interchange", "CALAX", 14.254514, 120.975703, 316],  // osm-refined
+  ["Toll - Technopark", "CALAX", 14.277710, 121.054822, 80],  // osm-refined
+  ["Toll - Bacoor/Zapote", "CAVITEX", 14.463000, 120.953000, 200],
+  ["Toll - C5 Rd. Ext./C.P. Garcia", "CAVITEX", 14.483000, 121.071000, 200],
+  ["Toll - Kawit", "CAVITEX", 14.454252, 120.916984, 80],  // osm-refined
+  ["Toll - Parañaque", "CAVITEX", 14.492708, 120.986680, 80],  // osm-refined
+  ["Toll - Sucat Rd./Dr. A. Santos Ave.", "CAVITEX", 14.472000, 121.015000, 200],
+  ["Toll - C-3 Road/5th Ave.", "Harbor Link", 14.645700, 120.984200, 200],
+  ["Toll - Harbor Link Interchange", "Harbor Link", 14.668000, 120.971200, 200],
+  ["Toll - Karuhatan/Valenzuela", "Harbor Link", 14.691800, 120.981900, 250],
+  ["Toll - Malabon/Dagat-Dagatan", "Harbor Link", 14.658000, 120.959800, 200],
+  ["Toll - R-10/Port of Manila", "Harbor Link", 14.601900, 120.957300, 250],
+  ["Toll - Andrews Ave./Terminal 3", "NAIAX", 14.524000, 121.011000, 200],
+  ["Toll - Aurora Blvd. (Tramo)", "NAIAX", 14.543900, 121.002800, 200],
+  ["Toll - CAVITEX", "NAIAX", 14.497000, 120.976000, 200],
+  ["Toll - Entertainment City", "NAIAX", 14.541000, 120.975000, 200],
+  ["Toll - Macapagal Blvd.", "NAIAX", 14.524000, 120.981000, 200],
+  ["Toll - NAIA Terminal 1", "NAIAX", 14.510000, 121.019000, 200],
+  ["Toll - NAIA Terminal 2", "NAIAX", 14.512000, 121.015000, 200],
+  ["Toll - NAIA Terminal 3", "NAIAX", 14.518000, 121.011000, 200],
+  ["Toll - Skyway", "NAIAX", 14.505000, 121.014000, 200],
+  ["Toll - Bamban (New Clark City)", "NLEX / SCTEX", 15.292690, 120.602115, 80],  // osm-refined
+  ["Toll - Clark North", "NLEX / SCTEX", 15.229128, 120.561299, 80],  // osm-refined
+  ["Toll - Clark South", "NLEX / SCTEX", 15.181681, 120.570705, 180],  // osm-refined
+  ["Toll - C-3 Road/5th Ave.", "NLEX Connector", 14.645700, 120.984200, 200],
+  ["Toll - Magsaysay", "NLEX Connector", 14.624300, 121.001700, 200],
+  ["Toll - Batangas", "STAR Tollway", 13.797084, 121.076656, 80],  // osm-refined
+  ["Toll - Calamba", "STAR Tollway", 14.192962, 121.141243, 185],  // osm-refined
+  ["Toll - Ibaan", "STAR Tollway", 13.839873, 121.121076, 202],  // osm-refined
+  ["Toll - Lipa", "STAR Tollway", 13.941876, 121.138230, 281],  // osm-refined
+  ["Toll - Malvar", "STAR Tollway", 14.039375, 121.150172, 272],  // osm-refined
+  ["Toll - Sto. Tomas", "STAR Tollway", 14.126935, 121.138053, 269],  // osm-refined
+  ["Toll - Sto. Toribio", "STAR Tollway", 13.974473, 121.148933, 166],  // osm-refined
+  ["Toll - Tanauan", "STAR Tollway", 14.086311, 121.132515, 173],  // osm-refined
+  ["Toll - ABI/Greenfield", "Skyway / SLEX / MCX", 14.254410, 121.107064, 80],  // osm-refined
+  ["Toll - Alabang", "Skyway / SLEX / MCX", 14.422074, 121.045414, 80],  // osm-refined
+  ["Toll - Amorsolo", "Skyway / SLEX / MCX", 14.535000, 121.022700, 200],
+  ["Toll - Bicutan", "Skyway / SLEX / MCX", 14.487885, 121.043668, 80],  // osm-refined
+  ["Toll - C-5", "Skyway / SLEX / MCX", 14.545000, 121.057000, 200],
+  ["Toll - Cabuyao", "Skyway / SLEX / MCX", 14.207400, 121.150500, 200],
+  ["Toll - Calamba", "Skyway / SLEX / MCX", 14.192962, 121.141243, 185],  // osm-refined
+  ["Toll - Carmona", "Skyway / SLEX / MCX", 14.322862, 121.062932, 217],  // osm-refined
+  ["Toll - Don Bosco", "Skyway / SLEX / MCX", 14.546000, 121.029000, 200],
+  ["Toll - Filinvest", "Skyway / SLEX / MCX", 14.411471, 121.041474, 182],  // osm-refined
+  ["Toll - Magallanes", "Skyway / SLEX / MCX", 14.543000, 121.022700, 200],
+  ["Toll - Mamplasan", "Skyway / SLEX / MCX", 14.303395, 121.078225, 247],  // osm-refined
+  ["Toll - Merville", "Skyway / SLEX / MCX", 14.505000, 121.025000, 200],
+  ["Toll - Muntinlupa-Cavite X'way", "Skyway / SLEX / MCX", 14.376363, 121.017825, 80],  // osm-refined
+  ["Toll - San Pedro", "Skyway / SLEX / MCX", 14.368318, 121.043049, 137],  // osm-refined
+  ["Toll - Silangan", "Skyway / SLEX / MCX", 14.229705, 121.118673, 174],  // osm-refined
+  ["Toll - Skyway / Buendia", "Skyway / SLEX / MCX", 14.556000, 121.022700, 250],
+  ["Toll - Southwoods", "Skyway / SLEX / MCX", 14.333232, 121.054300, 199],  // osm-refined
+  ["Toll - Sta. Rosa", "Skyway / SLEX / MCX", 14.285145, 121.088514, 187],  // osm-refined
+  ["Toll - Sto. Tomas", "Skyway / SLEX / MCX", 14.126935, 121.138053, 269],  // osm-refined
+  ["Toll - Sucat", "Skyway / SLEX / MCX", 14.454068, 121.044824, 189],  // osm-refined
+  ["Toll - Susana Heights", "Skyway / SLEX / MCX", 14.381778, 121.039365, 80],  // osm-refined
+  ["Toll - Balintawak", "Skyway Stage 3", 14.679163, 121.000424, 131],  // osm-refined
+  ["Toll - Buendia", "Skyway Stage 3", 14.563394, 121.004462, 80],  // osm-refined
+  ["Toll - E. Rodriguez", "Skyway Stage 3", 14.611954, 121.017026, 80],  // osm-refined
+  ["Toll - Nagtahan", "Skyway Stage 3", 14.585634, 121.002067, 80],  // osm-refined
+  ["Toll - Plaza Dilao", "Skyway Stage 3", 14.580598, 120.999603, 80],  // osm-refined
+  ["Toll - Quezon Ave.", "Skyway Stage 3", 14.631282, 121.010202, 80],  // osm-refined
+  ["Toll - Quirino", "Skyway Stage 3", 14.576861, 120.997698, 80],  // osm-refined
+  ["Toll - La Paz", "TPLEX", 15.518300, 120.580300, 200],
+];
+
+// Convert APPROXIMATE_PLAZAS_RAW to the same shape as ACCURATE_PLAZAS.
+const APPROXIMATE_PLAZAS = APPROXIMATE_PLAZAS_RAW.map(p =>
+  [...p, "csv"]);
+
+// Color per expressway (works for both accurate and approximate).
 const EXPRESSWAY_COLORS = {
   'NLEX / SCTEX':         '#C0392B',
   'NLEX Connector':       '#E67E22',
@@ -58,164 +236,49 @@ const EXPRESSWAY_COLORS = {
   'Harbor Link':          '#F39C12',
 };
 
-// 108 plaza markers — generated from toll_geofences_for_cartrack.csv
-const PLAZAS = [
-  // ─── NLEX / SCTEX (31) ─────────────────────────────────────────
-  ["Mindanao Avenue",        "NLEX / SCTEX",       14.6970, 120.9846, 200],
-  ["Balintawak",             "NLEX / SCTEX",       14.6630, 120.9750, 250],
-  ["Karuhatan",              "NLEX / SCTEX",       14.7167, 120.9740, 200],
-  ["Valenzuela",             "NLEX / SCTEX",       14.7250, 120.9568, 200],
-  ["Meycauayan",             "NLEX / SCTEX",       14.7390, 120.9430, 200],
-  ["Marilao",                "NLEX / SCTEX",       14.7549, 120.9460, 200],
-  ["Ciudad de Victoria",     "NLEX / SCTEX",       14.7794, 120.9282, 200],
-  ["Bocaue",                 "NLEX / SCTEX",       14.7991, 120.9237, 200],
-  ["Tambubong",              "NLEX / SCTEX",       14.8230, 120.9020, 200],
-  ["Balagtas",               "NLEX / SCTEX",       14.8500, 120.9090, 200],
-  ["Tabang",                 "NLEX / SCTEX",       14.8810, 120.8950, 200],
-  ["Sta. Rita",              "NLEX / SCTEX",       14.8900, 120.8910, 200],
-  ["Pulilan",                "NLEX / SCTEX",       14.9061, 120.8489, 250],
-  ["San Simon",              "NLEX / SCTEX",       14.9695, 120.7798, 200],
-  ["San Fernando",           "NLEX / SCTEX",       15.0349, 120.6900, 200],
-  ["Mexico",                 "NLEX / SCTEX",       15.0700, 120.6800, 200],
-  ["Angeles",                "NLEX / SCTEX",       15.1450, 120.5928, 200],
-  ["Dau",                    "NLEX / SCTEX",       15.1830, 120.5670, 200],
-  ["Porac",                  "NLEX / SCTEX",       15.0710, 120.5450, 200],
-  ["Floridablanca",          "NLEX / SCTEX",       14.9540, 120.5170, 200],
-  ["Dinalupihan",            "NLEX / SCTEX",       14.8674, 120.4530, 200],
-  ["Tipo/SFEX",              "NLEX / SCTEX",       14.7456, 120.2767, 250],
-  ["Clark South",            "NLEX / SCTEX",       15.1530, 120.5610, 200],
-  ["Mabalacat",              "NLEX / SCTEX",       15.2147, 120.5630, 200],
-  ["Clark North",            "NLEX / SCTEX",       15.2480, 120.5670, 200],
-  ["Sta. Ines",              "NLEX / SCTEX",       15.2010, 120.5660, 200],
-  ["Dolores",                "NLEX / SCTEX",       15.2920, 120.5850, 200],
-  ["Bamban (New Clark City)","NLEX / SCTEX",       15.3175, 120.5910, 250],
-  ["Concepcion",             "NLEX / SCTEX",       15.3470, 120.5957, 200],
-  ["Hacienda Luisita",       "NLEX / SCTEX",       15.4040, 120.5980, 200],
-  ["Tarlac",                 "NLEX / SCTEX",       15.4830, 120.5870, 200],
-  // ─── NLEX Connector (3) ───────────────────────────────────────
-  ["C-3 Road/5th Ave.",      "NLEX Connector",     14.6457, 120.9842, 200],
-  ["España",                 "NLEX Connector",     14.6126, 120.9942, 200],
-  ["Magsaysay",              "NLEX Connector",     14.6243, 121.0017, 200],
-  // ─── Skyway / SLEX / MCX (22) ─────────────────────────────────
-  ["Magallanes",             "Skyway / SLEX / MCX",14.5430, 121.0227, 200],
-  ["Amorsolo",               "Skyway / SLEX / MCX",14.5350, 121.0227, 200],
-  ["Don Bosco",              "Skyway / SLEX / MCX",14.5460, 121.0290, 200],
-  ["Merville",               "Skyway / SLEX / MCX",14.5050, 121.0250, 200],
-  ["C-5",                    "Skyway / SLEX / MCX",14.5450, 121.0570, 200],
-  ["Bicutan",                "Skyway / SLEX / MCX",14.4860, 121.0410, 200],
-  ["Sucat",                  "Skyway / SLEX / MCX",14.4690, 121.0473, 200],
-  ["Filinvest",              "Skyway / SLEX / MCX",14.4090, 121.0420, 200],
-  ["Alabang",                "Skyway / SLEX / MCX",14.4180, 121.0420, 250],
-  ["Susana Heights",         "Skyway / SLEX / MCX",14.3850, 121.0445, 200],
-  ["San Pedro",              "Skyway / SLEX / MCX",14.3580, 121.0454, 200],
-  ["Southwoods",             "Skyway / SLEX / MCX",14.3360, 121.0490, 200],
-  ["Carmona",                "Skyway / SLEX / MCX",14.3030, 121.0570, 200],
-  ["Sta. Rosa",              "Skyway / SLEX / MCX",14.2570, 121.1080, 200],
-  ["Mamplasan",              "Skyway / SLEX / MCX",14.2780, 121.0790, 200],
-  ["Cabuyao",                "Skyway / SLEX / MCX",14.2074, 121.1505, 200],
-  ["Silangan",               "Skyway / SLEX / MCX",14.1810, 121.1610, 200],
-  ["Calamba",                "Skyway / SLEX / MCX",14.1670, 121.1880, 250],
-  ["Sto. Tomas",             "Skyway / SLEX / MCX",14.1080, 121.1410, 200],
-  ["ABI/Greenfield",         "Skyway / SLEX / MCX",14.2310, 121.1320, 200],
-  ["Skyway / Buendia",       "Skyway / SLEX / MCX",14.5560, 121.0227, 250],
-  ["Muntinlupa-Cavite X'way","Skyway / SLEX / MCX",14.4030, 121.0440, 200],
-  // ─── Skyway Stage 3 (7) ───────────────────────────────────────
-  ["Buendia",                "Skyway Stage 3",     14.5560, 121.0227, 200],
-  ["Quirino",                "Skyway Stage 3",     14.5867, 121.0028, 200],
-  ["Plaza Dilao",            "Skyway Stage 3",     14.5896, 120.9999, 200],
-  ["Nagtahan",               "Skyway Stage 3",     14.5970, 120.9920, 200],
-  ["E. Rodriguez",           "Skyway Stage 3",     14.6210, 121.0040, 200],
-  ["Quezon Ave.",            "Skyway Stage 3",     14.6360, 121.0193, 200],
-  ["Balintawak",             "Skyway Stage 3",     14.6610, 120.9810, 200],
-  // ─── CAVITEX (5) ──────────────────────────────────────────────
-  ["Parañaque",              "CAVITEX",            14.4960, 120.9700, 200],
-  ["Bacoor/Zapote",          "CAVITEX",            14.4630, 120.9530, 200],
-  ["Kawit",                  "CAVITEX",            14.4490, 120.9020, 250],
-  ["Sucat Rd./Dr. A. Santos Ave.","CAVITEX",       14.4720, 121.0150, 200],
-  ["C5 Rd. Ext./C.P. Garcia","CAVITEX",            14.4830, 121.0710, 200],
-  // ─── NAIAX (9) ────────────────────────────────────────────────
-  ["NAIA Terminal 1",        "NAIAX",              14.5100, 121.0190, 200],
-  ["NAIA Terminal 2",        "NAIAX",              14.5120, 121.0150, 200],
-  ["NAIA Terminal 3",        "NAIAX",              14.5180, 121.0110, 200],
-  ["Andrews Ave./Terminal 3","NAIAX",              14.5240, 121.0110, 200],
-  ["Aurora Blvd. (Tramo)",   "NAIAX",              14.5439, 121.0028, 200],
-  ["CAVITEX",                "NAIAX",              14.4970, 120.9760, 200],
-  ["Entertainment City",     "NAIAX",              14.5410, 120.9750, 200],
-  ["Macapagal Blvd.",        "NAIAX",              14.5240, 120.9810, 200],
-  ["Skyway",                 "NAIAX",              14.5050, 121.0140, 200],
-  // ─── CALAX (7) ────────────────────────────────────────────────
-  ["Mamplasan",              "CALAX",              14.2780, 121.0790, 200],
-  ["Laguna Boulevard",       "CALAX",              14.2660, 121.0610, 200],
-  ["Greenfield",             "CALAX",              14.2680, 121.0510, 200],
-  ["Technopark",             "CALAX",              14.2700, 121.0210, 200],
-  ["Santa Rosa-Tagaytay",    "CALAX",              14.2410, 121.0290, 200],
-  ["Silang East",            "CALAX",              14.2280, 121.0070, 200],
-  ["Silang Interchange",     "CALAX",              14.2270, 120.9830, 200],
-  // ─── STAR Tollway (8) ─────────────────────────────────────────
-  ["Sto. Tomas",             "STAR Tollway",       14.1080, 121.1410, 200],
-  ["Tanauan",                "STAR Tollway",       14.0820, 121.1530, 200],
-  ["Malvar",                 "STAR Tollway",       14.0480, 121.1620, 200],
-  ["Sto. Toribio",           "STAR Tollway",       14.0050, 121.1810, 200],
-  ["Lipa",                   "STAR Tollway",       13.9670, 121.1830, 200],
-  ["Ibaan",                  "STAR Tollway",       13.8200, 121.1330, 200],
-  ["Batangas",               "STAR Tollway",       13.7660, 121.0500, 250],
-  ["Calamba",                "STAR Tollway",       14.1670, 121.1880, 250],
-  // ─── TPLEX (11) ───────────────────────────────────────────────
-  ["La Paz",                 "TPLEX",              15.5183, 120.5803, 200],
-  ["Victoria",               "TPLEX",              15.5783, 120.6735, 200],
-  ["Gerona",                 "TPLEX",              15.6082, 120.5985, 200],
-  ["Paniqui",                "TPLEX",              15.6750, 120.5780, 200],
-  ["Moncada",                "TPLEX",              15.7350, 120.5740, 200],
-  ["Carmen",                 "TPLEX",              15.8480, 120.5790, 200],
-  ["Urdaneta",               "TPLEX",              15.9760, 120.5710, 200],
-  ["Binalonan",              "TPLEX",              16.0510, 120.5970, 200],
-  ["Pozorrubio",             "TPLEX",              16.1090, 120.5440, 200],
-  ["Sison",                  "TPLEX",              16.1655, 120.5145, 200],
-  ["Rosario",                "TPLEX",              16.2530, 120.4520, 200],
-  // ─── Harbor Link (5) ──────────────────────────────────────────
-  ["R-10/Port of Manila",    "Harbor Link",        14.6019, 120.9573, 250],
-  ["Malabon/Dagat-Dagatan",  "Harbor Link",        14.6580, 120.9598, 200],
-  ["C-3 Road/5th Ave.",      "Harbor Link",        14.6457, 120.9842, 200],
-  ["Harbor Link Interchange","Harbor Link",        14.6680, 120.9712, 200],
-  ["Karuhatan/Valenzuela",   "Harbor Link",        14.6918, 120.9819, 250],
-];
-
-// Initialize map centered roughly on the geographic centroid of the
-// dataset (Metro Manila / southern Luzon midpoint). Zoom level 9 shows
-// most of the network at once.
+// Initialize map centered on Pulilan area (most of user's fleet routes).
 const map = L.map('map').setView([14.85, 120.95], 9);
-
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '&copy; OpenStreetMap contributors',
 }).addTo(map);
 
-// Plot each plaza. Use a small filled circle so 100+ markers don't
-// crowd the map. Click reveals plaza details + Google Maps link.
-PLAZAS.forEach(([name, expressway, lat, lng, radius]) => {
+// Helper to render a plaza marker. Accurate ones get filled, bright
+// markers + solid radius circle. Approximate ones get hollow markers
+// with dashed radius — visually obvious they're approximate.
+function renderMarker(name, expressway, lat, lng, radius, source) {
   const color = EXPRESSWAY_COLORS[expressway] || '#666';
+  const accurate = source === 'cartrack';
+
+  // The marker dot.
   const marker = L.circleMarker([lat, lng], {
-    radius: 6,
-    fillColor: color,
-    color: '#fff',
-    weight: 2,
+    radius: accurate ? 7 : 5,
+    fillColor: accurate ? color : '#fff',
+    color: color,
+    weight: accurate ? 2 : 2,
     opacity: 1,
-    fillOpacity: .9,
+    fillOpacity: accurate ? 0.95 : 0.3,
+    dashArray: accurate ? null : '4 3',
   }).addTo(map);
 
-  // Also draw the actual geofence radius as a translucent disc so
-  // it's visually obvious how big each detection zone is.
+  // The detection radius disc.
   L.circle([lat, lng], {
     radius: radius,
     color: color,
-    weight: 1,
+    weight: accurate ? 1.5 : 1,
     fillColor: color,
-    fillOpacity: .12,
+    fillOpacity: accurate ? 0.18 : 0.05,
+    dashArray: accurate ? null : '4 3',
   }).addTo(map);
 
+  const cleanName = name.replace(/^Toll\s*-\s*/i, '');
+  const badge = accurate
+    ? '<span class="accurate-badge">Cartrack — booth accurate</span>'
+    : '<span class="approx-badge">CSV — approximate ±100m</span>';
   const popup = `
-    <b>${name}</b><br>
+    <b>${cleanName}</b><br>
     <i>${expressway}</i><br>
+    ${badge}<br>
     Coords: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
     Radius: ${radius}m<br>
     <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank">
@@ -226,24 +289,72 @@ PLAZAS.forEach(([name, expressway, lat, lng, radius]) => {
     </a>
   `;
   marker.bindPopup(popup);
-});
 
-// Legend showing the colour scheme + count per expressway.
-const counts = {};
-PLAZAS.forEach(p => { counts[p[1]] = (counts[p[1]] || 0) + 1; });
+  // Permanent label ONLY on approximate (hollow) markers — surfaces
+  // which plazas still need to be drawn in Cartrack so the admin can
+  // tick them off the list at a glance. Skipping labels on the 59
+  // accurate markers keeps the NLEX north corridor readable (where
+  // 4 Pulilan booths, 3 San Fernando booths, etc. all cluster within
+  // a few hundred metres).
+  if (!accurate) {
+    marker.bindTooltip(cleanName, {
+      permanent:  true,
+      direction:  'top',
+      offset:     [0, -4],
+      className:  'approx-label',
+    });
+  }
+}
+
+ACCURATE_PLAZAS.forEach(p => renderMarker(...p));
+APPROXIMATE_PLAZAS.forEach(p => renderMarker(...p));
+
+// Legend showing colour scheme + accurate vs approximate counts.
+const accCounts = {};
+const apxCounts = {};
+ACCURATE_PLAZAS.forEach(p   => { accCounts[p[1]] = (accCounts[p[1]] || 0) + 1; });
+APPROXIMATE_PLAZAS.forEach(p=> { apxCounts[p[1]] = (apxCounts[p[1]] || 0) + 1; });
+
 const legend = L.control({position: 'bottomright'});
 legend.onAdd = () => {
   const div = L.DomUtil.create('div', '');
   div.id = 'legend';
-  div.innerHTML = '<b style="color:#8B1A2B;">9 Expressways</b>';
+  div.innerHTML = `
+    <div class="legend-section">
+      <div class="legend-title">Marker Style</div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background:#C0392B;"></span>
+        <span><b>Filled</b> — Cartrack-drawn (booth-accurate)</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot hollow" style="border-color:#C0392B;"></span>
+        <span><b>Hollow</b> — CSV (~100m approximate)</span>
+      </div>
+    </div>
+    <div class="legend-section">
+      <div class="legend-title">By Expressway</div>
+  `;
   Object.entries(EXPRESSWAY_COLORS).forEach(([exp, color]) => {
-    const n = counts[exp] || 0;
+    const acc = accCounts[exp] || 0;
+    const apx = apxCounts[exp] || 0;
+    if (acc + apx === 0) return;
     div.innerHTML += `
       <div class="legend-item">
         <span class="legend-dot" style="background:${color};"></span>
-        ${exp} <span style="color:#888;">(${n})</span>
+        <span>${exp}
+          <span style="color:#16A34A;font-weight:700;">${acc}✓</span>
+          ${apx > 0 ? `<span style="color:#888;">+${apx}~</span>` : ''}
+        </span>
       </div>`;
   });
+  div.innerHTML += `
+    </div>
+    <div class="legend-section" style="font-size:.7rem;color:#666;">
+      <b>${ACCURATE_PLAZAS.length}</b> booth-accurate +
+      <b>${APPROXIMATE_PLAZAS.length}</b> approximate =
+      <b>${ACCURATE_PLAZAS.length + APPROXIMATE_PLAZAS.length}</b> total
+    </div>
+  `;
   return div;
 };
 legend.addTo(map);

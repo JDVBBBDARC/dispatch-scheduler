@@ -120,6 +120,39 @@ NAME_ALIASES = {
 # north) would create a blob covering plain highway — false positives.
 CLUSTER_SPLIT_M = 500
 
+# ── OSM refinement (for plazas NOT yet drawn in Cartrack) ────────────
+# osm_tolls.json is an Overpass API dump of barrier=toll_booth elements
+# over Luzon. OSM booths are traced from satellite imagery by mappers —
+# booth-level positions, far better than the public-data approximations
+# (which averaged 4.3 km off). Refresh the dump with:
+#   curl -s "https://overpass-api.de/api/interpreter" --data-urlencode \
+#     'data=[out:json][timeout:60];(node["barrier"="toll_booth"]
+#     (13.5,120.2,16.5,121.6);way["barrier"="toll_booth"]
+#     (13.5,120.2,16.5,121.6););out center tags;' -o osm_tolls.json
+OSM_DUMP = os.path.join(_ROOT, 'osm_tolls.json')
+
+# OSM plaza names → our CSV plaza names (both sides normalised).
+# OSM tends to use full town names and official plaza spellings.
+OSM_ALIASES = {
+    'batangas city':       'batangas',
+    'lipa city':           'lipa',
+    'tanauan city':        'tanauan',
+    'new clark city':      'bamban (new clark city)',
+    'laguna technopark':   'technopark',
+    'mcx':                 "muntinlupa-cavite x'way",
+    'quezon avenue':       'quezon ave',
+    'quirino avenue':      'quirino',
+    'eton city':           'abi/greenfield',     # SLEX exit's other name
+    'kabihasnan':          'parañaque',          # CAVITEX Parañaque barrier
+    'santa rosa city':     'santa rosa-tagaytay',
+    'silang':              'silang interchange',
+}
+
+# An OSM match farther than this from the old approximate coordinate is
+# rejected as a same-name plaza elsewhere (e.g. the two Calambas). The
+# old data was up to ~14km off, so the gate is generous but not infinite.
+OSM_MATCH_GATE_M = 20_000
+
 
 def _norm_plaza(name):
     """Normalise a plaza/booth name to its match key.
@@ -175,6 +208,64 @@ def _cluster_centroid_radius(cluster):
     return round(lat, 6), round(lng, 6), int(math.ceil(radius))
 
 
+def _norm_osm_name(name):
+    """Normalise an OSM booth name to the same key space as _norm_plaza.
+
+    'Bocaue Toll Plaza A'          -> 'bocaue'
+    'San Simon Northbound Entry'   -> 'san simon'
+    'Santa Ines Toll Plaza'        -> 'sta ines'
+    'MCX Toll Plaza'               -> "muntinlupa-cavite x'way" (alias)
+    """
+    s = name.strip().lower().replace('.', '')
+    s = re.sub(r'\s+(northbound|southbound)(\s+(entry|exit|toll\s*plaza))?$',
+               '', s)
+    s = re.sub(r'\s+toll\s*(plaza|gate)(\s+[ab])?$', '', s)
+    s = re.sub(r'\s+[ab]$', '', s)
+    s = re.sub(r'\bsanta\b', 'sta', s)
+    s = re.sub(r'\bsanto\b', 'sto', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return OSM_ALIASES.get(s, s)
+
+
+def _load_osm_clusters():
+    """Read the Overpass dump and return {key: [(lat, lng, radius), ...]}.
+
+    Booths sharing a (normalised) name are proximity-clustered the same
+    way Cartrack booths are — one name can legitimately appear at two
+    locations (NB/SB barriers kilometres apart, or two same-named
+    plazas on different expressways like the Calambas).
+    """
+    if not os.path.exists(OSM_DUMP):
+        return {}
+    with open(OSM_DUMP, encoding='utf-8') as f:
+        dump = json.load(f)
+
+    points_by_key = defaultdict(list)
+    for el in dump.get('elements', []):
+        name = el.get('tags', {}).get('name')
+        if not name:
+            continue
+        lat = el.get('lat') or el.get('center', {}).get('lat')
+        lng = el.get('lon') or el.get('center', {}).get('lon')
+        if lat is None or lng is None:
+            continue
+        # Reuse the booth tuple shape so _cluster_booths just works.
+        # 35m per OSM booth point ≈ one lane group + GPS jitter.
+        points_by_key[_norm_osm_name(name)].append(
+            [name, '', float(lat), float(lng), 35])
+
+    clusters_by_key = {}
+    for key, pts in points_by_key.items():
+        clusters = []
+        for cl in _cluster_booths(pts):
+            lat, lng, radius = _cluster_centroid_radius(cl)
+            # Floor the radius: a single OSM node would give 35m, too
+            # tight for a multi-lane barrier the user will verify against.
+            clusters.append((lat, lng, max(radius, 80)))
+        clusters_by_key[key] = clusters
+    return clusters_by_key
+
+
 def main():
     # ── Load the CSV worksheet ────────────────────────────────────────
     # utf-8-sig: the worksheet was exported with a BOM for Excel; plain
@@ -200,6 +291,13 @@ def main():
         if not booths:
             row['status'] = 'TO_DRAW'
             out_csv_rows.append(row)
+            continue
+
+        # Idempotency: on a re-run, cluster-split rows from the previous
+        # run ('Toll - Marilao 2') normalise to the same key as their
+        # parent. The first row already re-emits every cluster, so any
+        # later same-key row is a duplicate — drop it.
+        if key in matched_keys:
             continue
 
         matched_keys.add(key)
@@ -249,6 +347,33 @@ def main():
                 'status': 'DRAWN',
             })
 
+    # ── Pass 3: OSM refinement for plazas not yet drawn in Cartrack ───
+    # The remaining TO_DRAW rows still carry public-data approximations
+    # (avg 4.3km off). OSM mappers have traced most PH toll barriers
+    # from imagery — snap each TO_DRAW row to the nearest same-named
+    # OSM booth cluster, gated by distance so a same-named plaza on a
+    # different expressway can't steal the match.
+    osm_clusters = _load_osm_clusters()
+    osm_refined = {}          # (name, expressway) -> shift_m, for report+JSON
+    for row in out_csv_rows:
+        if row['status'] != 'TO_DRAW' or not osm_clusters:
+            continue
+        key = _norm_plaza(row['geofence_name'])
+        clusters = osm_clusters.get(key)
+        if not clusters:
+            continue
+        old_lat, old_lng = float(row['latitude']), float(row['longitude'])
+        best = min(clusters,
+                   key=lambda c: _haversine_m(old_lat, old_lng, c[0], c[1]))
+        shift = _haversine_m(old_lat, old_lng, best[0], best[1])
+        if shift > OSM_MATCH_GATE_M:
+            continue
+        row['latitude'], row['longitude'] = f'{best[0]:.6f}', f'{best[1]:.6f}'
+        row['radius_m'] = str(best[2])
+        row['google_maps_url'] = (
+            f'https://www.google.com/maps?q={best[0]},{best[1]}')
+        osm_refined[(row['geofence_name'], row['expressway'])] = shift
+
     # ── Write the corrected CSV (stable order: expressway, name) ──────
     out_csv_rows.sort(key=lambda r: (r['expressway'], r['geofence_name']))
     fieldnames = ['geofence_name', 'expressway', 'latitude', 'longitude',
@@ -278,6 +403,7 @@ def main():
     for row in out_csv_rows:
         if row['status'] != 'TO_DRAW':
             continue
+        refined = (row['geofence_name'], row['expressway']) in osm_refined
         entries.append({
             'name':       row['geofence_name'],
             'plaza':      re.sub(r'^Toll\s*-\s*', '', row['geofence_name']),
@@ -286,7 +412,10 @@ def main():
             'lat':        float(row['latitude']),
             'lng':        float(row['longitude']),
             'radius_m':   int(row['radius_m']),
-            'accuracy':   'approximate',
+            # 'osm' = booth position surveyed by OSM mappers from
+            # imagery — accurate enough to draw the Cartrack geofence
+            # from, but not yet verified by the user's own drawing.
+            'accuracy':   'osm' if refined else 'approximate',
         })
 
     entries.sort(key=lambda e: (e['expressway'], e['name']))
@@ -295,12 +424,17 @@ def main():
             'Canonical toll geofence reference. accuracy="booth" entries '
             'mirror the polygons drawn by hand in Cartrack Fleet Web '
             '(centroid + bounding radius) — booth-precise, same method as '
-            'manual_geofences.json. accuracy="approximate" entries come '
-            'from public data (up to ~2km off) and are the checklist of '
-            'plazas still to be drawn in Cartrack. Regenerate with: '
+            'manual_geofences.json. accuracy="osm" entries are booth '
+            'positions surveyed by OpenStreetMap mappers from satellite '
+            'imagery — accurate enough to draw the Cartrack geofence '
+            'from, pending your verification. accuracy="approximate" '
+            'entries are public-data guesses (km-level error); together '
+            'with the osm ones they form the still-to-draw-in-Cartrack '
+            'checklist. Regenerate with: '
             'python integration_doc/build_toll_geofences.py'
         ),
         'booth_accurate': sum(1 for e in entries if e['accuracy'] == 'booth'),
+        'osm_refined':    sum(1 for e in entries if e['accuracy'] == 'osm'),
         'approximate':    sum(1 for e in entries if e['accuracy'] == 'approximate'),
         'plazas': entries,
     }
@@ -308,18 +442,67 @@ def main():
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
 
+    # ── Sync the interactive map: rewrite APPROXIMATE_PLAZAS_RAW ──────
+    # The hollow markers on toll_plazas_map.html come from this embedded
+    # JS array. Regenerate it from the TO_DRAW rows so the map shows the
+    # refined positions instead of the original approximations.
+    map_path = os.path.join(_HERE, 'toll_plazas_map.html')
+    if os.path.exists(map_path):
+        with open(map_path, encoding='utf-8') as f:
+            html = f.read()
+        js_rows = []
+        for row in sorted((r for r in out_csv_rows if r['status'] == 'TO_DRAW'),
+                          key=lambda r: (r['expressway'], r['geofence_name'])):
+            nm = row['geofence_name'].replace('"', '\\"')
+            refined = (row['geofence_name'], row['expressway']) in osm_refined
+            tag = '  // osm-refined' if refined else ''
+            js_rows.append(
+                f'  ["{nm}", "{row["expressway"]}", '
+                f'{row["latitude"]}, {row["longitude"]}, '
+                f'{row["radius_m"]}],{tag}')
+        block = ('const APPROXIMATE_PLAZAS_RAW = [\n'
+                 + '\n'.join(js_rows) + '\n];')
+        new_html, n = re.subn(
+            r'const APPROXIMATE_PLAZAS_RAW = \[.*?\n\];',
+            lambda _m: block, html, count=1, flags=re.DOTALL)
+        if n == 1:
+            with open(map_path, 'w', encoding='utf-8') as f:
+                f.write(new_html)
+            print(f'Updated hollow-marker data in {map_path}')
+        else:
+            print('WARNING: APPROXIMATE_PLAZAS_RAW block not found in map '
+                  'HTML — map not updated.')
+
     # ── Report ─────────────────────────────────────────────────────────
-    print(f'CSV plazas total:            {len(csv_rows)}')
-    print(f'  corrected from Cartrack:   {len(corrections)}')
-    print(f'  still approximate:         '
-          f'{sum(1 for r in out_csv_rows if r["status"] == "TO_DRAW")}')
-    print(f'  new rows (Cartrack-only):  {new_from_cartrack}')
-    print()
-    print('Largest coordinate errors fixed (old CSV vs booth-accurate):')
-    for name, err in sorted(corrections, key=lambda c: -c[1])[:15]:
-        print(f'  {name:32s} {err:7.0f} m off')
-    avg = sum(e for _, e in corrections) / len(corrections)
-    print(f'\n  average error of the old coords: {avg:.0f} m')
+    to_draw_rows = [r for r in out_csv_rows if r['status'] == 'TO_DRAW']
+    print(f'CSV plazas total:            {len(out_csv_rows)}')
+    print(f'  booth-accurate (Cartrack): '
+          f'{sum(1 for r in out_csv_rows if r["status"] == "DRAWN")}')
+    print(f'  OSM-refined (to draw):     {len(osm_refined)}')
+    print(f'  still blind (to draw):     {len(to_draw_rows) - len(osm_refined)}')
+    if new_from_cartrack:
+        print(f'  new rows (Cartrack-only):  {new_from_cartrack}')
+    if corrections:
+        print()
+        print('Largest errors fixed by Cartrack booth data:')
+        for name, err in sorted(corrections, key=lambda c: -c[1])[:10]:
+            print(f'  {name:34s} {err:7.0f} m off')
+        avg = sum(e for _, e in corrections) / len(corrections)
+        print(f'  average error of the old coords: {avg:.0f} m')
+    if osm_refined:
+        print()
+        print('OSM refinements (shift from old approximate position):')
+        for (name, _xw), shift in sorted(osm_refined.items(),
+                                          key=lambda kv: -kv[1]):
+            print(f'  {name:34s} moved {shift:7.0f} m')
+    blind = [r for r in to_draw_rows
+             if (r['geofence_name'], r['expressway']) not in osm_refined]
+    if blind:
+        print()
+        print('Still blind (no Cartrack drawing, no OSM match) — verify '
+              'manually:')
+        for r in blind:
+            print(f'  {r["geofence_name"]:36s} {r["expressway"]}')
     print()
     print(f'Wrote {json_path}')
     print(f'Rewrote {csv_path}')
