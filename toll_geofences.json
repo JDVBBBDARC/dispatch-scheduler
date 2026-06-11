@@ -1,7 +1,7 @@
 {
   "_comment": "Canonical toll geofence reference. accuracy=\"booth\" entries mirror the polygons drawn by hand in Cartrack Fleet Web (centroid + bounding radius) — booth-precise, same method as manual_geofences.json. accuracy=\"osm\" entries are booth positions surveyed by OpenStreetMap mappers from satellite imagery — accurate enough to draw the Cartrack geofence from, pending your verification. accuracy=\"approximate\" entries are public-data guesses (km-level error); together with the osm ones they form the still-to-draw-in-Cartrack checklist. Regenerate with: python integration_doc/build_toll_geofences.py",
-  "booth_accurate": 59,
-  "osm_refined": 41,
+  "booth_accurate": 100,
+  "osm_refined": 0,
   "approximate": 28,
   "plazas": [
     {
@@ -9,30 +9,30 @@
       "plaza": "Greenfield",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.291888,
+      "lat": 14.29193,
       "lng": 121.068013,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Laguna Boulevard",
       "plaza": "Laguna Boulevard",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.255419,
+      "lat": 14.255461,
       "lng": 121.057582,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Mamplasan",
       "plaza": "Mamplasan",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.303395,
+      "lat": 14.303526,
       "lng": 121.078225,
-      "radius_m": 247,
-      "accuracy": "osm"
+      "radius_m": 281,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Santa Rosa-Tagaytay",
@@ -49,30 +49,30 @@
       "plaza": "Silang East",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.232305,
+      "lat": 14.232347,
       "lng": 121.001114,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Silang Interchange",
       "plaza": "Silang Interchange",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.254514,
+      "lat": 14.254681,
       "lng": 120.975703,
-      "radius_m": 316,
-      "accuracy": "osm"
+      "radius_m": 354,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Technopark",
       "plaza": "Technopark",
       "expressway": "CALAX",
       "category": "toll",
-      "lat": 14.27771,
+      "lat": 14.277752,
       "lng": 121.054822,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Bacoor/Zapote",
@@ -99,20 +99,20 @@
       "plaza": "Kawit",
       "expressway": "CAVITEX",
       "category": "toll",
-      "lat": 14.454252,
+      "lat": 14.454294,
       "lng": 120.916984,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Parañaque",
       "plaza": "Parañaque",
       "expressway": "CAVITEX",
       "category": "toll",
-      "lat": 14.492708,
+      "lat": 14.49275,
       "lng": 120.98668,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sucat Rd./Dr. A. Santos Ave.",
@@ -299,10 +299,10 @@
       "plaza": "Bamban (New Clark City)",
       "expressway": "NLEX / SCTEX",
       "category": "toll",
-      "lat": 15.29269,
+      "lat": 15.292732,
       "lng": 120.602115,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Bocaue",
@@ -329,20 +329,20 @@
       "plaza": "Clark North",
       "expressway": "NLEX / SCTEX",
       "category": "toll",
-      "lat": 15.229128,
+      "lat": 15.22917,
       "lng": 120.561299,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Clark South",
       "plaza": "Clark South",
       "expressway": "NLEX / SCTEX",
       "category": "toll",
-      "lat": 15.181681,
+      "lat": 15.181776,
       "lng": 120.570705,
-      "radius_m": 180,
-      "accuracy": "osm"
+      "radius_m": 210,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Concepcion",
@@ -809,100 +809,100 @@
       "plaza": "Batangas",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 13.797084,
+      "lat": 13.797126,
       "lng": 121.076656,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Calamba",
       "plaza": "Calamba",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 14.192962,
+      "lat": 14.19306,
       "lng": 121.141243,
-      "radius_m": 185,
-      "accuracy": "osm"
+      "radius_m": 215,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Ibaan",
       "plaza": "Ibaan",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 13.839873,
+      "lat": 13.83998,
       "lng": 121.121076,
-      "radius_m": 202,
-      "accuracy": "osm"
+      "radius_m": 233,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Lipa",
       "plaza": "Lipa",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 13.941876,
+      "lat": 13.942024,
       "lng": 121.13823,
-      "radius_m": 281,
-      "accuracy": "osm"
+      "radius_m": 317,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Malvar",
       "plaza": "Malvar",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 14.039375,
+      "lat": 14.039519,
       "lng": 121.150172,
-      "radius_m": 272,
-      "accuracy": "osm"
+      "radius_m": 307,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sto. Tomas",
       "plaza": "Sto. Tomas",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 14.126935,
+      "lat": 14.127077,
       "lng": 121.138053,
-      "radius_m": 269,
-      "accuracy": "osm"
+      "radius_m": 304,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sto. Toribio",
       "plaza": "Sto. Toribio",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 13.974473,
+      "lat": 13.974561,
       "lng": 121.148933,
-      "radius_m": 166,
-      "accuracy": "osm"
+      "radius_m": 195,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Tanauan",
       "plaza": "Tanauan",
       "expressway": "STAR Tollway",
       "category": "toll",
-      "lat": 14.086311,
+      "lat": 14.086402,
       "lng": 121.132515,
-      "radius_m": 173,
-      "accuracy": "osm"
+      "radius_m": 202,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - ABI/Greenfield",
       "plaza": "ABI/Greenfield",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.25441,
+      "lat": 14.254452,
       "lng": 121.107064,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Alabang",
       "plaza": "Alabang",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.422074,
+      "lat": 14.422116,
       "lng": 121.045414,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Amorsolo",
@@ -919,10 +919,10 @@
       "plaza": "Bicutan",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.487885,
+      "lat": 14.487927,
       "lng": 121.043668,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - C-5",
@@ -949,20 +949,20 @@
       "plaza": "Calamba",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.192962,
+      "lat": 14.19306,
       "lng": 121.141243,
-      "radius_m": 185,
-      "accuracy": "osm"
+      "radius_m": 215,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Carmona",
       "plaza": "Carmona",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.322862,
+      "lat": 14.322977,
       "lng": 121.062932,
-      "radius_m": 217,
-      "accuracy": "osm"
+      "radius_m": 249,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Don Bosco",
@@ -979,10 +979,10 @@
       "plaza": "Filinvest",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.411471,
+      "lat": 14.411567,
       "lng": 121.041474,
-      "radius_m": 182,
-      "accuracy": "osm"
+      "radius_m": 212,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Magallanes",
@@ -999,10 +999,10 @@
       "plaza": "Mamplasan",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.303395,
+      "lat": 14.303526,
       "lng": 121.078225,
-      "radius_m": 247,
-      "accuracy": "osm"
+      "radius_m": 281,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Merville",
@@ -1019,30 +1019,30 @@
       "plaza": "Muntinlupa-Cavite X'way",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.376363,
+      "lat": 14.376405,
       "lng": 121.017825,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - San Pedro",
       "plaza": "San Pedro",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.368318,
+      "lat": 14.36839,
       "lng": 121.043049,
-      "radius_m": 137,
-      "accuracy": "osm"
+      "radius_m": 164,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Silangan",
       "plaza": "Silangan",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.229705,
+      "lat": 14.229797,
       "lng": 121.118673,
-      "radius_m": 174,
-      "accuracy": "osm"
+      "radius_m": 204,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Skyway / Buendia",
@@ -1059,120 +1059,120 @@
       "plaza": "Southwoods",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.333232,
+      "lat": 14.333337,
       "lng": 121.0543,
-      "radius_m": 199,
-      "accuracy": "osm"
+      "radius_m": 230,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sta. Rosa",
       "plaza": "Sta. Rosa",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.285145,
+      "lat": 14.285244,
       "lng": 121.088514,
-      "radius_m": 187,
-      "accuracy": "osm"
+      "radius_m": 217,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sto. Tomas",
       "plaza": "Sto. Tomas",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.126935,
+      "lat": 14.127077,
       "lng": 121.138053,
-      "radius_m": 269,
-      "accuracy": "osm"
+      "radius_m": 304,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Sucat",
       "plaza": "Sucat",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.454068,
+      "lat": 14.454168,
       "lng": 121.044824,
-      "radius_m": 189,
-      "accuracy": "osm"
+      "radius_m": 219,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Susana Heights",
       "plaza": "Susana Heights",
       "expressway": "Skyway / SLEX / MCX",
       "category": "toll",
-      "lat": 14.381778,
+      "lat": 14.38182,
       "lng": 121.039365,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Balintawak",
       "plaza": "Balintawak",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.679163,
-      "lng": 121.000424,
-      "radius_m": 131,
-      "accuracy": "osm"
+      "lat": 14.678612,
+      "lng": 121.000351,
+      "radius_m": 68,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Buendia",
       "plaza": "Buendia",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.563394,
+      "lat": 14.563436,
       "lng": 121.004462,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - E. Rodriguez",
       "plaza": "E. Rodriguez",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.611954,
+      "lat": 14.611996,
       "lng": 121.017026,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Nagtahan",
       "plaza": "Nagtahan",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.585634,
+      "lat": 14.585676,
       "lng": 121.002067,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Plaza Dilao",
       "plaza": "Plaza Dilao",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.580598,
+      "lat": 14.58064,
       "lng": 120.999603,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Quezon Ave.",
       "plaza": "Quezon Ave.",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.631282,
+      "lat": 14.631324,
       "lng": 121.010202,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Quirino",
       "plaza": "Quirino",
       "expressway": "Skyway Stage 3",
       "category": "toll",
-      "lat": 14.576861,
+      "lat": 14.576903,
       "lng": 120.997698,
-      "radius_m": 80,
-      "accuracy": "osm"
+      "radius_m": 104,
+      "accuracy": "booth"
     },
     {
       "name": "Toll - Binalonan",

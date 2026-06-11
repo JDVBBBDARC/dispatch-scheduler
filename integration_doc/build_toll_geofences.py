@@ -1,10 +1,12 @@
 """Build the canonical toll_geofences.json from two sources of truth.
 
-Source 1 — ACCURATE (booth-level): the 59 polygons the user drew by hand
-on satellite view in Cartrack Fleet Web. extract_accurate_toll_coords.py
-pulled their centroids + bounding radii out of the CartrackGeofence
-table on PythonAnywhere. These are positioned on the physical booths —
-same precision as the manual home geofences in manual_geofences.json.
+Source 1 — ACCURATE (booth-level): the 96 polygons live in Cartrack —
+59 drawn by hand on satellite view in Fleet Web, plus 37 created via
+the API (scripts/create_toll_geofences.py, June 2026) from OSM booth
+positions. extract_accurate_toll_coords.py pulled their centroids +
+bounding radii out of the CartrackGeofence table on PythonAnywhere.
+These are positioned on the physical booths — same precision as the
+manual home geofences in manual_geofences.json.
 
 Source 2 — APPROXIMATE (plaza-level): toll_geofences_for_cartrack.csv,
 the original 108-plaza worksheet derived from public data. Coordinates
@@ -43,69 +45,115 @@ from collections import defaultdict
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 
-# ── Source 1: booth-accurate entries from the user's Cartrack drawings ──
+# ── Source 1: booth-accurate entries — every live Cartrack geofence ──
 # [name, expressway, lat, lng, radius_m] — as extracted on PythonAnywhere
 # from CartrackGeofence.polygon_wkt (centroid + bounding radius + 20m pad).
+# Four fences serve two expressways (one physical booth, two CSV rows):
+# Balintawak (NLEX barrier also covers the Skyway Stage 3 terminus),
+# Calamba and Sto. Tomas (STAR/SLEX junctions), Mamplasan (CALAX/SLEX).
+# Those appear twice below — same coords, different expressway — so the
+# name+expressway match flips BOTH worksheet rows to DRAWN.
 ACCURATE_BOOTHS = [
-    ["Toll - Angeles",            "NLEX / SCTEX",   15.161679, 120.610743,  85],
-    ["Toll - Balagtas",           "NLEX / SCTEX",   14.840927, 120.899421,  94],
-    ["Toll - Balintawak",         "NLEX / SCTEX",   14.678612, 121.000351,  68],
-    ["Toll - Binalonan",          "TPLEX",          16.049817, 120.564537,  73],
-    ["Toll - Bocaue",             "NLEX / SCTEX",   14.802092, 120.942443, 227],
-    ["Toll - Carmen",             "TPLEX",          15.873864, 120.620198, 108],
-    ["Toll - Ciudad De Victoria", "NLEX / SCTEX",   14.791490, 120.950273,  78],
-    ["Toll - Concepcion",         "NLEX / SCTEX",   15.316891, 120.628537,  78],
-    ["Toll - Dau 1",              "NLEX / SCTEX",   15.178013, 120.605784,  53],
-    ["Toll - Dau 2",              "NLEX / SCTEX",   15.179824, 120.602744,  56],
-    ["Toll - Dinalupihan",        "NLEX / SCTEX",   14.855140, 120.456088,  78],
-    ["Toll - Dolores",            "NLEX / SCTEX",   15.240019, 120.571894,  75],
-    ["Toll - España",             "NLEX Connector", 14.618542, 120.990974,  96],
-    ["Toll - Florida",            "NLEX / SCTEX",   15.015488, 120.474083,  76],
-    ["Toll - Gerona",             "TPLEX",          15.615852, 120.634126,  85],
-    ["Toll - Hacienda Luisita 1", "NLEX / SCTEX",   15.433379, 120.665203,  68],
-    ["Toll - Hacienda Luisita 2", "NLEX / SCTEX",   15.434205, 120.667922,  73],
-    ["Toll - Karuhatan",          "NLEX / SCTEX",   14.693737, 120.976846,  97],
-    ["Toll - Lingunan",           "NLEX / SCTEX",   14.722207, 120.984543,  46],
-    ["Toll - Mabiga 1",           "NLEX / SCTEX",   15.197366, 120.583428,  52],
-    ["Toll - Mabiga 2",           "NLEX / SCTEX",   15.198004, 120.582945,  55],
-    ["Toll - Mabiga 3",           "NLEX / SCTEX",   15.197775, 120.580252,  60],
-    ["Toll - Mabiga 4",           "NLEX / SCTEX",   15.197437, 120.580227,  59],
-    ["Toll - Marilao 1",          "NLEX / SCTEX",   14.772287, 120.956299,  57],
-    ["Toll - Marilao 2",          "NLEX / SCTEX",   14.776683, 120.957279,  55],
-    ["Toll - Mexico 1",           "NLEX / SCTEX",   15.108303, 120.663081,  60],
-    ["Toll - Meycauayan 1",       "NLEX / SCTEX",   14.744778, 120.972471,  70],
-    ["Toll - Meycauayan 2",       "NLEX / SCTEX",   14.747672, 120.972344,  47],
-    ["Toll - Mindanao Avenue",    "NLEX / SCTEX",   14.693546, 121.017401,  73],
-    ["Toll - Moncada",            "TPLEX",          15.718071, 120.616032,  77],
-    ["Toll - Paniqui",            "TPLEX",          15.665494, 120.618075,  73],
-    ["Toll - Porac",              "NLEX / SCTEX",   15.122911, 120.511440,  73],
-    ["Toll - Pozorrubio",         "TPLEX",          16.129713, 120.525549,  98],
-    ["Toll - Pulilan 1",          "NLEX / SCTEX",   14.909280, 120.815545,  52],
-    ["Toll - Pulilan 2",          "NLEX / SCTEX",   14.909339, 120.817037,  64],
-    ["Toll - Pulilan 3",          "NLEX / SCTEX",   14.907246, 120.817047,  50],
-    ["Toll - Pulilan 4",          "NLEX / SCTEX",   14.907593, 120.818385,  48],
-    ["Toll - Rosario",            "TPLEX",          16.217638, 120.498324, 101],
-    ["Toll - San Fernando 1",     "NLEX / SCTEX",   15.048231, 120.695172,  74],
-    ["Toll - San Fernando 2",     "NLEX / SCTEX",   15.049788, 120.693880,  64],
-    ["Toll - San Fernando 3",     "NLEX / SCTEX",   15.051404, 120.695481,  77],
-    ["Toll - San Simon 1",        "NLEX / SCTEX",   14.988886, 120.751030,  63],
-    ["Toll - San Simon 2",        "NLEX / SCTEX",   14.988909, 120.750223,  55],
-    ["Toll - Sison",              "TPLEX",          16.183321, 120.513868,  85],
-    ["Toll - Sta Ines",           "NLEX / SCTEX",   15.221988, 120.587939,  65],
-    ["Toll - Sta Rita 1",         "NLEX / SCTEX",   14.863195, 120.859890,  78],
-    ["Toll - Sta Rita 2",         "NLEX / SCTEX",   14.861620, 120.857575,  76],
-    ["Toll - Tabang 1",           "NLEX / SCTEX",   14.837456, 120.868084,  94],
-    ["Toll - Tambubong 1",        "NLEX / SCTEX",   14.814720, 120.937266,  58],
-    ["Toll - Tambubong 2",        "NLEX / SCTEX",   14.814540, 120.933915,  55],
-    ["Toll - Tarlac",             "NLEX / SCTEX",   15.462897, 120.675779,  87],
-    ["Toll - Tarlac 2",           "NLEX / SCTEX",   15.512896, 120.665790,  85],
-    ["Toll - Tipo/SFEX 1",        "NLEX / SCTEX",   14.842278, 120.354357,  72],
-    ["Toll - Tipo/SFEX 2",        "NLEX / SCTEX",   14.841799, 120.353912,  68],
-    ["Toll - Urdaneta",           "TPLEX",          16.002084, 120.579823, 114],
-    ["Toll - Valenzuela 1",       "NLEX / SCTEX",   14.709338, 120.992669,  53],
-    ["Toll - Valenzuela 2",       "NLEX / SCTEX",   14.707545, 120.992961,  58],
-    ["Toll - Valenzuela 3",       "NLEX / SCTEX",   14.727983, 120.982495,  35],
-    ["Toll - Victoria",           "TPLEX",          15.542651, 120.642775,  71],
+    ["Toll - ABI/Greenfield",          "Skyway / SLEX / MCX", 14.254452, 121.107064, 104],
+    ["Toll - Alabang",                 "Skyway / SLEX / MCX", 14.422116, 121.045414, 104],
+    ["Toll - Angeles",                 "NLEX / SCTEX",        15.161679, 120.610743,  85],
+    ["Toll - Balagtas",                "NLEX / SCTEX",        14.840927, 120.899421,  94],
+    ["Toll - Balintawak",              "NLEX / SCTEX",        14.678612, 121.000351,  68],
+    ["Toll - Balintawak",              "Skyway Stage 3",      14.678612, 121.000351,  68],
+    ["Toll - Bamban (New Clark City)", "NLEX / SCTEX",        15.292732, 120.602115, 104],
+    ["Toll - Batangas",                "STAR Tollway",        13.797126, 121.076656, 104],
+    ["Toll - Bicutan",                 "Skyway / SLEX / MCX", 14.487927, 121.043668, 104],
+    ["Toll - Binalonan",               "TPLEX",               16.049817, 120.564537,  73],
+    ["Toll - Bocaue",                  "NLEX / SCTEX",        14.802092, 120.942443, 227],
+    ["Toll - Buendia",                 "Skyway Stage 3",      14.563436, 121.004462, 104],
+    ["Toll - Calamba",                 "STAR Tollway",        14.193060, 121.141243, 215],
+    ["Toll - Calamba",                 "Skyway / SLEX / MCX", 14.193060, 121.141243, 215],
+    ["Toll - Carmen",                  "TPLEX",               15.873864, 120.620198, 108],
+    ["Toll - Carmona",                 "Skyway / SLEX / MCX", 14.322977, 121.062932, 249],
+    ["Toll - Ciudad De Victoria",      "NLEX / SCTEX",        14.791490, 120.950273,  78],
+    ["Toll - Clark North",             "NLEX / SCTEX",        15.229170, 120.561299, 104],
+    ["Toll - Clark South",             "NLEX / SCTEX",        15.181776, 120.570705, 210],
+    ["Toll - Concepcion",              "NLEX / SCTEX",        15.316891, 120.628537,  78],
+    ["Toll - Dau 1",                   "NLEX / SCTEX",        15.178013, 120.605784,  53],
+    ["Toll - Dau 2",                   "NLEX / SCTEX",        15.179824, 120.602744,  56],
+    ["Toll - Dinalupihan",             "NLEX / SCTEX",        14.855140, 120.456088,  78],
+    ["Toll - Dolores",                 "NLEX / SCTEX",        15.240019, 120.571894,  75],
+    ["Toll - E. Rodriguez",            "Skyway Stage 3",      14.611996, 121.017026, 104],
+    ["Toll - España",                  "NLEX Connector",      14.618542, 120.990974,  96],
+    ["Toll - Filinvest",               "Skyway / SLEX / MCX", 14.411567, 121.041474, 212],
+    ["Toll - Florida",                 "NLEX / SCTEX",        15.015488, 120.474083,  76],
+    ["Toll - Gerona",                  "TPLEX",               15.615852, 120.634126,  85],
+    ["Toll - Greenfield",              "CALAX",               14.291930, 121.068013, 104],
+    ["Toll - Hacienda Luisita 1",      "NLEX / SCTEX",        15.433379, 120.665203,  68],
+    ["Toll - Hacienda Luisita 2",      "NLEX / SCTEX",        15.434205, 120.667922,  73],
+    ["Toll - Ibaan",                   "STAR Tollway",        13.839980, 121.121076, 233],
+    ["Toll - Karuhatan",               "NLEX / SCTEX",        14.693737, 120.976846,  97],
+    ["Toll - Kawit",                   "CAVITEX",             14.454294, 120.916984, 104],
+    ["Toll - Laguna Boulevard",        "CALAX",               14.255461, 121.057582, 104],
+    ["Toll - Lingunan",                "NLEX / SCTEX",        14.722207, 120.984543,  46],
+    ["Toll - Lipa",                    "STAR Tollway",        13.942024, 121.138230, 317],
+    ["Toll - Mabiga 1",                "NLEX / SCTEX",        15.197366, 120.583428,  52],
+    ["Toll - Mabiga 2",                "NLEX / SCTEX",        15.198004, 120.582945,  55],
+    ["Toll - Mabiga 3",                "NLEX / SCTEX",        15.197775, 120.580252,  60],
+    ["Toll - Mabiga 4",                "NLEX / SCTEX",        15.197437, 120.580227,  59],
+    ["Toll - Malvar",                  "STAR Tollway",        14.039519, 121.150172, 307],
+    ["Toll - Mamplasan",               "CALAX",               14.303526, 121.078225, 281],
+    ["Toll - Mamplasan",               "Skyway / SLEX / MCX", 14.303526, 121.078225, 281],
+    ["Toll - Marilao 1",               "NLEX / SCTEX",        14.772287, 120.956299,  57],
+    ["Toll - Marilao 2",               "NLEX / SCTEX",        14.776683, 120.957279,  55],
+    ["Toll - Mexico 1",                "NLEX / SCTEX",        15.108303, 120.663081,  60],
+    ["Toll - Meycauayan 1",            "NLEX / SCTEX",        14.744778, 120.972471,  70],
+    ["Toll - Meycauayan 2",            "NLEX / SCTEX",        14.747672, 120.972344,  47],
+    ["Toll - Mindanao Avenue",         "NLEX / SCTEX",        14.693546, 121.017401,  73],
+    ["Toll - Moncada",                 "TPLEX",               15.718071, 120.616032,  77],
+    ["Toll - Muntinlupa-Cavite X'way", "Skyway / SLEX / MCX", 14.376405, 121.017825, 104],
+    ["Toll - Nagtahan",                "Skyway Stage 3",      14.585676, 121.002067, 104],
+    ["Toll - Paniqui",                 "TPLEX",               15.665494, 120.618075,  73],
+    ["Toll - Parañaque",               "CAVITEX",             14.492750, 120.986680, 104],
+    ["Toll - Plaza Dilao",             "Skyway Stage 3",      14.580640, 120.999603, 104],
+    ["Toll - Porac",                   "NLEX / SCTEX",        15.122911, 120.511440,  73],
+    ["Toll - Pozorrubio",              "TPLEX",               16.129713, 120.525549,  98],
+    ["Toll - Pulilan 1",               "NLEX / SCTEX",        14.909280, 120.815545,  52],
+    ["Toll - Pulilan 2",               "NLEX / SCTEX",        14.909339, 120.817037,  64],
+    ["Toll - Pulilan 3",               "NLEX / SCTEX",        14.907246, 120.817047,  50],
+    ["Toll - Pulilan 4",               "NLEX / SCTEX",        14.907593, 120.818385,  48],
+    ["Toll - Quezon Ave.",             "Skyway Stage 3",      14.631324, 121.010202, 104],
+    ["Toll - Quirino",                 "Skyway Stage 3",      14.576903, 120.997698, 104],
+    ["Toll - Rosario",                 "TPLEX",               16.217638, 120.498324, 101],
+    ["Toll - San Fernando 1",          "NLEX / SCTEX",        15.048231, 120.695172,  74],
+    ["Toll - San Fernando 2",          "NLEX / SCTEX",        15.049788, 120.693880,  64],
+    ["Toll - San Fernando 3",          "NLEX / SCTEX",        15.051404, 120.695481,  77],
+    ["Toll - San Pedro",               "Skyway / SLEX / MCX", 14.368390, 121.043049, 164],
+    ["Toll - San Simon 1",             "NLEX / SCTEX",        14.988886, 120.751030,  63],
+    ["Toll - San Simon 2",             "NLEX / SCTEX",        14.988909, 120.750223,  55],
+    ["Toll - Silang East",             "CALAX",               14.232347, 121.001114, 104],
+    ["Toll - Silang Interchange",      "CALAX",               14.254681, 120.975703, 354],
+    ["Toll - Silangan",                "Skyway / SLEX / MCX", 14.229797, 121.118673, 204],
+    ["Toll - Sison",                   "TPLEX",               16.183321, 120.513868,  85],
+    ["Toll - Southwoods",              "Skyway / SLEX / MCX", 14.333337, 121.054300, 230],
+    ["Toll - Sta Ines",                "NLEX / SCTEX",        15.221988, 120.587939,  65],
+    ["Toll - Sta Rita 1",              "NLEX / SCTEX",        14.863195, 120.859890,  78],
+    ["Toll - Sta Rita 2",              "NLEX / SCTEX",        14.861620, 120.857575,  76],
+    ["Toll - Sta. Rosa",               "Skyway / SLEX / MCX", 14.285244, 121.088514, 217],
+    ["Toll - Sto. Tomas",              "STAR Tollway",        14.127077, 121.138053, 304],
+    ["Toll - Sto. Tomas",              "Skyway / SLEX / MCX", 14.127077, 121.138053, 304],
+    ["Toll - Sto. Toribio",            "STAR Tollway",        13.974561, 121.148933, 195],
+    ["Toll - Sucat",                   "Skyway / SLEX / MCX", 14.454168, 121.044824, 219],
+    ["Toll - Susana Heights",          "Skyway / SLEX / MCX", 14.381820, 121.039365, 104],
+    ["Toll - Tabang 1",                "NLEX / SCTEX",        14.837456, 120.868084,  94],
+    ["Toll - Tambubong 1",             "NLEX / SCTEX",        14.814720, 120.937266,  58],
+    ["Toll - Tambubong 2",             "NLEX / SCTEX",        14.814540, 120.933915,  55],
+    ["Toll - Tanauan",                 "STAR Tollway",        14.086402, 121.132515, 202],
+    ["Toll - Tarlac",                  "NLEX / SCTEX",        15.462897, 120.675779,  87],
+    ["Toll - Tarlac 2",                "NLEX / SCTEX",        15.512896, 120.665790,  85],
+    ["Toll - Technopark",              "CALAX",               14.277752, 121.054822, 104],
+    ["Toll - Tipo/SFEX 1",             "NLEX / SCTEX",        14.842278, 120.354357,  72],
+    ["Toll - Tipo/SFEX 2",             "NLEX / SCTEX",        14.841799, 120.353912,  68],
+    ["Toll - Urdaneta",                "TPLEX",               16.002084, 120.579823, 114],
+    ["Toll - Valenzuela 1",            "NLEX / SCTEX",        14.709338, 120.992669,  53],
+    ["Toll - Valenzuela 2",            "NLEX / SCTEX",        14.707545, 120.992961,  58],
+    ["Toll - Valenzuela 3",            "NLEX / SCTEX",        14.727983, 120.982495,  35],
+    ["Toll - Victoria",                "TPLEX",               15.542651, 120.642775,  71],
 ]
 
 # Cartrack-drawing names that don't literally match the CSV plaza name.
@@ -442,15 +490,17 @@ def main():
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
 
-    # ── Sync the interactive map: rewrite APPROXIMATE_PLAZAS_RAW ──────
-    # The hollow markers on toll_plazas_map.html come from this embedded
-    # JS array. Regenerate it from the TO_DRAW rows so the map shows the
-    # refined positions instead of the original approximations.
+    # ── Sync the interactive map: rewrite the embedded JS data ────────
+    # Hollow/half markers come from APPROXIMATE_PLAZAS_RAW (TO_DRAW
+    # rows); solid markers come from ACCURATE_PLAZAS (ACCURATE_BOOTHS).
+    # Both are regenerated here so activating fences in Cartrack +
+    # re-running this script flips the markers without hand-editing.
     map_path = os.path.join(_HERE, 'toll_plazas_map.html')
     if os.path.exists(map_path):
         with open(map_path, encoding='utf-8') as f:
             html = f.read()
         js_rows = []
+        n_half = 0
         for row in sorted((r for r in out_csv_rows if r['status'] == 'TO_DRAW'),
                           key=lambda r: (r['expressway'], r['geofence_name'])):
             nm = row['geofence_name'].replace('"', '\\"')
@@ -459,22 +509,56 @@ def main():
             # "osm" renders half-filled (booth-accurate, ready to
             # activate in Cartrack), "csv" stays hollow (unverified).
             src = 'osm' if refined else 'csv'
+            n_half += refined
             js_rows.append(
                 f'  ["{nm}", "{row["expressway"]}", '
                 f'{row["latitude"]}, {row["longitude"]}, '
                 f'{row["radius_m"]}, "{src}"],')
         block = ('const APPROXIMATE_PLAZAS_RAW = [\n'
                  + '\n'.join(js_rows) + '\n];')
-        new_html, n = re.subn(
+        html, n = re.subn(
             r'const APPROXIMATE_PLAZAS_RAW = \[.*?\n\];',
             lambda _m: block, html, count=1, flags=re.DOTALL)
-        if n == 1:
+
+        # Solid markers: one per physical fence — dual-expressway rows
+        # (same name+coords twice) would double-render, keep the first.
+        seen_names = set()
+        acc_rows = []
+        for b in sorted(ACCURATE_BOOTHS, key=lambda b: b[0]):
+            if b[0] in seen_names:
+                continue
+            seen_names.add(b[0])
+            nm = b[0].replace('"', '\\"')
+            acc_rows.append(f'  ["{nm}", "{b[1]}", '
+                            f'{b[2]:.6f}, {b[3]:.6f}, {b[4]}, "cartrack"],')
+        acc_block = ('const ACCURATE_PLAZAS = [\n'
+                     + '\n'.join(acc_rows) + '\n];')
+        html, n_acc = re.subn(
+            r'const ACCURATE_PLAZAS = \[.*?\n\];',
+            lambda _m: acc_block, html, count=1, flags=re.DOTALL)
+
+        # Header tallies (the legend computes its own from the arrays).
+        n_hollow = len(js_rows) - n_half
+        header = (
+            f'<p>Solid = ACTIVE in Cartrack ({len(acc_rows)}, detecting '
+            f'now) &nbsp;&bull;&nbsp; Half-filled = OSM booth-accurate, '
+            f'ready to activate ({n_half} — run '
+            f'scripts/create_toll_geofences.py on PA) &nbsp;&bull;&nbsp; '
+            f'Hollow dashed = position unverified ({n_hollow}, verify on '
+            f'satellite before activating).</p>')
+        html, n_hdr = re.subn(
+            r'<p>Solid = ACTIVE in Cartrack.*?</p>',
+            lambda _m: header, html, count=1, flags=re.DOTALL)
+
+        if n == 1 and n_acc == 1:
             with open(map_path, 'w', encoding='utf-8') as f:
-                f.write(new_html)
-            print(f'Updated hollow-marker data in {map_path}')
+                f.write(html)
+            print(f'Updated map markers in {map_path} '
+                  f'(solid={len(acc_rows)}, half={n_half}, '
+                  f'hollow={n_hollow}, header={"ok" if n_hdr else "MISSED"})')
         else:
-            print('WARNING: APPROXIMATE_PLAZAS_RAW block not found in map '
-                  'HTML — map not updated.')
+            print('WARNING: marker data block(s) not found in map HTML — '
+                  f'map not updated (approx={n}, accurate={n_acc}).')
 
     # ── Report ─────────────────────────────────────────────────────────
     to_draw_rows = [r for r in out_csv_rows if r['status'] == 'TO_DRAW']
