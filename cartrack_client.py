@@ -255,13 +255,28 @@ class CartrackClient:
             'start_timestamp': start_dt.strftime('%Y-%m-%d %H:%M:%S'),
             'end_timestamp':   end_dt.strftime('%Y-%m-%d %H:%M:%S'),
         }
+        import time as _time
         all_events = []
         page = 1
+        page_retries = 0
         while True:
             params = dict(base_params, page=page)
             status, body = self._call('/rest/vehicles/events', params=params)
+            if status == 429 and page_retries < 2:
+                # Cartrack rate limit. Back off and retry the same page —
+                # observed mid-morning (June 2026) once daily event volume
+                # pushed runs to 10+ rapid-fire pages. 30s then 60s.
+                page_retries += 1
+                _time.sleep(30 * page_retries)
+                continue
             if status != 200 or not isinstance(body, dict):
-                return None, f'get_events HTTP {status}: {body}'
+                # Return whatever pages we DID get — the backfill dedups
+                # by timestamp window, so partial results are still
+                # useful. The error string travels alongside so callers
+                # can log the truncation.
+                err = f'get_events HTTP {status}: {body}'
+                return (all_events or None), err
+            page_retries = 0
             data = body.get('data', [])
             all_events.extend(data)
             meta = body.get('meta', {}) if isinstance(body.get('meta'), dict) else {}
@@ -272,6 +287,9 @@ class CartrackClient:
             page += 1
             if page > 100:   # safety guard
                 break
+            # Gentle pacing between pages keeps long scans under the
+            # burst limit instead of machine-gunning the API.
+            _time.sleep(1.2)
         return all_events, None
 
     # ─────────────────────────────────────────────────────────────

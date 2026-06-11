@@ -142,9 +142,16 @@ def backfill_toll_events(app=None, lookback_minutes=35, log=None):
 
         events, err = cc.get_events(start_dt=start_dt, end_dt=end_dt)
         if err:
+            # get_events now returns partial pages alongside the error
+            # (e.g. rate-limited midway). Log it, but only bail when we
+            # truly got nothing — partial results still backfill real
+            # transits and the dedup window makes re-processing safe.
             summary['errors'].append(f'get_events failed: {err}')
             log.error('get_events failed: %s', err)
-            return summary
+            if not events:
+                return summary
+            log.warning('continuing with %d events from partial scan',
+                        len(events))
         summary['events_scanned'] = len(events or [])
 
         # ── 2. Build lookup tables once ─────────────────────────────
