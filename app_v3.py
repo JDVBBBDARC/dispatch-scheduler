@@ -84,6 +84,18 @@ def firebase_notify(event='update'):
 PH_TZ  = ZoneInfo('Asia/Manila')
 UTC_TZ = ZoneInfo('UTC')
 
+
+def pht_filter_to_utc(date_str, plus_days=0):
+    """Convert a PHT calendar-date filter string (YYYY-MM-DD) to the
+    naive-UTC datetime bound used for querying UTC-stored timestamps
+    (CartrackEvent.created_at, TruckCycle.started_at, SiteVisit
+    enter/exit). PHT midnight = 16:00 UTC of the previous day; raw
+    comparison without this shift made every date filter miss the
+    00:00-07:59 AM PHT window — the busiest hours of the fleet."""
+    d = datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=plus_days)
+    return d.replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+
+
 def ph_now():
     """Current datetime in Philippine time (tz-aware)."""
     return datetime.now(PH_TZ)
@@ -2415,7 +2427,14 @@ def toll_log():
 def api_toll_log_summary():
     """Return summary stats for the Toll Log page: today/week/month counts + fees."""
     today = ph_today()
-    today_start = datetime.combine(today, datetime.min.time())
+    # CartrackEvent.created_at is stored in UTC. PHT midnight = 16:00
+    # UTC the previous day — combining the PHT date with min.time()
+    # and comparing it raw against UTC made "today" start at 8:00 AM
+    # PHT, so all early-morning transits (the bulk of trucking) were
+    # missing from the Today KPIs.
+    today_start = (datetime.combine(today, datetime.min.time())
+                   .replace(tzinfo=PH_TZ).astimezone(UTC_TZ)
+                   .replace(tzinfo=None))
     week_start  = today_start - timedelta(days=7)
     month_start = today_start - timedelta(days=30)
 
@@ -2458,13 +2477,13 @@ def api_toll_log_events():
     q = CartrackEvent.query
     if date_from:
         try:
-            d = datetime.strptime(date_from, '%Y-%m-%d')
+            d = pht_filter_to_utc(date_from)
             q = q.filter(CartrackEvent.created_at >= d)
         except ValueError:
             pass
     if date_to:
         try:
-            d = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            d = pht_filter_to_utc(date_to, plus_days=1)
             q = q.filter(CartrackEvent.created_at < d)
         except ValueError:
             pass
@@ -2551,13 +2570,13 @@ def api_toll_log_export():
     q = CartrackEvent.query
     if date_from:
         try:
-            d = datetime.strptime(date_from, '%Y-%m-%d')
+            d = pht_filter_to_utc(date_from)
             q = q.filter(CartrackEvent.created_at >= d)
         except ValueError:
             pass
     if date_to:
         try:
-            d = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            d = pht_filter_to_utc(date_to, plus_days=1)
             q = q.filter(CartrackEvent.created_at < d)
         except ValueError:
             pass
@@ -2779,12 +2798,12 @@ def api_cycle_time_cycles():
     q = TruckCycle.query
     if date_from:
         try:
-            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            q = q.filter(TruckCycle.started_at >= pht_filter_to_utc(date_from))
         except ValueError:
             pass
     if date_to:
         try:
-            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+            q = q.filter(TruckCycle.started_at < pht_filter_to_utc(date_to, plus_days=1))
         except ValueError:
             pass
     if plate_id:
@@ -3062,12 +3081,12 @@ def api_cycle_time_plate_cycles(plate_id):
     q = TruckCycle.query.filter(TruckCycle.plate_id == plate.id)
     if date_from:
         try:
-            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            q = q.filter(TruckCycle.started_at >= pht_filter_to_utc(date_from))
         except ValueError:
             pass
     if date_to:
         try:
-            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+            q = q.filter(TruckCycle.started_at < pht_filter_to_utc(date_to, plus_days=1))
         except ValueError:
             pass
 
@@ -3290,12 +3309,12 @@ def api_cycle_time_idling():
 
     if date_from:
         try:
-            q = q.filter(SiteVisit.enter_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            q = q.filter(SiteVisit.enter_at >= pht_filter_to_utc(date_from))
         except ValueError:
             pass
     if date_to:
         try:
-            q = q.filter(SiteVisit.enter_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+            q = q.filter(SiteVisit.enter_at < pht_filter_to_utc(date_to, plus_days=1))
         except ValueError:
             pass
     if truck_type_id:
@@ -3375,12 +3394,12 @@ def api_cycle_time_export():
     q = TruckCycle.query
     if date_from:
         try:
-            q = q.filter(TruckCycle.started_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            q = q.filter(TruckCycle.started_at >= pht_filter_to_utc(date_from))
         except ValueError:
             pass
     if date_to:
         try:
-            q = q.filter(TruckCycle.started_at < datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+            q = q.filter(TruckCycle.started_at < pht_filter_to_utc(date_to, plus_days=1))
         except ValueError:
             pass
     if plate_id:
