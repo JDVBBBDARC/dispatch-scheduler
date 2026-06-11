@@ -94,7 +94,12 @@ def _create(cc, plaza):
 
 
 def main():
-    cc = CartrackClient()
+    # Same env bootstrap the always-on worker uses: loads CARTRACK_*
+    # from the project-root .env (or the WSGI config as fallback) so
+    # the script works from a bare PA bash console.
+    from cartrack_poll import _bootstrap_env_from_wsgi
+    _bootstrap_env_from_wsgi()
+    cc = CartrackClient.from_env()
     if not cc.configured:
         print('CARTRACK_USERNAME / CARTRACK_PASSWORD not set — run this '
               'on PythonAnywhere where the .env lives.')
