@@ -80,13 +80,23 @@ def _existing_names(cc):
 
 
 def _create(cc, plaza):
-    """Attempt to create one geofence. Returns (ok, status, body)."""
+    """Attempt to create one geofence. Returns (ok, status, body).
+
+    Field names confirmed against the live API (June 2026): the 422
+    validator asks for either `polygon` (WKT string, same shape the
+    GET returns) or a `circle` object. We send polygon so the synced
+    rows look identical to the hand-drawn ones and the existing
+    extract/audit pipeline (which parses polygon WKT) keeps working.
+    `colour` is set to orange so auto-created fences are easy to spot
+    (and restyle) in Fleet Web.
+    """
     payload = {
         'name':        plaza['name'],
         'description': f"{plaza['expressway']} toll plaza "
                        f"(auto-created from OSM booth position)",
-        'polygon_wkt': _circle_wkt(plaza['lat'], plaza['lng'],
+        'polygon':     _circle_wkt(plaza['lat'], plaza['lng'],
                                    plaza['radius_m']),
+        'colour':      '#d35400',
     }
     status, body = cc._call('/rest/geofences', method='POST', json=payload)
     ok = status in (200, 201)
@@ -140,6 +150,10 @@ def main():
         ok, status, body = _create(cc, plaza)
         if ok:
             created += 1
+            # Track within this run too — dual-listed plazas (Calamba,
+            # Mamplasan, Sto. Tomas appear under two expressways but
+            # share one physical booth) must not create twice.
+            existing.add(plaza['name'].strip().upper())
             print(f"  CREATED: {plaza['name']}")
         else:
             failed += 1
