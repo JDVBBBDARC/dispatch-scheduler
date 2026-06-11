@@ -455,11 +455,14 @@ def main():
                           key=lambda r: (r['expressway'], r['geofence_name'])):
             nm = row['geofence_name'].replace('"', '\\"')
             refined = (row['geofence_name'], row['expressway']) in osm_refined
-            tag = '  // osm-refined' if refined else ''
+            # 6th column = source tier consumed by the map JS:
+            # "osm" renders half-filled (booth-accurate, ready to
+            # activate in Cartrack), "csv" stays hollow (unverified).
+            src = 'osm' if refined else 'csv'
             js_rows.append(
                 f'  ["{nm}", "{row["expressway"]}", '
                 f'{row["latitude"]}, {row["longitude"]}, '
-                f'{row["radius_m"]}],{tag}')
+                f'{row["radius_m"]}, "{src}"],')
         block = ('const APPROXIMATE_PLAZAS_RAW = [\n'
                  + '\n'.join(js_rows) + '\n];')
         new_html, n = re.subn(

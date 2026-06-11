@@ -71,8 +71,8 @@
 <body>
 
 <div id="header">
-  <h1>🛣️ Toll Plazas Map — Booth-accurate + Approximate</h1>
-  <p>59 plazas from your Cartrack drawings (booth-accurate) plus CSV fallback (approximate) for plazas not yet drawn.</p>
+  <h1>🛣️ Toll Plazas Map — Active / Ready-to-activate / Unverified</h1>
+  <p>Solid = ACTIVE in Cartrack (59, detecting now) &nbsp;•&nbsp; Half-filled = OSM booth-accurate, ready to activate (41 — run scripts/create_toll_geofences.py on PA) &nbsp;•&nbsp; Hollow dashed = position unverified (28, verify on satellite before activating).</p>
 </div>
 <div id="map"></div>
 
@@ -147,80 +147,83 @@ const ACCURATE_PLAZAS = [
 // data approximations; ±50-100m off the actual booth. Will be rendered
 // as hollow dashed markers so the user knows they're not booth-accurate.
 const APPROXIMATE_PLAZAS_RAW = [
-  ["Toll - Greenfield", "CALAX", 14.291888, 121.068013, 80],  // osm-refined
-  ["Toll - Laguna Boulevard", "CALAX", 14.255419, 121.057582, 80],  // osm-refined
-  ["Toll - Mamplasan", "CALAX", 14.303395, 121.078225, 247],  // osm-refined
-  ["Toll - Santa Rosa-Tagaytay", "CALAX", 14.241000, 121.029000, 200],
-  ["Toll - Silang East", "CALAX", 14.232305, 121.001114, 80],  // osm-refined
-  ["Toll - Silang Interchange", "CALAX", 14.254514, 120.975703, 316],  // osm-refined
-  ["Toll - Technopark", "CALAX", 14.277710, 121.054822, 80],  // osm-refined
-  ["Toll - Bacoor/Zapote", "CAVITEX", 14.463000, 120.953000, 200],
-  ["Toll - C5 Rd. Ext./C.P. Garcia", "CAVITEX", 14.483000, 121.071000, 200],
-  ["Toll - Kawit", "CAVITEX", 14.454252, 120.916984, 80],  // osm-refined
-  ["Toll - Parañaque", "CAVITEX", 14.492708, 120.986680, 80],  // osm-refined
-  ["Toll - Sucat Rd./Dr. A. Santos Ave.", "CAVITEX", 14.472000, 121.015000, 200],
-  ["Toll - C-3 Road/5th Ave.", "Harbor Link", 14.645700, 120.984200, 200],
-  ["Toll - Harbor Link Interchange", "Harbor Link", 14.668000, 120.971200, 200],
-  ["Toll - Karuhatan/Valenzuela", "Harbor Link", 14.691800, 120.981900, 250],
-  ["Toll - Malabon/Dagat-Dagatan", "Harbor Link", 14.658000, 120.959800, 200],
-  ["Toll - R-10/Port of Manila", "Harbor Link", 14.601900, 120.957300, 250],
-  ["Toll - Andrews Ave./Terminal 3", "NAIAX", 14.524000, 121.011000, 200],
-  ["Toll - Aurora Blvd. (Tramo)", "NAIAX", 14.543900, 121.002800, 200],
-  ["Toll - CAVITEX", "NAIAX", 14.497000, 120.976000, 200],
-  ["Toll - Entertainment City", "NAIAX", 14.541000, 120.975000, 200],
-  ["Toll - Macapagal Blvd.", "NAIAX", 14.524000, 120.981000, 200],
-  ["Toll - NAIA Terminal 1", "NAIAX", 14.510000, 121.019000, 200],
-  ["Toll - NAIA Terminal 2", "NAIAX", 14.512000, 121.015000, 200],
-  ["Toll - NAIA Terminal 3", "NAIAX", 14.518000, 121.011000, 200],
-  ["Toll - Skyway", "NAIAX", 14.505000, 121.014000, 200],
-  ["Toll - Bamban (New Clark City)", "NLEX / SCTEX", 15.292690, 120.602115, 80],  // osm-refined
-  ["Toll - Clark North", "NLEX / SCTEX", 15.229128, 120.561299, 80],  // osm-refined
-  ["Toll - Clark South", "NLEX / SCTEX", 15.181681, 120.570705, 180],  // osm-refined
-  ["Toll - C-3 Road/5th Ave.", "NLEX Connector", 14.645700, 120.984200, 200],
-  ["Toll - Magsaysay", "NLEX Connector", 14.624300, 121.001700, 200],
-  ["Toll - Batangas", "STAR Tollway", 13.797084, 121.076656, 80],  // osm-refined
-  ["Toll - Calamba", "STAR Tollway", 14.192962, 121.141243, 185],  // osm-refined
-  ["Toll - Ibaan", "STAR Tollway", 13.839873, 121.121076, 202],  // osm-refined
-  ["Toll - Lipa", "STAR Tollway", 13.941876, 121.138230, 281],  // osm-refined
-  ["Toll - Malvar", "STAR Tollway", 14.039375, 121.150172, 272],  // osm-refined
-  ["Toll - Sto. Tomas", "STAR Tollway", 14.126935, 121.138053, 269],  // osm-refined
-  ["Toll - Sto. Toribio", "STAR Tollway", 13.974473, 121.148933, 166],  // osm-refined
-  ["Toll - Tanauan", "STAR Tollway", 14.086311, 121.132515, 173],  // osm-refined
-  ["Toll - ABI/Greenfield", "Skyway / SLEX / MCX", 14.254410, 121.107064, 80],  // osm-refined
-  ["Toll - Alabang", "Skyway / SLEX / MCX", 14.422074, 121.045414, 80],  // osm-refined
-  ["Toll - Amorsolo", "Skyway / SLEX / MCX", 14.535000, 121.022700, 200],
-  ["Toll - Bicutan", "Skyway / SLEX / MCX", 14.487885, 121.043668, 80],  // osm-refined
-  ["Toll - C-5", "Skyway / SLEX / MCX", 14.545000, 121.057000, 200],
-  ["Toll - Cabuyao", "Skyway / SLEX / MCX", 14.207400, 121.150500, 200],
-  ["Toll - Calamba", "Skyway / SLEX / MCX", 14.192962, 121.141243, 185],  // osm-refined
-  ["Toll - Carmona", "Skyway / SLEX / MCX", 14.322862, 121.062932, 217],  // osm-refined
-  ["Toll - Don Bosco", "Skyway / SLEX / MCX", 14.546000, 121.029000, 200],
-  ["Toll - Filinvest", "Skyway / SLEX / MCX", 14.411471, 121.041474, 182],  // osm-refined
-  ["Toll - Magallanes", "Skyway / SLEX / MCX", 14.543000, 121.022700, 200],
-  ["Toll - Mamplasan", "Skyway / SLEX / MCX", 14.303395, 121.078225, 247],  // osm-refined
-  ["Toll - Merville", "Skyway / SLEX / MCX", 14.505000, 121.025000, 200],
-  ["Toll - Muntinlupa-Cavite X'way", "Skyway / SLEX / MCX", 14.376363, 121.017825, 80],  // osm-refined
-  ["Toll - San Pedro", "Skyway / SLEX / MCX", 14.368318, 121.043049, 137],  // osm-refined
-  ["Toll - Silangan", "Skyway / SLEX / MCX", 14.229705, 121.118673, 174],  // osm-refined
-  ["Toll - Skyway / Buendia", "Skyway / SLEX / MCX", 14.556000, 121.022700, 250],
-  ["Toll - Southwoods", "Skyway / SLEX / MCX", 14.333232, 121.054300, 199],  // osm-refined
-  ["Toll - Sta. Rosa", "Skyway / SLEX / MCX", 14.285145, 121.088514, 187],  // osm-refined
-  ["Toll - Sto. Tomas", "Skyway / SLEX / MCX", 14.126935, 121.138053, 269],  // osm-refined
-  ["Toll - Sucat", "Skyway / SLEX / MCX", 14.454068, 121.044824, 189],  // osm-refined
-  ["Toll - Susana Heights", "Skyway / SLEX / MCX", 14.381778, 121.039365, 80],  // osm-refined
-  ["Toll - Balintawak", "Skyway Stage 3", 14.679163, 121.000424, 131],  // osm-refined
-  ["Toll - Buendia", "Skyway Stage 3", 14.563394, 121.004462, 80],  // osm-refined
-  ["Toll - E. Rodriguez", "Skyway Stage 3", 14.611954, 121.017026, 80],  // osm-refined
-  ["Toll - Nagtahan", "Skyway Stage 3", 14.585634, 121.002067, 80],  // osm-refined
-  ["Toll - Plaza Dilao", "Skyway Stage 3", 14.580598, 120.999603, 80],  // osm-refined
-  ["Toll - Quezon Ave.", "Skyway Stage 3", 14.631282, 121.010202, 80],  // osm-refined
-  ["Toll - Quirino", "Skyway Stage 3", 14.576861, 120.997698, 80],  // osm-refined
-  ["Toll - La Paz", "TPLEX", 15.518300, 120.580300, 200],
+  ["Toll - Greenfield", "CALAX", 14.291888, 121.068013, 80, "osm"],
+  ["Toll - Laguna Boulevard", "CALAX", 14.255419, 121.057582, 80, "osm"],
+  ["Toll - Mamplasan", "CALAX", 14.303395, 121.078225, 247, "osm"],
+  ["Toll - Santa Rosa-Tagaytay", "CALAX", 14.241000, 121.029000, 200, "csv"],
+  ["Toll - Silang East", "CALAX", 14.232305, 121.001114, 80, "osm"],
+  ["Toll - Silang Interchange", "CALAX", 14.254514, 120.975703, 316, "osm"],
+  ["Toll - Technopark", "CALAX", 14.277710, 121.054822, 80, "osm"],
+  ["Toll - Bacoor/Zapote", "CAVITEX", 14.463000, 120.953000, 200, "csv"],
+  ["Toll - C5 Rd. Ext./C.P. Garcia", "CAVITEX", 14.483000, 121.071000, 200, "csv"],
+  ["Toll - Kawit", "CAVITEX", 14.454252, 120.916984, 80, "osm"],
+  ["Toll - Parañaque", "CAVITEX", 14.492708, 120.986680, 80, "osm"],
+  ["Toll - Sucat Rd./Dr. A. Santos Ave.", "CAVITEX", 14.472000, 121.015000, 200, "csv"],
+  ["Toll - C-3 Road/5th Ave.", "Harbor Link", 14.645700, 120.984200, 200, "csv"],
+  ["Toll - Harbor Link Interchange", "Harbor Link", 14.668000, 120.971200, 200, "csv"],
+  ["Toll - Karuhatan/Valenzuela", "Harbor Link", 14.691800, 120.981900, 250, "csv"],
+  ["Toll - Malabon/Dagat-Dagatan", "Harbor Link", 14.658000, 120.959800, 200, "csv"],
+  ["Toll - R-10/Port of Manila", "Harbor Link", 14.601900, 120.957300, 250, "csv"],
+  ["Toll - Andrews Ave./Terminal 3", "NAIAX", 14.524000, 121.011000, 200, "csv"],
+  ["Toll - Aurora Blvd. (Tramo)", "NAIAX", 14.543900, 121.002800, 200, "csv"],
+  ["Toll - CAVITEX", "NAIAX", 14.497000, 120.976000, 200, "csv"],
+  ["Toll - Entertainment City", "NAIAX", 14.541000, 120.975000, 200, "csv"],
+  ["Toll - Macapagal Blvd.", "NAIAX", 14.524000, 120.981000, 200, "csv"],
+  ["Toll - NAIA Terminal 1", "NAIAX", 14.510000, 121.019000, 200, "csv"],
+  ["Toll - NAIA Terminal 2", "NAIAX", 14.512000, 121.015000, 200, "csv"],
+  ["Toll - NAIA Terminal 3", "NAIAX", 14.518000, 121.011000, 200, "csv"],
+  ["Toll - Skyway", "NAIAX", 14.505000, 121.014000, 200, "csv"],
+  ["Toll - Bamban (New Clark City)", "NLEX / SCTEX", 15.292690, 120.602115, 80, "osm"],
+  ["Toll - Clark North", "NLEX / SCTEX", 15.229128, 120.561299, 80, "osm"],
+  ["Toll - Clark South", "NLEX / SCTEX", 15.181681, 120.570705, 180, "osm"],
+  ["Toll - C-3 Road/5th Ave.", "NLEX Connector", 14.645700, 120.984200, 200, "csv"],
+  ["Toll - Magsaysay", "NLEX Connector", 14.624300, 121.001700, 200, "csv"],
+  ["Toll - Batangas", "STAR Tollway", 13.797084, 121.076656, 80, "osm"],
+  ["Toll - Calamba", "STAR Tollway", 14.192962, 121.141243, 185, "osm"],
+  ["Toll - Ibaan", "STAR Tollway", 13.839873, 121.121076, 202, "osm"],
+  ["Toll - Lipa", "STAR Tollway", 13.941876, 121.138230, 281, "osm"],
+  ["Toll - Malvar", "STAR Tollway", 14.039375, 121.150172, 272, "osm"],
+  ["Toll - Sto. Tomas", "STAR Tollway", 14.126935, 121.138053, 269, "osm"],
+  ["Toll - Sto. Toribio", "STAR Tollway", 13.974473, 121.148933, 166, "osm"],
+  ["Toll - Tanauan", "STAR Tollway", 14.086311, 121.132515, 173, "osm"],
+  ["Toll - ABI/Greenfield", "Skyway / SLEX / MCX", 14.254410, 121.107064, 80, "osm"],
+  ["Toll - Alabang", "Skyway / SLEX / MCX", 14.422074, 121.045414, 80, "osm"],
+  ["Toll - Amorsolo", "Skyway / SLEX / MCX", 14.535000, 121.022700, 200, "csv"],
+  ["Toll - Bicutan", "Skyway / SLEX / MCX", 14.487885, 121.043668, 80, "osm"],
+  ["Toll - C-5", "Skyway / SLEX / MCX", 14.545000, 121.057000, 200, "csv"],
+  ["Toll - Cabuyao", "Skyway / SLEX / MCX", 14.207400, 121.150500, 200, "csv"],
+  ["Toll - Calamba", "Skyway / SLEX / MCX", 14.192962, 121.141243, 185, "osm"],
+  ["Toll - Carmona", "Skyway / SLEX / MCX", 14.322862, 121.062932, 217, "osm"],
+  ["Toll - Don Bosco", "Skyway / SLEX / MCX", 14.546000, 121.029000, 200, "csv"],
+  ["Toll - Filinvest", "Skyway / SLEX / MCX", 14.411471, 121.041474, 182, "osm"],
+  ["Toll - Magallanes", "Skyway / SLEX / MCX", 14.543000, 121.022700, 200, "csv"],
+  ["Toll - Mamplasan", "Skyway / SLEX / MCX", 14.303395, 121.078225, 247, "osm"],
+  ["Toll - Merville", "Skyway / SLEX / MCX", 14.505000, 121.025000, 200, "csv"],
+  ["Toll - Muntinlupa-Cavite X'way", "Skyway / SLEX / MCX", 14.376363, 121.017825, 80, "osm"],
+  ["Toll - San Pedro", "Skyway / SLEX / MCX", 14.368318, 121.043049, 137, "osm"],
+  ["Toll - Silangan", "Skyway / SLEX / MCX", 14.229705, 121.118673, 174, "osm"],
+  ["Toll - Skyway / Buendia", "Skyway / SLEX / MCX", 14.556000, 121.022700, 250, "csv"],
+  ["Toll - Southwoods", "Skyway / SLEX / MCX", 14.333232, 121.054300, 199, "osm"],
+  ["Toll - Sta. Rosa", "Skyway / SLEX / MCX", 14.285145, 121.088514, 187, "osm"],
+  ["Toll - Sto. Tomas", "Skyway / SLEX / MCX", 14.126935, 121.138053, 269, "osm"],
+  ["Toll - Sucat", "Skyway / SLEX / MCX", 14.454068, 121.044824, 189, "osm"],
+  ["Toll - Susana Heights", "Skyway / SLEX / MCX", 14.381778, 121.039365, 80, "osm"],
+  ["Toll - Balintawak", "Skyway Stage 3", 14.679163, 121.000424, 131, "osm"],
+  ["Toll - Buendia", "Skyway Stage 3", 14.563394, 121.004462, 80, "osm"],
+  ["Toll - E. Rodriguez", "Skyway Stage 3", 14.611954, 121.017026, 80, "osm"],
+  ["Toll - Nagtahan", "Skyway Stage 3", 14.585634, 121.002067, 80, "osm"],
+  ["Toll - Plaza Dilao", "Skyway Stage 3", 14.580598, 120.999603, 80, "osm"],
+  ["Toll - Quezon Ave.", "Skyway Stage 3", 14.631282, 121.010202, 80, "osm"],
+  ["Toll - Quirino", "Skyway Stage 3", 14.576861, 120.997698, 80, "osm"],
+  ["Toll - La Paz", "TPLEX", 15.518300, 120.580300, 200, "csv"],
 ];
 
 // Convert APPROXIMATE_PLAZAS_RAW to the same shape as ACCURATE_PLAZAS.
+// Rows may already carry a 6th source column ("osm" = booth-accurate
+// position from OpenStreetMap, ready to activate; "csv" = unverified).
+// Older 5-column rows default to "csv".
 const APPROXIMATE_PLAZAS = APPROXIMATE_PLAZAS_RAW.map(p =>
-  [...p, "csv"]);
+  p.length >= 6 ? p : [...p, "csv"]);
 
 // Color per expressway (works for both accurate and approximate).
 const EXPRESSWAY_COLORS = {
@@ -248,17 +251,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // with dashed radius — visually obvious they're approximate.
 function renderMarker(name, expressway, lat, lng, radius, source) {
   const color = EXPRESSWAY_COLORS[expressway] || '#666';
-  const accurate = source === 'cartrack';
+  const accurate = source === 'cartrack';   // active in Cartrack — detecting
+  const osm      = source === 'osm';        // booth-accurate via OSM — ready to activate
 
-  // The marker dot.
+  // The marker dot. Three tiers:
+  //   cartrack — solid fill (live detection running)
+  //   osm      — half fill, solid border (coords booth-accurate, just
+  //              needs the Cartrack geofence created to go live)
+  //   csv      — hollow + dashed (position still unverified)
   const marker = L.circleMarker([lat, lng], {
-    radius: accurate ? 7 : 5,
-    fillColor: accurate ? color : '#fff',
+    radius: accurate ? 7 : (osm ? 6 : 5),
+    fillColor: (accurate || osm) ? color : '#fff',
     color: color,
-    weight: accurate ? 2 : 2,
+    weight: 2,
     opacity: 1,
-    fillOpacity: accurate ? 0.95 : 0.3,
-    dashArray: accurate ? null : '4 3',
+    fillOpacity: accurate ? 0.95 : (osm ? 0.45 : 0.3),
+    dashArray: (accurate || osm) ? null : '4 3',
   }).addTo(map);
 
   // The detection radius disc.
@@ -267,14 +275,16 @@ function renderMarker(name, expressway, lat, lng, radius, source) {
     color: color,
     weight: accurate ? 1.5 : 1,
     fillColor: color,
-    fillOpacity: accurate ? 0.18 : 0.05,
+    fillOpacity: accurate ? 0.18 : (osm ? 0.10 : 0.05),
     dashArray: accurate ? null : '4 3',
   }).addTo(map);
 
   const cleanName = name.replace(/^Toll\s*-\s*/i, '');
   const badge = accurate
-    ? '<span class="accurate-badge">Cartrack — booth accurate</span>'
-    : '<span class="approx-badge">CSV — approximate ±100m</span>';
+    ? '<span class="accurate-badge">Cartrack — ACTIVE (detecting)</span>'
+    : (osm
+       ? '<span class="accurate-badge" style="background:#2980B9;">OSM booth-accurate — ready to activate</span>'
+       : '<span class="approx-badge">Approximate — verify before activating</span>');
   const popup = `
     <b>${cleanName}</b><br>
     <i>${expressway}</i><br>
