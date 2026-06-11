@@ -10,3 +10,9 @@ launch.bat
 # Cartrack API test script — contains credentials, never commit
 cartrack_test.py
 cartrack_credentials.py
+
+# Generated artefacts — rebuild with docs/manual/generate.py etc.
+DISPATCH_SCHEDULER_SYSTEM_MANUAL_*.pdf
+ERP_INTEGRATION_SYSTEM_FLOW.pdf
+*.bak
+output.txt

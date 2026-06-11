@@ -114,13 +114,20 @@ def document_control_page():
                   'equipment name below the plate selector. What Gets '
                   'Synced table extended with Operator and Equipment '
                   'fields.'])
-    rows.append(['1.5', DOC_DATE, 'Doc Control, F',
+    rows.append(['1.5', 'June 2026', 'Doc Control, F',
                   'Slimmed to a pure application user manual: removed '
                   'the Forms and Records register (FM-001..008 — '
                   'paper forms the operation does not use) and the '
                   'Document Control distribution table. Appendix '
                   'renumbered: Quick Reference is now F.2, Contact '
                   'Information F.3.'])
+    rows.append(['1.6', DOC_DATE, 'F.4',
+                  'New Emergency Runbook appendix: the two running '
+                  'processes, restart procedures, deploy + rollback '
+                  'steps, and a common-failures table — written for a '
+                  'non-programmer covering for the IT administrator. '
+                  'Standalone Taglish copy lives at '
+                  'docs/EMERGENCY_RUNBOOK.md in the repository.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(PageBreak())

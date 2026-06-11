@@ -451,6 +451,85 @@ def section_f():
     out.append(std_table(contact_rows,
                           col_widths=[5.5 * cm, 5.5 * cm, 5.5 * cm]))
 
+    # ── F.4 Emergency Runbook ─────────────────────────────────────────
+    out.append(h1('F.4 Emergency Runbook'))
+    out.append(pj(
+        'This appendix is the survival guide for anyone who must keep '
+        'the system running when the regular IT administrator is '
+        'unavailable. It assumes no programming knowledge — follow the '
+        'steps exactly. A standalone copy lives in the code repository '
+        'at <font face="Courier">docs/EMERGENCY_RUNBOOK.md</font> and '
+        'is readable directly on GitHub even if the server is down.'))
+
+    out.append(h2('The Two Processes'))
+    out.append(p('The system is TWO running processes. Know which one '
+                  'is broken before doing anything:'))
+    proc_rows = [
+        ['Process', 'What it does', 'If it dies'],
+        ['Web app',
+         'The website dispatchers use (PythonAnywhere Web tab).',
+         'Nobody can log in.'],
+        ['Polling worker',
+         'Background task pulling GPS data every 60s '
+         '(PythonAnywhere Tasks tab, cartrack_poll.py).',
+         'Website still works, but GPS tracking, cycles, toll '
+         'detection, and ERP breakdown sync all stop.'],
+    ]
+    out.append(std_table(proc_rows, col_widths=[3 * cm, 7 * cm, 6.5 * cm]))
+
+    out.append(h2('Restarting'))
+    for x in numbered_list([
+        '<b>Web app</b>: log in to PythonAnywhere → Web tab → press '
+        'the <b>Reload</b> button → open the site and confirm the '
+        'login page appears.',
+        '<b>Worker</b>: PythonAnywhere → Tasks tab → find the '
+        'always-on task running <font face="Courier">cartrack_poll.py'
+        '</font> → restart it → open its log and confirm new lines '
+        'appear every minute.',
+    ]): out.append(x)
+
+    out.append(h2('Deploying a Fix'))
+    out.append(code(
+        'cd ~/dispatch-scheduler\n'
+        '# backup first — always:\n'
+        'cp instance/*.db /tmp/db-backup-$(date +%Y%m%d-%H%M%S).db\n'
+        'git rev-parse HEAD > .last_safe_sha\n'
+        'git pull\n'
+        'touch /var/www/&lt;account&gt;_pythonanywhere_com_wsgi.py'))
+    out.append(p('Then restart the worker (above) if any worker file '
+                  'changed. To roll back: '
+                  '<font face="Courier">git checkout $(cat .last_safe_sha)'
+                  '</font>, restore the DB backup if needed, and reload.'))
+
+    out.append(h2('Common Failures'))
+    fail_rows = [
+        ['Symptom', 'Fix'],
+        ['Website shows an error page / 502',
+         'Web tab → Reload. Still broken: read the error log on the '
+         'Web tab and escalate to the IT contact.'],
+        ['No fresh GPS data on Truck Cycle Time',
+         'Restart the worker. If its log shows 401 errors, the '
+         'Cartrack API password expired — regenerate it in Cartrack '
+         'Fleet Web → Settings → API Settings, update the .env file '
+         'on the server, restart again.'],
+        ['No new breakdowns arriving from the ERP',
+         'Open the Breakdown page → press Sync from ERP → read the '
+         'error it reports.'],
+        ['"Database is locked" errors',
+         'Usually self-healing. If persistent: restart the worker '
+         'first, then reload the web app.'],
+    ]
+    out.append(std_table(fail_rows, col_widths=[6.5 * cm, 10 * cm]))
+
+    out.append(callout(
+        'When in doubt, never delete',
+        'Every failure above is fixed by a restart or a rollback. '
+        'There is no emergency that requires deleting data. '
+        'Credentials are never stored in this manual or in the '
+        'repository — they live in the .env file on the server and '
+        'in Cartrack Fleet Web.',
+        kind='warn'))
+
     # ── F.5 Document History / End ──────────────────────────────────
     out.append(h1('F.5 End of Document'))
     out.append(pj(
