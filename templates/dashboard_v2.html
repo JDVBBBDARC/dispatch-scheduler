@@ -138,7 +138,7 @@
       </div>
       <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height:220px;">
         {% if total > 0 %}
-        <canvas id="statusChart" style="max-height:190px;"></canvas>
+        <canvas id="statusChart"></canvas>
         <div class="mt-3 w-100">
           {% set st_colors = [('#16A34A','Delivered'),('#EA580C','In Transit'),('#D97706','Pending'),('#6B7280','Canceled')] %}
           {% for color, label in st_colors %}
@@ -483,6 +483,29 @@
   flex: 0 0 auto;
 }
 #dashGrid .card-header:hover .dash-drag-handle { opacity: 1; color: var(--text, #222); }
+/* Resizable chart/scroll viewport: drag the bottom edge to set the height.
+   Heights persist per panel in localStorage. */
+.chart-box {
+  position: relative;
+  width: 100%;
+  resize: vertical;
+  overflow: auto;
+  min-height: 120px;
+}
+/* Bigger, more obvious native resize grip + a hint bar at the bottom. */
+.chart-box::-webkit-resizer { background: transparent; }
+.chart-box::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 7px;
+  background:
+    radial-gradient(circle, var(--muted, #9aa) 1px, transparent 1.4px) center / 7px 7px repeat-x;
+  opacity: 0;
+  transition: opacity .15s;
+  pointer-events: none;
+}
+.chart-box:hover::after { opacity: .5; }
 /* Ghost = the placeholder gap where the panel will land */
 .dash-ghost > .card {
   outline: 2px dashed #8B1A2B;
@@ -803,6 +826,7 @@ function renderTrendChart() {
     data: { labels: TREND_DAYS, datasets: buildTrendDatasets() },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: selectedTrucks.size > 1, position: 'bottom',
                   labels: { font: { size: 11 }, padding: 10 } },
@@ -1291,6 +1315,8 @@ new Chart(document.getElementById('statusChart'), {
     }]
   },
   options: {
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     cutout: '0%',
   }
@@ -1339,6 +1365,7 @@ function showDriverChart(idx, btn) {
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
         tooltip: {
@@ -1381,6 +1408,7 @@ new Chart(document.getElementById('absentChart'), {
   options: {
     indexAxis: 'y',
     responsive: true,
+    maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
       x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,.05)' } },
@@ -1629,12 +1657,122 @@ async function loadIdlingWidget() {
 
   const resetBtn = document.getElementById('dashLayoutReset');
   function refreshResetBtn() {
-    if (resetBtn) resetBtn.style.display = isCustom(currentOrder()) ? '' : 'none';
+    if (resetBtn)
+      resetBtn.style.display =
+        (isCustom(currentOrder()) || hasCustomSizes()) ? '' : 'none';
   }
 
   // Charts are responsive — nudge them to recalc after a layout change.
   function nudgeCharts() {
     window.dispatchEvent(new Event('resize'));
+  }
+
+  // ── Resizable panels ─────────────────────────────────────────────────
+  // Each chart canvas (and the Recent Activity scroll list) is wrapped in
+  // a .chart-box that the user can drag-resize vertically. Heights persist
+  // per panel-id in their own localStorage key.
+  const SIZE_KEY = 'dashGridSizes_v1';
+  function loadSizes() {
+    try { return JSON.parse(localStorage.getItem(SIZE_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function saveSizes(map) {
+    try { localStorage.setItem(SIZE_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+  function hasCustomSizes() {
+    const m = loadSizes();
+    return m && Object.keys(m).length > 0;
+  }
+
+  // The resizable target inside a panel: its chart canvas wrapper, or the
+  // Recent Activity scroll list. Returns {box, panelId, defaultH} or null.
+  function resizableTarget(panel) {
+    const panelId = panel.dataset.panelId;
+    const canvas = panel.querySelector('canvas');
+    if (canvas) {
+      let box = canvas.closest('.chart-box');
+      if (!box) {
+        const parent = canvas.parentElement;
+        // Reuse a dedicated fixed-height wrapper (fleet/idling/dt-ratio
+        // charts already sit in one); otherwise wrap just the canvas so
+        // sibling content (legends, tabs) stays outside the resize area.
+        const dedicated = parent.children.length === 1 &&
+                          /height:\s*\d/.test(parent.getAttribute('style') || '');
+        if (dedicated) {
+          box = parent; box.classList.add('chart-box');
+        } else {
+          box = document.createElement('div');
+          box.className = 'chart-box';
+          parent.insertBefore(box, canvas);
+          box.appendChild(canvas);
+        }
+      }
+      // Default height: existing inline height, or the canvas height attr.
+      const inlineH = parseInt((box.style.height || '').replace('px', ''), 10);
+      const attrH = parseInt(canvas.getAttribute('height') || '', 10);
+      const defaultH = inlineH || attrH || 240;
+      return { box, panelId, defaultH };
+    }
+    // No canvas — the Recent Activity list is the resizable scroll area.
+    const list = panel.querySelector('#dashActivityList');
+    if (list) {
+      list.classList.add('chart-box');
+      const curMax = parseInt((list.style.maxHeight || '').replace('px', ''), 10);
+      // Switch from max-height to a real resizable height.
+      const defaultH = curMax || 280;
+      list.style.maxHeight = 'none';
+      return { box: list, panelId, defaultH };
+    }
+    return null;
+  }
+
+  function fitChart(box) {
+    const cv = box.querySelector('canvas');
+    if (cv && window.Chart) {
+      const ch = Chart.getChart(cv);
+      if (ch) ch.resize();
+    }
+  }
+
+  let saveTimer = null;
+  function setupResizable() {
+    const sizes = loadSizes();
+    panels.forEach(panel => {
+      const t = resizableTarget(panel);
+      if (!t) return;
+      // Apply saved or default height.
+      const h = sizes[t.panelId] || t.defaultH;
+      t.box.style.height = h + 'px';
+      fitChart(t.box);
+      // Observe user resizes: persist the new height + refit the chart.
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+          fitChart(t.box);
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => {
+            const cur = Math.round(t.box.getBoundingClientRect().height);
+            const m = loadSizes();
+            // Don't record a height that equals the default — that way the
+            // "Reset layout" button only appears for genuine changes, and
+            // resizing back to default clears the entry.
+            if (cur === t.defaultH) delete m[t.panelId];
+            else m[t.panelId] = cur;
+            saveSizes(m);
+            refreshResetBtn();
+          }, 250);
+        });
+        ro.observe(t.box);
+      }
+    });
+  }
+
+  // Reset every panel back to its default height and drop saved sizes.
+  function resetSizes() {
+    panels.forEach(panel => {
+      const t = resizableTarget(panel);
+      if (t) { t.box.style.height = t.defaultH + 'px'; fitChart(t.box); }
+    });
+    try { localStorage.removeItem(SIZE_KEY); } catch (e) {}
   }
 
   let saved = null;
@@ -1686,11 +1824,17 @@ async function loadIdlingWidget() {
     },
   });
 
+  // ── Make panels resizable (wrap canvases, restore saved heights) ─────
+  setupResizable();
+  refreshResetBtn();
+
   // ── Reset button ─────────────────────────────────────────────────────
+  // Restores both the default order AND the default panel heights.
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       applyOrder(defaultOrder);
       try { localStorage.removeItem(LS_KEY); } catch (e) {}
+      resetSizes();
       refreshResetBtn();
       nudgeCharts();
     });
