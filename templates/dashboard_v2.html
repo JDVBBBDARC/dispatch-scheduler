@@ -483,6 +483,12 @@
   flex: 0 0 auto;
 }
 #dashGrid .card-header:hover .dash-drag-handle { opacity: 1; color: var(--text, #222); }
+/* Each panel keeps its own (natural or resized) height instead of being
+   stretched to match its row-neighbour. Without this, resizing one chart
+   taller drags the card beside it taller too, leaving a fixed-height
+   inner list (e.g. Truck Cycle Time's open cycles) floating in empty
+   space with a squished scrollbar. */
+#dashGrid { align-items: flex-start; }
 /* Resizable chart/scroll viewport: drag the bottom edge to set the height.
    Heights persist per panel in localStorage. */
 .chart-box {
