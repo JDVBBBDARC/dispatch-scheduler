@@ -489,29 +489,39 @@
    inner list (e.g. Truck Cycle Time's open cycles) floating in empty
    space with a squished scrollbar. */
 #dashGrid { align-items: flex-start; }
-/* Resizable chart/scroll viewport: drag the bottom edge to set the height.
-   Heights persist per panel in localStorage. */
+/* Resizable chart/scroll viewport. Height is driven by a custom resize
+   bar (.chart-resizer) below the box rather than the native CSS resizer,
+   because a chart's canvas sits on top of the native bottom-right grip
+   and swallows the drag. Heights persist per panel in localStorage. */
 .chart-box {
   position: relative;
   width: 100%;
-  resize: vertical;
-  overflow: auto;
+  overflow: hidden;
   min-height: 120px;
 }
-/* Bigger, more obvious native resize grip + a hint bar at the bottom. */
-.chart-box::-webkit-resizer { background: transparent; }
-.chart-box::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 7px;
-  background:
-    radial-gradient(circle, var(--muted, #9aa) 1px, transparent 1.4px) center / 7px 7px repeat-x;
+/* Custom drag bar under each resizable panel. */
+.chart-resizer {
+  height: 12px;
+  margin-top: 2px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  color: var(--muted, #9aa);
   opacity: 0;
-  transition: opacity .15s;
-  pointer-events: none;
+  transition: opacity .15s, background .15s;
+  touch-action: none;            /* let pointer drag work on touch */
 }
-.chart-box:hover::after { opacity: .5; }
+.chart-resizer::before {
+  content: "";
+  width: 36px; height: 4px;
+  border-radius: 3px;
+  background: currentColor;
+}
+.card:hover .chart-resizer { opacity: .5; }
+.chart-resizer:hover { opacity: 1; background: rgba(0,0,0,.05); color: var(--text, #222); }
+.chart-resizer.is-resizing { opacity: 1; background: rgba(90,15,28,.12); color: #5A0F1C; }
 /* Ghost = the placeholder gap where the panel will land */
 .dash-ghost > .card {
   outline: 2px dashed #5A0F1C;
@@ -1724,9 +1734,10 @@ async function loadIdlingWidget() {
     if (list) {
       list.classList.add('chart-box');
       const curMax = parseInt((list.style.maxHeight || '').replace('px', ''), 10);
-      // Switch from max-height to a real resizable height.
+      // Switch from max-height to a real resizable height; keep scroll.
       const defaultH = curMax || 280;
       list.style.maxHeight = 'none';
+      list.style.overflowY = 'auto';
       return { box: list, panelId, defaultH };
     }
     return null;
@@ -1740,42 +1751,69 @@ async function loadIdlingWidget() {
     }
   }
 
-  let saveTimer = null;
+  function persistHeight(t) {
+    const cur = Math.round(t.box.getBoundingClientRect().height);
+    const m = loadSizes();
+    // Don't record a height that equals the default — so "Reset layout"
+    // only shows for genuine changes and dragging back to default clears it.
+    if (cur === t.defaultH) delete m[t.panelId];
+    else m[t.panelId] = cur;
+    saveSizes(m);
+    refreshResetBtn();
+  }
+
+  // Attach a custom drag bar below a panel's box. Native CSS resize is
+  // unusable here because the chart canvas covers the bottom-right grip.
+  function attachResizer(t) {
+    const bar = document.createElement('div');
+    bar.className = 'chart-resizer';
+    bar.title = 'Drag to resize';
+    // Place the bar right after the box, in the same parent.
+    t.box.parentNode.insertBefore(bar, t.box.nextSibling);
+
+    let startY = 0, startH = 0;
+    bar.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      startY = e.clientY;
+      startH = t.box.getBoundingClientRect().height;
+      bar.classList.add('is-resizing');
+      bar.setPointerCapture(e.pointerId);
+
+      const onMove = (ev) => {
+        const h = Math.max(120, Math.round(startH + (ev.clientY - startY)));
+        t.box.style.height = h + 'px';
+        fitChart(t.box);
+      };
+      const onUp = (ev) => {
+        bar.classList.remove('is-resizing');
+        try { bar.releasePointerCapture(e.pointerId); } catch (_) {}
+        bar.removeEventListener('pointermove', onMove);
+        bar.removeEventListener('pointerup', onUp);
+        persistHeight(t);
+      };
+      bar.addEventListener('pointermove', onMove);
+      bar.addEventListener('pointerup', onUp);
+    });
+  }
+
   function setupResizable() {
     const sizes = loadSizes();
     panels.forEach(panel => {
       const t = resizableTarget(panel);
       if (!t) return;
+      panel._resizeTarget = t;          // remembered for resetSizes()
       // Apply saved or default height.
       const h = sizes[t.panelId] || t.defaultH;
       t.box.style.height = h + 'px';
       fitChart(t.box);
-      // Observe user resizes: persist the new height + refit the chart.
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => {
-          fitChart(t.box);
-          clearTimeout(saveTimer);
-          saveTimer = setTimeout(() => {
-            const cur = Math.round(t.box.getBoundingClientRect().height);
-            const m = loadSizes();
-            // Don't record a height that equals the default — that way the
-            // "Reset layout" button only appears for genuine changes, and
-            // resizing back to default clears the entry.
-            if (cur === t.defaultH) delete m[t.panelId];
-            else m[t.panelId] = cur;
-            saveSizes(m);
-            refreshResetBtn();
-          }, 250);
-        });
-        ro.observe(t.box);
-      }
+      attachResizer(t);
     });
   }
 
   // Reset every panel back to its default height and drop saved sizes.
   function resetSizes() {
     panels.forEach(panel => {
-      const t = resizableTarget(panel);
+      const t = panel._resizeTarget;
       if (t) { t.box.style.height = t.defaultH + 'px'; fitChart(t.box); }
     });
     try { localStorage.removeItem(SIZE_KEY); } catch (e) {}
