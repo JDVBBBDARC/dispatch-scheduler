@@ -721,13 +721,13 @@ async function syncFromERP() {
           at 82% alpha — soft hierarchy without graphic noise. */
   const bg = dataPoints.map((d, i) => {
     if (d.is_equipment) return 'rgba(107, 114, 128, .75)';
-    if (i === 0)        return '#6B1420';
-    return 'rgba(139, 26, 43, .82)';
+    if (i === 0)        return '#3F0A14';
+    return 'rgba(90, 15, 28, .82)';
   });
   /* Borders match the bar palette so the equipment-vs-plate
      distinction reads cleanly even on low-DPR displays. */
   const borders = dataPoints.map((d) =>
-    d.is_equipment ? '#4B5563' : '#6B1420'
+    d.is_equipment ? '#4B5563' : '#3F0A14'
   );
 
   new Chart(canvas.getContext('2d'), {

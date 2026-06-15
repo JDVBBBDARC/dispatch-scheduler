@@ -39,7 +39,7 @@
 <!-- ── KPI CARDS ────────────────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
   {% set kpis = [
-    ('Total Trips',     total,                              '#8B1A2B', 'bi-truck',            '100%',  'All units'),
+    ('Total Trips',     total,                              '#5A0F1C', 'bi-truck',            '100%',  'All units'),
     ('Delivered',       by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
     ('In Transit',      by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
     ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'manual entry from receipts'),
@@ -447,7 +447,7 @@
   transition: background .12s ease;
 }
 .kpi-trip-row:hover {
-  background: rgba(139, 26, 43, 0.06);
+  background: rgba(90, 15, 28, 0.06);
 }
 .kpi-trip-row:hover .kpi-trip-row-hint {
   opacity: 1 !important;
@@ -456,15 +456,15 @@
   padding: 3px 10px;
   font-size: .75rem;
   font-weight: 600;
-  border: 1.5px solid var(--tc, #8B1A2B);
-  color: var(--tc, #8B1A2B);
+  border: 1.5px solid var(--tc, #5A0F1C);
+  color: var(--tc, #5A0F1C);
   background: transparent;
   border-radius: 20px;
   cursor: pointer;
   transition: all .2s;
 }
 .trend-btn:hover, .trend-btn.active {
-  background: var(--tc, #8B1A2B);
+  background: var(--tc, #5A0F1C);
   color: #fff;
 }
 /* ── Draggable dashboard grid ──────────────────────────────────────────── */
@@ -514,7 +514,7 @@
 .chart-box:hover::after { opacity: .5; }
 /* Ghost = the placeholder gap where the panel will land */
 .dash-ghost > .card {
-  outline: 2px dashed #8B1A2B;
+  outline: 2px dashed #5A0F1C;
   outline-offset: -2px;
   opacity: .5;
 }
@@ -807,10 +807,10 @@ function buildTrendDatasets() {
     return [{
       label: 'All Trucks',
       data: TREND_TOTAL,
-      borderColor: '#8B1A2B',
-      backgroundColor: 'rgba(139,26,43,0.12)',
+      borderColor: '#5A0F1C',
+      backgroundColor: 'rgba(90,15,28,0.12)',
       fill: true, tension: 0.4, pointRadius: 3,
-      pointBackgroundColor: '#8B1A2B', borderWidth: 2,
+      pointBackgroundColor: '#5A0F1C', borderWidth: 2,
     }];
   }
   return TREND_BY_TRUCK

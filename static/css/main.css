@@ -2,9 +2,9 @@
 
 /* ── TOKENS ──────────────────────────────────────────────────────────────── */
 :root {
-  --maroon:       #8B1A2B;
-  --maroon-dark:  #6B1420;
-  --maroon-mid:   #A52235;
+  --maroon:       #5A0F1C;
+  --maroon-dark:  #3F0A14;
+  --maroon-mid:   #7A1828;
   --maroon-pale:  #FFF0F2;
   --maroon-tint:  #F9E8EB;
   --bg:           #F5F0F0;
@@ -15,7 +15,7 @@
   --text:         #2D1515;
   --text-mid:     #5A3A3A;
   --muted:        #9A7777;
-  --shadow:       rgba(139,26,43,.10);
+  --shadow:       rgba(90,15,28,.10);
 
   /* Status colors */
   --c-pending:    #D97706;
@@ -197,7 +197,7 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
 .btn-sm { padding:4px 11px; font-size:.78rem; }
 .btn-xs { padding:2px 8px; font-size:.72rem; }
 .btn-dup { background:none; border:none; color:#adb5bd; cursor:pointer; padding:2px 4px; border-radius:4px; font-size:.78rem; line-height:1; transition:color .15s, background .15s; }
-.btn-dup:hover { color:#8B1A2B; background:#f8e8ea; }
+.btn-dup:hover { color:#5A0F1C; background:#f8e8ea; }
 .btn-dup:disabled { color:#ddd; cursor:default; }
 .btn-success { background:#16a34a; color:#fff; }
 .btn-success:hover { background:#15803d; }
@@ -250,7 +250,7 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
   background: var(--maroon); color: #fff;
   border-radius: 10px; font-size: .65rem; font-weight: 700;
   padding: 2px 7px; min-width: 20px; text-align: center; line-height: 1.2;
-  box-shadow: 0 1px 3px rgba(139, 26, 43, .35);
+  box-shadow: 0 1px 3px rgba(90, 15, 28, .35);
 }
 .truck-tab .tab-count[data-count="0"] { display: none; }
 
@@ -298,7 +298,7 @@ body { margin:0; font-family:'Barlow','Segoe UI',sans-serif; background:var(--bg
 /* Inline inputs */
 .ti { border:1px solid transparent; border-radius:4px; padding:3px 6px; font-size:.77rem; background:transparent; color:var(--text); width:100%; font-family:'Barlow',sans-serif; transition:border-color .15s, background .15s; }
 .ti:hover  { border-color:var(--border); background:var(--surface); }
-.ti:focus  { outline:none; border-color:var(--maroon); background:#fff; box-shadow:0 0 0 2px rgba(139,26,43,.12); }
+.ti:focus  { outline:none; border-color:var(--maroon); background:#fff; box-shadow:0 0 0 2px rgba(90,15,28,.12); }
 .ti-sm     { min-width:70px; max-width:90px; }
 .ti-md     { min-width:110px; max-width:150px; }
 .ti-lg     { min-width:130px; max-width:180px; }
