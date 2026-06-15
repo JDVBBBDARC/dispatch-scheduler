@@ -96,11 +96,23 @@
   </div>
 </div>
 
-<!-- ── ROW 1: AREA CHART + PIE CHART ────────────────────────────────────── -->
-<div class="row g-4 mb-4">
+<!-- ── DRAGGABLE CHART GRID ─────────────────────────────────────────────── -->
+<!-- All chart/widget panels live in ONE grid so they can be freely
+     reordered by drag-and-drop. Each panel carries a data-panel-id used
+     to save/restore the order in localStorage. The KPI cards above and
+     the trips table below stay fixed. -->
+<div class="d-flex align-items-center justify-content-end mb-2 gap-2" id="dashLayoutBar">
+  <small class="text-muted me-auto" style="font-size:.75rem;">
+    <i class="bi bi-grip-vertical"></i> Drag a chart's title bar to rearrange — your layout is saved automatically.
+  </small>
+  <button class="btn btn-sm btn-outline-secondary" id="dashLayoutReset" type="button" style="display:none;">
+    <i class="bi bi-arrow-counterclockwise"></i> Reset layout
+  </button>
+</div>
+<div class="row g-4 mb-4" id="dashGrid">
 
   <!-- Area Chart -->
-  <div class="col-lg-8">
+  <div class="col-lg-8" data-panel-id="activity-trend">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>Activity Trend &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
@@ -119,7 +131,7 @@
   </div>
 
   <!-- Pie Chart -->
-  <div class="col-lg-4">
+  <div class="col-lg-4" data-panel-id="trip-status">
     <div class="card h-100">
       <div class="card-header">
         <span class="card-title"><i class="bi bi-pie-chart-fill me-2"></i>Trip Status — {{ trend_start_str }} → {{ trend_end_str }}</span>
@@ -143,13 +155,9 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- ── ROW 2: DRIVER CHART + ABSENT CHART ───────────────────────────────── -->
-<div class="row g-4 mb-4">
 
   <!-- Top Drivers by Delivered -->
-  <div class="col-lg-7">
+  <div class="col-lg-7" data-panel-id="top-drivers">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title"><i class="bi bi-trophy-fill me-2" style="color:#D97706;"></i>Top Drivers by Delivered &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
@@ -179,7 +187,7 @@
   </div>
 
   <!-- Most Absent Drivers -->
-  <div class="col-lg-5">
+  <div class="col-lg-5" data-panel-id="absent-drivers">
     <div class="card h-100">
       <div class="card-header">
         <span class="card-title"><i class="bi bi-person-dash-fill me-2" style="color:#DC2626;"></i>Most Absent Drivers &nbsp;<small style="font-weight:400;font-size:.8rem;color:var(--muted);">{{ trend_start_str }} → {{ trend_end_str }}</small></span>
@@ -195,11 +203,9 @@
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── ROW 2.5: FLEET UTILIZATION ───────────────────────────────────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-12">
+  <!-- ── FLEET UTILIZATION ── -->
+  <div class="col-12" data-panel-id="fleet-utilization">
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title">
@@ -225,11 +231,9 @@
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── ROW 2.55: TRUCK CYCLE TIME WIDGET (Cartrack-derived) ────────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-lg-6">
+  <!-- ── TRUCK CYCLE TIME WIDGET (Cartrack-derived) ── -->
+  <div class="col-lg-6" data-panel-id="truck-cycle-time">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title">
@@ -277,7 +281,7 @@
     </div>
   </div>
 
-  <div class="col-lg-6">
+  <div class="col-lg-6" data-panel-id="idling-rate">
     <div class="card h-100">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title">
@@ -295,11 +299,9 @@
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── ROW 2.6: DRIVER / TRUCK RATIO ────────────────────────────────────── -->
-<div class="row g-4 mb-4">
-  <div class="col-12">
+  <!-- ── DRIVER / TRUCK RATIO ── -->
+  <div class="col-12" data-panel-id="driver-truck-ratio">
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <span class="card-title">
@@ -331,13 +333,9 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- ── ROW 3: TRUCK BREAKDOWN + RECENT ACTIVITY ─────────────────────────── -->
-<div class="row g-4 mb-4">
 
   <!-- Truck type breakdown -->
-  <div class="col-lg-6">
+  <div class="col-lg-6" data-panel-id="trips-by-truck-type">
     <div class="card h-100">
       <div class="card-header">
         <span class="card-title"><i class="bi bi-truck me-2"></i>Trips by Truck Type — {{ trend_start_str }} → {{ trend_end_str }}</span>
@@ -373,7 +371,7 @@
   </div>
 
   <!-- Recent Activity -->
-  <div class="col-lg-6">
+  <div class="col-lg-6" data-panel-id="recent-activity">
     <div class="card h-100">
       <div class="card-header">
         <span class="card-title"><i class="bi bi-activity me-2"></i>Recent Activity</span>
@@ -469,6 +467,34 @@
   background: var(--tc, #8B1A2B);
   color: #fff;
 }
+/* ── Draggable dashboard grid ──────────────────────────────────────────── */
+/* The whole card-header is the drag handle (filter buttons/links inside it
+   are excluded in JS so they keep working). A grip icon at the left of the
+   header is the visual affordance. */
+#dashGrid .card-header { cursor: grab; }
+#dashGrid .card-header:active { cursor: grabbing; }
+.dash-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  color: var(--muted);
+  opacity: .45;
+  transition: opacity .15s, color .15s;
+  flex: 0 0 auto;
+}
+#dashGrid .card-header:hover .dash-drag-handle { opacity: 1; color: var(--text, #222); }
+/* Ghost = the placeholder gap where the panel will land */
+.dash-ghost > .card {
+  outline: 2px dashed #8B1A2B;
+  outline-offset: -2px;
+  opacity: .5;
+}
+/* Chosen = the panel being picked up */
+.dash-chosen > .card {
+  box-shadow: 0 12px 32px rgba(0,0,0,.22) !important;
+}
+/* While dragging, dim the rest a touch so the target is obvious */
+#dashGrid.is-dragging .card:not(.dash-chosen .card) { opacity: .92; }
 </style>
 <script>
 // ── TRIPS DATA (for KPI modal) ────────────────────────────────────────────
@@ -1562,5 +1588,113 @@ async function loadIdlingWidget() {
     console.warn('idling widget load failed:', e);
   }
 }
+</script>
+
+<!-- ── DRAGGABLE DASHBOARD GRID ──────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+  const grid = document.getElementById('dashGrid');
+  if (!grid) return;
+  // localStorage key — bump the suffix if the set of panels ever changes
+  // so a stale saved order can't hide a newly-added chart.
+  const LS_KEY = 'dashGridOrder_v1';
+
+  // The panels present in the markup, in their default (markup) order.
+  const panels = Array.from(grid.querySelectorAll(':scope > [data-panel-id]'));
+  const defaultOrder = panels.map(p => p.dataset.panelId);
+
+  // ── Restore a saved order ────────────────────────────────────────────
+  // Reorder the DOM to match the saved list, but only for ids that still
+  // exist; any panel not in the saved list (e.g. a new chart we add later)
+  // stays in its default spot at the end. Canvas elements keep their
+  // Chart.js instances when moved, and we fire a resize afterwards so the
+  // responsive charts redraw at their new column width.
+  function applyOrder(order) {
+    const byId = new Map(panels.map(p => [p.dataset.panelId, p]));
+    order.forEach(id => { const el = byId.get(id); if (el) grid.appendChild(el); });
+    // Append any panels not mentioned in the saved order (preserves new ones).
+    panels.forEach(p => { if (!order.includes(p.dataset.panelId)) grid.appendChild(p); });
+  }
+
+  function currentOrder() {
+    return Array.from(grid.querySelectorAll(':scope > [data-panel-id]'))
+                .map(p => p.dataset.panelId);
+  }
+
+  function isCustom(order) {
+    return order.length !== defaultOrder.length ||
+           order.some((id, i) => id !== defaultOrder[i]);
+  }
+
+  const resetBtn = document.getElementById('dashLayoutReset');
+  function refreshResetBtn() {
+    if (resetBtn) resetBtn.style.display = isCustom(currentOrder()) ? '' : 'none';
+  }
+
+  // Charts are responsive — nudge them to recalc after a layout change.
+  function nudgeCharts() {
+    window.dispatchEvent(new Event('resize'));
+  }
+
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  if (Array.isArray(saved) && saved.length) {
+    applyOrder(saved);
+    nudgeCharts();
+  }
+  refreshResetBtn();
+
+  // ── Drag affordance ──────────────────────────────────────────────────
+  // Prepend a grip icon to each panel's card-header so the title bar
+  // reads as draggable. Injected via JS so we don't touch every header
+  // in the markup. The whole header is the handle (set below); the
+  // filter buttons / "Open page" links inside it are excluded so they
+  // keep working on click.
+  panels.forEach(p => {
+    const header = p.querySelector(':scope > .card > .card-header');
+    if (!header || header.querySelector(':scope > .dash-drag-handle')) return;
+    const h = document.createElement('span');
+    h.className = 'dash-drag-handle';
+    h.title = 'Drag to rearrange';
+    h.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+    header.insertBefore(h, header.firstChild);
+  });
+
+  // ── Init SortableJS ──────────────────────────────────────────────────
+  if (typeof Sortable === 'undefined') {
+    console.warn('SortableJS failed to load — dashboard drag disabled.');
+    return;
+  }
+  Sortable.create(grid, {
+    handle: '.card-header',
+    // Clicks on interactive elements inside the header must NOT start a
+    // drag — let their native click through instead.
+    filter: 'button, a, input, select, label, .trend-btn',
+    preventOnFilter: false,
+    draggable: '[data-panel-id]',
+    animation: 160,
+    ghostClass: 'dash-ghost',
+    chosenClass: 'dash-chosen',
+    onStart: () => grid.classList.add('is-dragging'),
+    onEnd: () => {
+      grid.classList.remove('is-dragging');
+      const order = currentOrder();
+      try { localStorage.setItem(LS_KEY, JSON.stringify(order)); } catch (e) {}
+      refreshResetBtn();
+      nudgeCharts();
+    },
+  });
+
+  // ── Reset button ─────────────────────────────────────────────────────
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      applyOrder(defaultOrder);
+      try { localStorage.removeItem(LS_KEY); } catch (e) {}
+      refreshResetBtn();
+      nudgeCharts();
+    });
+  }
+})();
 </script>
 {% endblock %}
