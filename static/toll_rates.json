@@ -31,7 +31,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Balintawak": {
         "Mindanao Avenue": 85.0,
@@ -62,7 +63,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Karuhatan": {
         "Balintawak": 85.0,
@@ -93,7 +95,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Valenzuela": {
         "Balintawak": 85.0,
@@ -124,7 +127,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Meycauayan": {
         "Balintawak": 85.0,
@@ -155,7 +159,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Marilao": {
         "Balintawak": 85.0,
@@ -186,7 +191,8 @@
         "Bamban (New Clark City)": 521.0,
         "Concepcion": 545.0,
         "Tarlac": 670.0,
-        "Hacienda Luisita": 638.0
+        "Hacienda Luisita": 638.0,
+        "Lingunan": 85.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 96.0,
@@ -217,7 +223,8 @@
         "Bamban (New Clark City)": 425.0,
         "Concepcion": 449.0,
         "Tarlac": 574.0,
-        "Hacienda Luisita": 542.0
+        "Hacienda Luisita": 542.0,
+        "Lingunan": 96.0
       },
       "Bocaue": {
         "Balintawak": 105.0,
@@ -248,7 +255,8 @@
         "Bamban (New Clark City)": 415.0,
         "Concepcion": 439.0,
         "Tarlac": 564.0,
-        "Hacienda Luisita": 532.0
+        "Hacienda Luisita": 532.0,
+        "Lingunan": 105.0
       },
       "Tambubong": {
         "Balintawak": 110.0,
@@ -279,7 +287,8 @@
         "Bamban (New Clark City)": 410.0,
         "Concepcion": 434.0,
         "Tarlac": 559.0,
-        "Hacienda Luisita": 527.0
+        "Hacienda Luisita": 527.0,
+        "Lingunan": 110.0
       },
       "Balagtas": {
         "Balintawak": 136.0,
@@ -310,7 +319,8 @@
         "Bamban (New Clark City)": 385.0,
         "Concepcion": 409.0,
         "Tarlac": 534.0,
-        "Hacienda Luisita": 502.0
+        "Hacienda Luisita": 502.0,
+        "Lingunan": 136.0
       },
       "Tabang": {
         "Balintawak": 157.0,
@@ -322,7 +332,8 @@
         "Ciudad de Victoria": 61.0,
         "Bocaue": 52.0,
         "Tambubong": 47.0,
-        "Balagtas": 21.0
+        "Balagtas": 21.0,
+        "Lingunan": 157.0
       },
       "Sta. Rita": {
         "Balintawak": 164.0,
@@ -352,7 +363,8 @@
         "Bamban (New Clark City)": 356.0,
         "Concepcion": 380.0,
         "Tarlac": 505.0,
-        "Hacienda Luisita": 473.0
+        "Hacienda Luisita": 473.0,
+        "Lingunan": 164.0
       },
       "Pulilan": {
         "Balintawak": 202.0,
@@ -382,7 +394,8 @@
         "Bamban (New Clark City)": 319.0,
         "Concepcion": 343.0,
         "Tarlac": 468.0,
-        "Hacienda Luisita": 436.0
+        "Hacienda Luisita": 436.0,
+        "Lingunan": 202.0
       },
       "San Simon": {
         "Balintawak": 266.0,
@@ -412,7 +425,8 @@
         "Bamban (New Clark City)": 255.0,
         "Concepcion": 279.0,
         "Tarlac": 404.0,
-        "Hacienda Luisita": 372.0
+        "Hacienda Luisita": 372.0,
+        "Lingunan": 266.0
       },
       "San Fernando": {
         "Balintawak": 314.0,
@@ -442,7 +456,8 @@
         "Bamban (New Clark City)": 206.0,
         "Concepcion": 230.0,
         "Tarlac": 355.0,
-        "Hacienda Luisita": 323.0
+        "Hacienda Luisita": 323.0,
+        "Lingunan": 314.0
       },
       "Mexico": {
         "Balintawak": 353.0,
@@ -472,7 +487,8 @@
         "Bamban (New Clark City)": 167.0,
         "Concepcion": 191.0,
         "Tarlac": 316.0,
-        "Hacienda Luisita": 284.0
+        "Hacienda Luisita": 284.0,
+        "Lingunan": 353.0
       },
       "Angeles": {
         "Balintawak": 399.0,
@@ -502,7 +518,8 @@
         "Bamban (New Clark City)": 121.0,
         "Concepcion": 145.0,
         "Tarlac": 270.0,
-        "Hacienda Luisita": 238.0
+        "Hacienda Luisita": 238.0,
+        "Lingunan": 399.0
       },
       "Dau": {
         "Balintawak": 411.0,
@@ -533,7 +550,8 @@
         "Concepcion": 134.0,
         "Tarlac": 259.0,
         "Hacienda Luisita": 227.0,
-        "Sta. Ines": 40
+        "Sta. Ines": 40,
+        "Lingunan": 411.0
       },
       "Tipo/SFEX": {
         "Balintawak": 857.0,
@@ -565,7 +583,8 @@
         "Concepcion": 523.0,
         "Tarlac": 647.0,
         "Hacienda Luisita": 615.0,
-        "Sta. Ines": 47
+        "Sta. Ines": 47,
+        "Lingunan": 857.0
       },
       "Dinalupihan": {
         "Balintawak": 731.0,
@@ -596,7 +615,8 @@
         "Concepcion": 397.0,
         "Tarlac": 521.0,
         "Hacienda Luisita": 489.0,
-        "Sta. Ines": 126
+        "Sta. Ines": 126,
+        "Lingunan": 731.0
       },
       "Floridablanca": {
         "Balintawak": 608.0,
@@ -627,7 +647,8 @@
         "Concepcion": 274.0,
         "Tarlac": 398.0,
         "Hacienda Luisita": 366.0,
-        "Sta. Ines": 249
+        "Sta. Ines": 249,
+        "Lingunan": 608.0
       },
       "Porac": {
         "Balintawak": 519.0,
@@ -658,7 +679,8 @@
         "Concepcion": 184.0,
         "Tarlac": 308.0,
         "Hacienda Luisita": 276.0,
-        "Sta. Ines": 339
+        "Sta. Ines": 339,
+        "Lingunan": 519.0
       },
       "Clark South": {
         "Balintawak": 451.0,
@@ -689,7 +711,8 @@
         "Concepcion": 116.0,
         "Tarlac": 241.0,
         "Hacienda Luisita": 209.0,
-        "Sta. Ines": 406
+        "Sta. Ines": 406,
+        "Lingunan": 451.0
       },
       "Mabalacat": {
         "Balintawak": 440.0,
@@ -720,7 +743,8 @@
         "Concepcion": 105.0,
         "Tarlac": 230.0,
         "Hacienda Luisita": 198.0,
-        "Sta. Ines": 417
+        "Sta. Ines": 417,
+        "Lingunan": 440.0
       },
       "Clark North": {
         "Balintawak": 467.0,
@@ -751,7 +775,8 @@
         "Concepcion": 78.0,
         "Tarlac": 203.0,
         "Hacienda Luisita": 171.0,
-        "Sta. Ines": 444
+        "Sta. Ines": 444,
+        "Lingunan": 467.0
       },
       "Dolores": {
         "Balintawak": 477.0,
@@ -782,7 +807,8 @@
         "Concepcion": 68.0,
         "Tarlac": 193.0,
         "Hacienda Luisita": 160.0,
-        "Sta. Ines": 454
+        "Sta. Ines": 454,
+        "Lingunan": 477.0
       },
       "Bamban (New Clark City)": {
         "Balintawak": 521.0,
@@ -813,7 +839,8 @@
         "Concepcion": 25.0,
         "Tarlac": 149.0,
         "Hacienda Luisita": 117.0,
-        "Sta. Ines": 498
+        "Sta. Ines": 498,
+        "Lingunan": 521.0
       },
       "Concepcion": {
         "Balintawak": 545.0,
@@ -844,7 +871,8 @@
         "Bamban (New Clark City)": 25.0,
         "Tarlac": 124.0,
         "Hacienda Luisita": 92.0,
-        "Sta. Ines": 523
+        "Sta. Ines": 523,
+        "Lingunan": 545.0
       },
       "Tarlac": {
         "Balintawak": 670.0,
@@ -875,7 +903,8 @@
         "Bamban (New Clark City)": 149.0,
         "Concepcion": 124.0,
         "Hacienda Luisita": 32.0,
-        "Sta. Ines": 647
+        "Sta. Ines": 647,
+        "Lingunan": 670.0
       },
       "Hacienda Luisita": {
         "Balintawak": 638.0,
@@ -906,7 +935,8 @@
         "Bamban (New Clark City)": 117.0,
         "Concepcion": 92.0,
         "Tarlac": 32.0,
-        "Sta. Ines": 615
+        "Sta. Ines": 615,
+        "Lingunan": 638.0
       },
       "Sta. Ines": {
         "Tipo/SFEX": 47,
@@ -922,6 +952,38 @@
         "Hacienda Luisita": 615,
         "Tarlac": 647,
         "Dau": 40
+      },
+      "Lingunan": {
+        "Balintawak": 85.0,
+        "Mindanao Avenue": 85.0,
+        "Karuhatan": 85.0,
+        "Meycauayan": 85.0,
+        "Marilao": 85.0,
+        "Ciudad de Victoria": 96.0,
+        "Bocaue": 105.0,
+        "Tambubong": 110.0,
+        "Balagtas": 136.0,
+        "Tabang": 157.0,
+        "Sta. Rita": 164.0,
+        "Pulilan": 202.0,
+        "San Simon": 266.0,
+        "San Fernando": 314.0,
+        "Mexico": 353.0,
+        "Angeles": 399.0,
+        "Dau": 411.0,
+        "Tipo/SFEX": 857.0,
+        "Dinalupihan": 731.0,
+        "Floridablanca": 608.0,
+        "Porac": 519.0,
+        "Clark South": 451.0,
+        "Mabalacat": 440.0,
+        "Clark North": 467.0,
+        "Dolores": 477.0,
+        "Bamban (New Clark City)": 521.0,
+        "Concepcion": 545.0,
+        "Tarlac": 670.0,
+        "Hacienda Luisita": 638.0,
+        "Valenzuela": 85.0
       }
     },
     "Class 2": {
@@ -954,7 +1016,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Balintawak": {
         "Mindanao Avenue": 211.0,
@@ -985,7 +1048,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Karuhatan": {
         "Balintawak": 211.0,
@@ -1016,7 +1080,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Valenzuela": {
         "Balintawak": 211.0,
@@ -1047,7 +1112,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Meycauayan": {
         "Balintawak": 211.0,
@@ -1078,7 +1144,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Marilao": {
         "Balintawak": 211.0,
@@ -1109,7 +1176,8 @@
         "Bamban (New Clark City)": 1261.0,
         "Concepcion": 1310.0,
         "Tarlac": 1559.0,
-        "Hacienda Luisita": 1494.0
+        "Hacienda Luisita": 1494.0,
+        "Lingunan": 211.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 240.0,
@@ -1140,7 +1208,8 @@
         "Bamban (New Clark City)": 1021.0,
         "Concepcion": 1070.0,
         "Tarlac": 1319.0,
-        "Hacienda Luisita": 1254.0
+        "Hacienda Luisita": 1254.0,
+        "Lingunan": 240.0
       },
       "Bocaue": {
         "Balintawak": 263.0,
@@ -1171,7 +1240,8 @@
         "Bamban (New Clark City)": 998.0,
         "Concepcion": 1047.0,
         "Tarlac": 1296.0,
-        "Hacienda Luisita": 1231.0
+        "Hacienda Luisita": 1231.0,
+        "Lingunan": 263.0
       },
       "Tambubong": {
         "Balintawak": 275.0,
@@ -1202,7 +1272,8 @@
         "Bamban (New Clark City)": 986.0,
         "Concepcion": 1035.0,
         "Tarlac": 1284.0,
-        "Hacienda Luisita": 1219.0
+        "Hacienda Luisita": 1219.0,
+        "Lingunan": 275.0
       },
       "Balagtas": {
         "Balintawak": 340.0,
@@ -1233,7 +1304,8 @@
         "Bamban (New Clark City)": 921.0,
         "Concepcion": 970.0,
         "Tarlac": 1219.0,
-        "Hacienda Luisita": 1154.0
+        "Hacienda Luisita": 1154.0,
+        "Lingunan": 340.0
       },
       "Tabang": {
         "Balintawak": 392.0,
@@ -1245,7 +1317,8 @@
         "Ciudad de Victoria": 152.0,
         "Bocaue": 129.0,
         "Tambubong": 117.0,
-        "Balagtas": 52.0
+        "Balagtas": 52.0,
+        "Lingunan": 392.0
       },
       "Sta. Rita": {
         "Balintawak": 411.0,
@@ -1275,7 +1348,8 @@
         "Bamban (New Clark City)": 850.0,
         "Concepcion": 899.0,
         "Tarlac": 1148.0,
-        "Hacienda Luisita": 1083.0
+        "Hacienda Luisita": 1083.0,
+        "Lingunan": 411.0
       },
       "Pulilan": {
         "Balintawak": 504.0,
@@ -1305,7 +1379,8 @@
         "Bamban (New Clark City)": 757.0,
         "Concepcion": 806.0,
         "Tarlac": 1055.0,
-        "Hacienda Luisita": 990.0
+        "Hacienda Luisita": 990.0,
+        "Lingunan": 504.0
       },
       "San Simon": {
         "Balintawak": 664.0,
@@ -1335,7 +1410,8 @@
         "Bamban (New Clark City)": 597.0,
         "Concepcion": 646.0,
         "Tarlac": 895.0,
-        "Hacienda Luisita": 830.0
+        "Hacienda Luisita": 830.0,
+        "Lingunan": 664.0
       },
       "San Fernando": {
         "Balintawak": 786.0,
@@ -1365,7 +1441,8 @@
         "Bamban (New Clark City)": 475.0,
         "Concepcion": 524.0,
         "Tarlac": 773.0,
-        "Hacienda Luisita": 708.0
+        "Hacienda Luisita": 708.0,
+        "Lingunan": 786.0
       },
       "Mexico": {
         "Balintawak": 883.0,
@@ -1395,7 +1472,8 @@
         "Bamban (New Clark City)": 378.0,
         "Concepcion": 427.0,
         "Tarlac": 676.0,
-        "Hacienda Luisita": 611.0
+        "Hacienda Luisita": 611.0,
+        "Lingunan": 883.0
       },
       "Angeles": {
         "Balintawak": 998.0,
@@ -1425,7 +1503,8 @@
         "Bamban (New Clark City)": 263.0,
         "Concepcion": 312.0,
         "Tarlac": 561.0,
-        "Hacienda Luisita": 496.0
+        "Hacienda Luisita": 496.0,
+        "Lingunan": 998.0
       },
       "Dau": {
         "Balintawak": 1026.0,
@@ -1456,7 +1535,8 @@
         "Concepcion": 283.0,
         "Tarlac": 532.0,
         "Hacienda Luisita": 467.0,
-        "Sta. Ines": 80
+        "Sta. Ines": 80,
+        "Lingunan": 1026.0
       },
       "Tipo/SFEX": {
         "Balintawak": 1956.0,
@@ -1488,7 +1568,8 @@
         "Concepcion": 1068.0,
         "Tarlac": 1317.0,
         "Hacienda Luisita": 1253.0,
-        "Sta. Ines": 94
+        "Sta. Ines": 94,
+        "Lingunan": 1956.0
       },
       "Dinalupihan": {
         "Balintawak": 1682.0,
@@ -1519,7 +1600,8 @@
         "Concepcion": 793.0,
         "Tarlac": 1042.0,
         "Hacienda Luisita": 978.0,
-        "Sta. Ines": 252
+        "Sta. Ines": 252,
+        "Lingunan": 1682.0
       },
       "Floridablanca": {
         "Balintawak": 1436.0,
@@ -1550,7 +1632,8 @@
         "Concepcion": 548.0,
         "Tarlac": 796.0,
         "Hacienda Luisita": 732.0,
-        "Sta. Ines": 498
+        "Sta. Ines": 498,
+        "Lingunan": 1436.0
       },
       "Porac": {
         "Balintawak": 1256.0,
@@ -1581,7 +1664,8 @@
         "Concepcion": 368.0,
         "Tarlac": 617.0,
         "Hacienda Luisita": 552.0,
-        "Sta. Ines": 678
+        "Sta. Ines": 678,
+        "Lingunan": 1256.0
       },
       "Clark South": {
         "Balintawak": 1121.0,
@@ -1612,7 +1696,8 @@
         "Concepcion": 233.0,
         "Tarlac": 482.0,
         "Hacienda Luisita": 417.0,
-        "Sta. Ines": 812
+        "Sta. Ines": 812,
+        "Lingunan": 1121.0
       },
       "Mabalacat": {
         "Balintawak": 1099.0,
@@ -1643,7 +1728,8 @@
         "Concepcion": 211.0,
         "Tarlac": 460.0,
         "Hacienda Luisita": 395.0,
-        "Sta. Ines": 834
+        "Sta. Ines": 834,
+        "Lingunan": 1099.0
       },
       "Clark North": {
         "Balintawak": 1153.0,
@@ -1674,7 +1760,8 @@
         "Concepcion": 157.0,
         "Tarlac": 405.0,
         "Hacienda Luisita": 341.0,
-        "Sta. Ines": 888
+        "Sta. Ines": 888,
+        "Lingunan": 1153.0
       },
       "Dolores": {
         "Balintawak": 1173.0,
@@ -1705,7 +1792,8 @@
         "Concepcion": 137.0,
         "Tarlac": 385.0,
         "Hacienda Luisita": 321.0,
-        "Sta. Ines": 908
+        "Sta. Ines": 908,
+        "Lingunan": 1173.0
       },
       "Bamban (New Clark City)": {
         "Balintawak": 1261.0,
@@ -1736,7 +1824,8 @@
         "Concepcion": 49.0,
         "Tarlac": 298.0,
         "Hacienda Luisita": 234.0,
-        "Sta. Ines": 996
+        "Sta. Ines": 996,
+        "Lingunan": 1261.0
       },
       "Concepcion": {
         "Balintawak": 1310.0,
@@ -1767,7 +1856,8 @@
         "Bamban (New Clark City)": 49.0,
         "Tarlac": 249.0,
         "Hacienda Luisita": 184.0,
-        "Sta. Ines": 1046
+        "Sta. Ines": 1046,
+        "Lingunan": 1310.0
       },
       "Tarlac": {
         "Balintawak": 1559.0,
@@ -1798,7 +1888,8 @@
         "Bamban (New Clark City)": 298.0,
         "Concepcion": 249.0,
         "Hacienda Luisita": 64.0,
-        "Sta. Ines": 1294
+        "Sta. Ines": 1294,
+        "Lingunan": 1559.0
       },
       "Hacienda Luisita": {
         "Balintawak": 1494.0,
@@ -1829,7 +1920,8 @@
         "Bamban (New Clark City)": 234.0,
         "Concepcion": 184.0,
         "Tarlac": 64.0,
-        "Sta. Ines": 1230
+        "Sta. Ines": 1230,
+        "Lingunan": 1494.0
       },
       "Sta. Ines": {
         "Tipo/SFEX": 94,
@@ -1845,6 +1937,38 @@
         "Hacienda Luisita": 1230,
         "Tarlac": 1294,
         "Dau": 80
+      },
+      "Lingunan": {
+        "Balintawak": 211.0,
+        "Mindanao Avenue": 211.0,
+        "Karuhatan": 211.0,
+        "Meycauayan": 211.0,
+        "Marilao": 211.0,
+        "Ciudad de Victoria": 240.0,
+        "Bocaue": 263.0,
+        "Tambubong": 275.0,
+        "Balagtas": 340.0,
+        "Tabang": 392.0,
+        "Sta. Rita": 411.0,
+        "Pulilan": 504.0,
+        "San Simon": 664.0,
+        "San Fernando": 786.0,
+        "Mexico": 883.0,
+        "Angeles": 998.0,
+        "Dau": 1026.0,
+        "Tipo/SFEX": 1956.0,
+        "Dinalupihan": 1682.0,
+        "Floridablanca": 1436.0,
+        "Porac": 1256.0,
+        "Clark South": 1121.0,
+        "Mabalacat": 1099.0,
+        "Clark North": 1153.0,
+        "Dolores": 1173.0,
+        "Bamban (New Clark City)": 1261.0,
+        "Concepcion": 1310.0,
+        "Tarlac": 1559.0,
+        "Hacienda Luisita": 1494.0,
+        "Valenzuela": 211.0
       }
     },
     "Class 3": {
@@ -1877,7 +2001,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Balintawak": {
         "Mindanao Avenue": 254.0,
@@ -1908,7 +2033,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Karuhatan": {
         "Balintawak": 254.0,
@@ -1939,7 +2065,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Valenzuela": {
         "Balintawak": 254.0,
@@ -1970,7 +2097,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Meycauayan": {
         "Balintawak": 254.0,
@@ -2001,7 +2129,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Marilao": {
         "Balintawak": 254.0,
@@ -2032,7 +2161,8 @@
         "Bamban (New Clark City)": 1561.0,
         "Concepcion": 1635.0,
         "Tarlac": 2008.0,
-        "Hacienda Luisita": 1912.0
+        "Hacienda Luisita": 1912.0,
+        "Lingunan": 254.0
       },
       "Ciudad de Victoria": {
         "Balintawak": 288.0,
@@ -2063,7 +2193,8 @@
         "Bamban (New Clark City)": 1273.0,
         "Concepcion": 1347.0,
         "Tarlac": 1720.0,
-        "Hacienda Luisita": 1624.0
+        "Hacienda Luisita": 1624.0,
+        "Lingunan": 288.0
       },
       "Bocaue": {
         "Balintawak": 315.0,
@@ -2094,7 +2225,8 @@
         "Bamban (New Clark City)": 1245.0,
         "Concepcion": 1319.0,
         "Tarlac": 1692.0,
-        "Hacienda Luisita": 1596.0
+        "Hacienda Luisita": 1596.0,
+        "Lingunan": 315.0
       },
       "Tambubong": {
         "Balintawak": 330.0,
@@ -2125,7 +2257,8 @@
         "Bamban (New Clark City)": 1230.0,
         "Concepcion": 1304.0,
         "Tarlac": 1677.0,
-        "Hacienda Luisita": 1581.0
+        "Hacienda Luisita": 1581.0,
+        "Lingunan": 330.0
       },
       "Balagtas": {
         "Balintawak": 408.0,
@@ -2156,7 +2289,8 @@
         "Bamban (New Clark City)": 1153.0,
         "Concepcion": 1227.0,
         "Tarlac": 1600.0,
-        "Hacienda Luisita": 1504.0
+        "Hacienda Luisita": 1504.0,
+        "Lingunan": 408.0
       },
       "Tabang": {
         "Balintawak": 471.0,
@@ -2168,7 +2302,8 @@
         "Ciudad de Victoria": 183.0,
         "Bocaue": 155.0,
         "Tambubong": 140.0,
-        "Balagtas": 63.0
+        "Balagtas": 63.0,
+        "Lingunan": 471.0
       },
       "Sta. Rita": {
         "Balintawak": 493.0,
@@ -2198,7 +2333,8 @@
         "Bamban (New Clark City)": 1068.0,
         "Concepcion": 1142.0,
         "Tarlac": 1515.0,
-        "Hacienda Luisita": 1419.0
+        "Hacienda Luisita": 1419.0,
+        "Lingunan": 493.0
       },
       "Pulilan": {
         "Balintawak": 605.0,
@@ -2228,7 +2364,8 @@
         "Bamban (New Clark City)": 955.0,
         "Concepcion": 1029.0,
         "Tarlac": 1402.0,
-        "Hacienda Luisita": 1306.0
+        "Hacienda Luisita": 1306.0,
+        "Lingunan": 605.0
       },
       "San Simon": {
         "Balintawak": 797.0,
@@ -2258,7 +2395,8 @@
         "Bamban (New Clark City)": 764.0,
         "Concepcion": 838.0,
         "Tarlac": 1211.0,
-        "Hacienda Luisita": 1115.0
+        "Hacienda Luisita": 1115.0,
+        "Lingunan": 797.0
       },
       "San Fernando": {
         "Balintawak": 943.0,
@@ -2288,7 +2426,8 @@
         "Bamban (New Clark City)": 618.0,
         "Concepcion": 692.0,
         "Tarlac": 1065.0,
-        "Hacienda Luisita": 969.0
+        "Hacienda Luisita": 969.0,
+        "Lingunan": 943.0
       },
       "Mexico": {
         "Balintawak": 1059.0,
@@ -2318,7 +2457,8 @@
         "Bamban (New Clark City)": 501.0,
         "Concepcion": 575.0,
         "Tarlac": 948.0,
-        "Hacienda Luisita": 852.0
+        "Hacienda Luisita": 852.0,
+        "Lingunan": 1059.0
       },
       "Angeles": {
         "Balintawak": 1198.0,
@@ -2348,7 +2488,8 @@
         "Bamban (New Clark City)": 363.0,
         "Concepcion": 437.0,
         "Tarlac": 810.0,
-        "Hacienda Luisita": 714.0
+        "Hacienda Luisita": 714.0,
+        "Lingunan": 1198.0
       },
       "Dau": {
         "Balintawak": 1232.0,
@@ -2379,7 +2520,8 @@
         "Concepcion": 403.0,
         "Tarlac": 776.0,
         "Hacienda Luisita": 680.0,
-        "Sta. Ines": 120
+        "Sta. Ines": 120,
+        "Lingunan": 1232.0
       },
       "Tipo/SFEX": {
         "Balintawak": 2569.0,
@@ -2411,7 +2553,8 @@
         "Concepcion": 1567.0,
         "Tarlac": 1940.0,
         "Hacienda Luisita": 1843.0,
-        "Sta. Ines": 141
+        "Sta. Ines": 141,
+        "Lingunan": 2569.0
       },
       "Dinalupihan": {
         "Balintawak": 2193.0,
@@ -2442,7 +2585,8 @@
         "Concepcion": 1190.0,
         "Tarlac": 1563.0,
         "Hacienda Luisita": 1467.0,
-        "Sta. Ines": 378
+        "Sta. Ines": 378,
+        "Lingunan": 2193.0
       },
       "Floridablanca": {
         "Balintawak": 1824.0,
@@ -2473,7 +2617,8 @@
         "Concepcion": 821.0,
         "Tarlac": 1195.0,
         "Hacienda Luisita": 1098.0,
-        "Sta. Ines": 747
+        "Sta. Ines": 747,
+        "Lingunan": 1824.0
       },
       "Porac": {
         "Balintawak": 1555.0,
@@ -2504,7 +2649,8 @@
         "Concepcion": 552.0,
         "Tarlac": 925.0,
         "Hacienda Luisita": 829.0,
-        "Sta. Ines": 1017
+        "Sta. Ines": 1017,
+        "Lingunan": 1555.0
       },
       "Clark South": {
         "Balintawak": 1352.0,
@@ -2535,7 +2681,8 @@
         "Concepcion": 349.0,
         "Tarlac": 722.0,
         "Hacienda Luisita": 626.0,
-        "Sta. Ines": 1218
+        "Sta. Ines": 1218,
+        "Lingunan": 1352.0
       },
       "Mabalacat": {
         "Balintawak": 1319.0,
@@ -2566,7 +2713,8 @@
         "Concepcion": 316.0,
         "Tarlac": 689.0,
         "Hacienda Luisita": 593.0,
-        "Sta. Ines": 1251
+        "Sta. Ines": 1251,
+        "Lingunan": 1319.0
       },
       "Clark North": {
         "Balintawak": 1400.0,
@@ -2597,7 +2745,8 @@
         "Concepcion": 235.0,
         "Tarlac": 608.0,
         "Hacienda Luisita": 512.0,
-        "Sta. Ines": 1332
+        "Sta. Ines": 1332,
+        "Lingunan": 1400.0
       },
       "Dolores": {
         "Balintawak": 1430.0,
@@ -2628,7 +2777,8 @@
         "Concepcion": 205.0,
         "Tarlac": 578.0,
         "Hacienda Luisita": 481.0,
-        "Sta. Ines": 1362
+        "Sta. Ines": 1362,
+        "Lingunan": 1430.0
       },
       "Bamban (New Clark City)": {
         "Balintawak": 1561.0,
@@ -2659,7 +2809,8 @@
         "Concepcion": 74.0,
         "Tarlac": 447.0,
         "Hacienda Luisita": 350.0,
-        "Sta. Ines": 1494
+        "Sta. Ines": 1494,
+        "Lingunan": 1561.0
       },
       "Concepcion": {
         "Balintawak": 1635.0,
@@ -2690,7 +2841,8 @@
         "Bamban (New Clark City)": 74.0,
         "Tarlac": 373.0,
         "Hacienda Luisita": 277.0,
-        "Sta. Ines": 1569
+        "Sta. Ines": 1569,
+        "Lingunan": 1635.0
       },
       "Tarlac": {
         "Balintawak": 2008.0,
@@ -2721,7 +2873,8 @@
         "Bamban (New Clark City)": 447.0,
         "Concepcion": 373.0,
         "Hacienda Luisita": 96.0,
-        "Sta. Ines": 1941
+        "Sta. Ines": 1941,
+        "Lingunan": 2008.0
       },
       "Hacienda Luisita": {
         "Balintawak": 1912.0,
@@ -2752,7 +2905,8 @@
         "Bamban (New Clark City)": 350.0,
         "Concepcion": 277.0,
         "Tarlac": 96.0,
-        "Sta. Ines": 1845
+        "Sta. Ines": 1845,
+        "Lingunan": 1912.0
       },
       "Sta. Ines": {
         "Tipo/SFEX": 141,
@@ -2768,6 +2922,38 @@
         "Hacienda Luisita": 1845,
         "Tarlac": 1941,
         "Dau": 120
+      },
+      "Lingunan": {
+        "Balintawak": 254.0,
+        "Mindanao Avenue": 254.0,
+        "Karuhatan": 254.0,
+        "Meycauayan": 254.0,
+        "Marilao": 254.0,
+        "Ciudad de Victoria": 288.0,
+        "Bocaue": 315.0,
+        "Tambubong": 330.0,
+        "Balagtas": 408.0,
+        "Tabang": 471.0,
+        "Sta. Rita": 493.0,
+        "Pulilan": 605.0,
+        "San Simon": 797.0,
+        "San Fernando": 943.0,
+        "Mexico": 1059.0,
+        "Angeles": 1198.0,
+        "Dau": 1232.0,
+        "Tipo/SFEX": 2569.0,
+        "Dinalupihan": 2193.0,
+        "Floridablanca": 1824.0,
+        "Porac": 1555.0,
+        "Clark South": 1352.0,
+        "Mabalacat": 1319.0,
+        "Clark North": 1400.0,
+        "Dolores": 1430.0,
+        "Bamban (New Clark City)": 1561.0,
+        "Concepcion": 1635.0,
+        "Tarlac": 2008.0,
+        "Hacienda Luisita": 1912.0,
+        "Valenzuela": 254.0
       }
     }
   },
