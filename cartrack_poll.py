@@ -225,6 +225,19 @@ def _strip_toll_prefix(geofence_name):
         "Toll - san fernndo"      -> "San Fernando"       (fuzzy, typo tolerant)
         "Toll - C-5 Road"         -> "C-5"                (fuzzy)
     """
+    # First pass — keep direction words and booth numbers intact, then try
+    # a HIGH-confidence resolve. This lets multi-word canonical names like
+    # "Clark North" / "Clark South" match BEFORE the direction-strip below
+    # would collapse them both to a bare "Clark" (which isn't a matrix key).
+    base = _strip_prefix_suffix(geofence_name)
+    if not base:
+        return ''
+    canonical, conf = _resolve_plaza(base)
+    if canonical and conf >= 0.95:        # exact / normalised / alias only
+        return canonical
+
+    # Second pass — also drop direction tags + booth numbers, e.g.
+    # "Meycauayan 2" -> "Meycauayan", "Dau 1" -> "Dau".
     cleaned = _clean_plaza_name(geofence_name)
     if not cleaned:
         return ''
@@ -232,10 +245,10 @@ def _strip_toll_prefix(geofence_name):
     return canonical if canonical else cleaned
 
 
-def _clean_plaza_name(geofence_name):
-    """Light surface cleanup — does NOT consult the fee matrix. Returns
-    a normalised string ready to be passed into _resolve_plaza for the
-    actual matching."""
+def _strip_prefix_suffix(geofence_name):
+    """Strip the 'Toll -' prefix, ' Plaza'/' Toll' suffix, and normalise
+    Sta/Sto punctuation — but KEEP direction words ('North') and booth
+    numbers ('2') so a first-pass exact match can use them."""
     import re
     if not geofence_name:
         return ''
@@ -259,19 +272,28 @@ def _clean_plaza_name(geofence_name):
             s = s[: -len(suffix)].strip()
             break
 
+    # Sta/Sto canonical form (fee matrix uses periods)
+    s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
+    s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
+    return s.strip()
+
+
+def _clean_plaza_name(geofence_name):
+    """_strip_prefix_suffix + drop direction tags / booth numbers. Returns
+    a normalised string ready to be passed into _resolve_plaza for the
+    actual matching."""
+    import re
+    s = _strip_prefix_suffix(geofence_name)
+    if not s:
+        return ''
+
     # Direction tag strip
     s = re.sub(r'\s+\d+$', '', s)
     s = re.sub(r'\s+(NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|N|S|E|W)$',
                 '', s, flags=re.IGNORECASE)
     s = re.sub(r'\s*\((NB|SB|EB|WB|NORTH|SOUTH|EAST|WEST|ENTRY|EXIT)\)$',
                 '', s, flags=re.IGNORECASE)
-    s = s.strip()
-
-    # Sta/Sto canonical form (fee matrix uses periods)
-    s = re.sub(r'\bSta\b(?!\.)', 'Sta.', s)
-    s = re.sub(r'\bSto\b(?!\.)', 'Sto.', s)
-
-    return s
+    return s.strip()
 
 
 def _normalize_for_match(name):
@@ -524,12 +546,24 @@ def _sync_manual_geofences_to_db(app=None):
     return out
 
 
+# Geofence/booth names whose canonical fee-matrix key isn't reachable by
+# cleanup + fuzzy alone (the town/exit is named differently from the
+# plaza). Keys are in _normalize_for_match() form; values must be exact
+# fee-matrix keys. Mirrors the build-time aliases in
+# integration_doc/build_toll_geofences.py.
+_PLAZA_ALIASES = {
+    'florida':  'Floridablanca',   # NLEX exit named after the town
+    'mabiga':   'Mabalacat',       # Mabalacat plaza sits in Brgy. Mabiga
+}
+
+
 def _resolve_plaza(cleaned_name, threshold=0.85):
     """Resolve a cleaned plaza name to its canonical fee-matrix key.
 
-    Three-tier matching:
+    Tiered matching:
         1. Exact case-sensitive match           (confidence = 1.0)
         2. Normalised match (accents/case/etc.) (confidence = 0.95)
+        2.5 Explicit alias (Florida->Floridablanca) (confidence = 0.95)
         3. Fuzzy SequenceMatcher ratio          (confidence = ratio)
 
     Returns (canonical_key, confidence) on success. Returns (None, 0.0)
@@ -549,6 +583,11 @@ def _resolve_plaza(cleaned_name, threshold=0.85):
     norm_target = _normalize_for_match(cleaned_name)
     if norm_target in norm_to_canonical:
         return norm_to_canonical[norm_target], 0.95
+
+    # Tier 2.5 — explicit alias (only if the target key really exists)
+    alias = _PLAZA_ALIASES.get(norm_target)
+    if alias and alias in canonical_keys:
+        return alias, 0.95
 
     # Tier 3 — fuzzy match against the normalised key set
     from difflib import SequenceMatcher
