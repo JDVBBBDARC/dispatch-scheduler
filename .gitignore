@@ -16,3 +16,6 @@ DISPATCH_SCHEDULER_SYSTEM_MANUAL_*.pdf
 ERP_INTEGRATION_SYSTEM_FLOW.pdf
 *.bak
 output.txt
+
+# Local Claude Code settings (machine-specific)
+.claude/

@@ -554,6 +554,14 @@ def _sync_manual_geofences_to_db(app=None):
 _PLAZA_ALIASES = {
     'florida':  'Floridablanca',   # NLEX exit named after the town
     'mabiga':   'Mabalacat',       # Mabalacat plaza sits in Brgy. Mabiga
+    # Fallback for a legacy bare "Clark" geofence (pre-split). The fee
+    # matrix has no plain "Clark" — only Clark South / Clark North — and
+    # fuzzy match scores too low (~0.63) to pick either, so an unsplit
+    # "Clark" crossing would otherwise log with NO fee. We bill it as
+    # Clark South (the main SCTEX Clark interchange exit). PROPER FIX:
+    # replace the single "Clark" geofence in Cartrack with the two
+    # booth-accurate ones already in toll_geofences.json.
+    'clark':    'Clark South',
 }
 
 
