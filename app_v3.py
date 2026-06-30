@@ -890,24 +890,30 @@ def dashboard():
     by_status      = {s: sum(1 for t in trips if t.status == s) for s in STATUSES}
     total_toll_fee = sum((t.toll_fee or 0) for t in trips if t.status != 'Canceled')
 
-    # GPS-detected toll today — sourced from CartrackEvent (independent
-    # of TripRecord.toll_fee). Separate KPI so dispatchers and Finance
-    # can compare what the polling worker saw vs the manual entries.
+    # GPS-detected toll — sourced from CartrackEvent (independent of
+    # TripRecord.toll_fee). Separate KPI so dispatchers and Finance can
+    # compare what the polling worker saw vs the manual entries. Computed
+    # over the SELECTED date range (same as every other KPI) so the card
+    # and its trend delta stay consistent with the rest of the dashboard.
     from sqlalchemy import func as _func
-    _today_pht_d   = ph_today()
-    _day_start_utc = datetime.combine(_today_pht_d, datetime.min.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
-    _day_end_utc   = datetime.combine(_today_pht_d, datetime.max.time()).replace(tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
-    _gps = (db.session.query(
-                _func.coalesce(_func.sum(CartrackEvent.toll_fee), 0.0),
-                _func.count(CartrackEvent.id),
-            )
-            .filter(CartrackEvent.event_type == 'trip_closed',
-                    CartrackEvent.toll_fee.isnot(None),
-                    CartrackEvent.created_at >= _day_start_utc,
-                    CartrackEvent.created_at <= _day_end_utc)
-            .first())
-    gps_toll_total = float(_gps[0] or 0)
-    gps_toll_count = int(_gps[1] or 0)
+
+    def _gps_toll_for(start_d, end_d):
+        """(sum, count) of GPS-detected tolls for a PHT date range."""
+        s = datetime.combine(start_d, datetime.min.time()).replace(
+            tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+        e = datetime.combine(end_d, datetime.max.time()).replace(
+            tzinfo=PH_TZ).astimezone(UTC_TZ).replace(tzinfo=None)
+        r = (db.session.query(
+                 _func.coalesce(_func.sum(CartrackEvent.toll_fee), 0.0),
+                 _func.count(CartrackEvent.id))
+             .filter(CartrackEvent.event_type == 'trip_closed',
+                     CartrackEvent.toll_fee.isnot(None),
+                     CartrackEvent.created_at >= s,
+                     CartrackEvent.created_at <= e)
+             .first())
+        return float(r[0] or 0), int(r[1] or 0)
+
+    gps_toll_total, gps_toll_count = _gps_toll_for(trend_start_d, trend_end_d)
     # Breakdown hours within the trend range (accumulate completed J.O.s)
     _bd_from_dt = datetime.combine(trend_start_d, datetime.min.time())
     _bd_to_dt   = datetime.combine(trend_end_d,   datetime.max.time())
@@ -918,6 +924,56 @@ def dashboard():
                         BreakdownLog.started_at <= _bd_to_dt)
                 .all())
     total_breakdown_hours = round(sum(b.duration_hours for b in _bd_logs), 1)
+
+    # ── Trend deltas: compare each KPI to the previous equal-length period ──
+    # e.g. a 14-day window compares against the 14 days immediately before it.
+    period_len   = (trend_end_d - trend_start_d).days + 1
+    prev_end_d   = trend_start_d - timedelta(days=1)
+    prev_start_d = prev_end_d - timedelta(days=period_len - 1)
+
+    _tt_id = None
+    if filter_truck != 'all':
+        _ttf = TruckTypeDef.query.filter_by(code=filter_truck).first()
+        _tt_id = _ttf.id if _ttf else None
+
+    _pq = (db.session.query(TripRecord).join(Wave)
+           .filter(Wave.date >= prev_start_d, Wave.date <= prev_end_d))
+    if _tt_id:
+        _pq = _pq.filter(Wave.truck_type_id == _tt_id)
+    prev_trips     = _pq.all()
+    prev_total     = len(prev_trips)
+    prev_by_status = {s: sum(1 for t in prev_trips if t.status == s) for s in STATUSES}
+    prev_toll_fee  = sum((t.toll_fee or 0) for t in prev_trips if t.status != 'Canceled')
+    prev_gps_total, _ = _gps_toll_for(prev_start_d, prev_end_d)
+
+    _pbd = (db.session.query(BreakdownLog)
+            .filter(BreakdownLog.started_at.isnot(None),
+                    BreakdownLog.ended_at.isnot(None),
+                    BreakdownLog.started_at >= datetime.combine(prev_start_d, datetime.min.time()),
+                    BreakdownLog.started_at <= datetime.combine(prev_end_d, datetime.max.time()))
+            .all())
+    prev_breakdown_hours = round(sum(b.duration_hours for b in _pbd), 1)
+
+    def _delta(cur, prev):
+        """Percent change vs previous period, or None when there's no
+        baseline to compare against (previous value is zero)."""
+        if not prev:
+            return None
+        return round((cur - prev) / prev * 100, 1)
+
+    # sentiment: is an INCREASE good, bad, or neutral? Drives the colour.
+    kpi_deltas = {
+        'Total Trips':     {'pct': _delta(total, prev_total),                        'sentiment': 'good_up'},
+        'Delivered':       {'pct': _delta(by_status.get('Delivered', 0),  prev_by_status.get('Delivered', 0)),  'sentiment': 'good_up'},
+        'In Transit':      {'pct': _delta(by_status.get('In Transit', 0), prev_by_status.get('In Transit', 0)), 'sentiment': 'neutral'},
+        'Toll Fee':        {'pct': _delta(total_toll_fee, prev_toll_fee),            'sentiment': 'neutral'},
+        'GPS Toll':        {'pct': _delta(gps_toll_total, prev_gps_total),           'sentiment': 'neutral'},
+        'Breakdown Hours': {'pct': _delta(total_breakdown_hours, prev_breakdown_hours), 'sentiment': 'bad_up'},
+        'Pending':         {'pct': _delta(by_status.get('Pending', 0),  prev_by_status.get('Pending', 0)),  'sentiment': 'bad_up'},
+        'Canceled':        {'pct': _delta(by_status.get('Canceled', 0), prev_by_status.get('Canceled', 0)), 'sentiment': 'bad_up'},
+    }
+    prev_period_str = f"{prev_start_d.strftime('%b %d')} – {prev_end_d.strftime('%b %d')}"
+
     by_truck    = {}
     for tt in truck_types:
         cnt = sum(1 for t in trips
@@ -1001,6 +1057,7 @@ def dashboard():
         total=total, by_status=by_status, by_truck=by_truck, total_toll_fee=total_toll_fee,
         total_breakdown_hours=total_breakdown_hours,
         gps_toll_total=gps_toll_total, gps_toll_count=gps_toll_count,
+        kpi_deltas=kpi_deltas, prev_period_str=prev_period_str,
         trend_days=trend_days, trend_counts=trend_counts,
         trend_by_truck=trend_by_truck,
         recent_changes=recent_changes,

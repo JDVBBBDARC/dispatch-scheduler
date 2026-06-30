@@ -43,7 +43,7 @@
     ('Delivered',       by_status.get('Delivered',0),       '#16A34A', 'bi-check-circle-fill', ((by_status.get('Delivered',0)/total*100)|round(1) if total else 0)|string + '%', 'completed'),
     ('In Transit',      by_status.get('In Transit',0),      '#EA580C', 'bi-arrow-right-circle-fill', ((by_status.get('In Transit',0)/total*100)|round(1) if total else 0)|string + '%', 'on the road'),
     ('Toll Fee',        total_toll_fee,                     '#0891B2', 'bi-cash-coin',         '100%',  'manual entry from receipts'),
-    ('GPS Toll',        gps_toll_total|default(0),          '#7C3AED', 'bi-broadcast',         '100%',  (gps_toll_count|default(0))|string + ' auto-detected today'),
+    ('GPS Toll',        gps_toll_total|default(0),          '#7C3AED', 'bi-broadcast',         '100%',  (gps_toll_count|default(0))|string + ' auto-detected'),
     ('Breakdown Hours', total_breakdown_hours,              '#DC2626', 'bi-tools',             '100%',  'click for J.O. details'),
     ('Pending',         by_status.get('Pending',0),         '#D97706', 'bi-hourglass-split',  ((by_status.get('Pending',0)/total*100)|round(1) if total else 0)|string + '%', 'not started'),
     ('Canceled',        by_status.get('Canceled',0),        '#6B7280', 'bi-x-circle-fill',    ((by_status.get('Canceled',0)/total*100)|round(1) if total else 0)|string + '%', 'canceled'),
@@ -62,6 +62,18 @@
                  data-raw="{{ value }}">
               {% if label == 'Toll Fee' or label == 'GPS Toll' %}₱{{ '{:,.0f}'.format(value) }}{% elif label == 'Breakdown Hours' %}{{ '%.1f'|format(value) }}<span style="font-size:1rem;font-weight:600;opacity:.7;"> hrs</span>{% else %}{{ value }}{% endif %}
             </div>
+            {# Trend delta vs the previous equal-length period #}
+            {% set dl = (kpi_deltas|default({})).get(label) %}
+            {% if dl and dl.pct is not none %}
+              {% set up = dl.pct > 0 %}{% set dn = dl.pct < 0 %}
+              {% set good = (dl.sentiment == 'good_up' and up) or (dl.sentiment == 'bad_up' and dn) %}
+              {% set bad  = (dl.sentiment == 'good_up' and dn) or (dl.sentiment == 'bad_up' and up) %}
+              {% set dcolor = '#16A34A' if good else ('#DC2626' if bad else '#9A7777') %}
+              <div title="vs previous period ({{ prev_period_str }})"
+                   style="display:inline-flex;align-items:center;gap:1px;margin-top:3px;font-size:.72rem;font-weight:700;color:{{ dcolor }};">
+                <i class="bi bi-arrow-{{ 'up' if up else ('down' if dn else 'right') }}-short" style="font-size:1rem;line-height:1;"></i>{{ dl.pct|abs }}%
+              </div>
+            {% endif %}
           </div>
           <div style="width:38px;height:38px;border-radius:10px;background:{{ color }}18;display:flex;align-items:center;justify-content:center;">
             <i class="bi {{ icon }}" style="font-size:1.1rem;color:{{ color }};"></i>
