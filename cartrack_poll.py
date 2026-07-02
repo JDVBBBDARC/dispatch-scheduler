@@ -198,9 +198,31 @@ def _get_runtime_settings(app=None):
         }
 
 
+# Toll-category geofences whose touches must be IGNORED by toll
+# detection (no entry/exit state, no CartrackEvent, no trip split).
+# Names are compared via _normalize_for_match on the RAW geofence name.
+#
+# 'toll - clark': legacy pre-split fence that overlaps the SCTEX
+# mainline near Clark. Trucks running Pulilan<->Porac drive THROUGH it
+# without using any Clark booth, which split one real trip into two
+# fragments (Pulilan->Clark + Clark->Porac). The booth-accurate
+# "Toll - Clark North"/"Toll - Clark South" fences still detect real
+# Clark exits. Ignoring it here beats deleting it in Cartrack Fleet Web
+# only in that it needs no manual Cartrack step — remove the entry if
+# the fence is ever deleted upstream.
+_IGNORED_TOLL_GEOFENCES = {
+    'toll - clark',
+}
+
+
 def _strip_toll_prefix(geofence_name):
     """Convert a Cartrack toll geofence name to a cleaned plaza name
     suitable for matching against the toll_rates.json fee matrix.
+
+    Returns '' for geofences listed in _IGNORED_TOLL_GEOFENCES — every
+    caller (live enter/exit paths and the backfill) guards with
+    `if plaza_name:`, so an empty string cleanly skips toll handling
+    for that fence everywhere.
 
     Two-step strategy:
       1. Light surface cleanup — strip "Toll - " prefix, drop direction
@@ -225,6 +247,9 @@ def _strip_toll_prefix(geofence_name):
         "Toll - san fernndo"      -> "San Fernando"       (fuzzy, typo tolerant)
         "Toll - C-5 Road"         -> "C-5"                (fuzzy)
     """
+    if _normalize_for_match(geofence_name) in _IGNORED_TOLL_GEOFENCES:
+        return ''
+
     # First pass — keep direction words and booth numbers intact, then try
     # a HIGH-confidence resolve. This lets multi-word canonical names like
     # "Clark North" / "Clark South" match BEFORE the direction-strip below
