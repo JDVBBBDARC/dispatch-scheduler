@@ -19,3 +19,6 @@ output.txt
 
 # Local Claude Code settings (machine-specific)
 .claude/
+
+# Local DB backups (scripts/backup_db.py)
+backups/
