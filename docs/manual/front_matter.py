@@ -121,13 +121,27 @@ def document_control_page():
                   'Document Control distribution table. Appendix '
                   'renumbered: Quick Reference is now F.2, Contact '
                   'Information F.3.'])
-    rows.append(['1.6', DOC_DATE, 'F.4',
+    rows.append(['1.6', 'June 2026', 'F.4',
                   'New Emergency Runbook appendix: the two running '
                   'processes, restart procedures, deploy + rollback '
                   'steps, and a common-failures table — written for a '
                   'non-programmer covering for the IT administrator. '
                   'Standalone Taglish copy lives at '
                   'docs/EMERGENCY_RUNBOOK.md in the repository.'])
+    rows.append(['1.7', DOC_DATE, 'B.1, B.6 (new), D.5, F.4',
+                  'GPS toll detection documented (deferred since 1.3): '
+                  'new B.6 Toll Log module — 96 booth-accurate plaza '
+                  'geofences, entry→exit trip pairing, per-class fees, '
+                  'multi-expressway routes labelled with the actual '
+                  'chain traversed; Truck Cycle Time, Reports, and '
+                  'Administration renumbered B.7–B.9. Dashboard: eight '
+                  'KPI cards documented with trend-delta badges vs the '
+                  'previous period, and the drag/resize layout '
+                  'customisation. D.5 and F.4 updated for the nightly '
+                  'automated database backup (2:00 AM PHT, 14-day '
+                  'retention) with step-by-step restore procedure. '
+                  'Manual accent colour matched to the app\'s dark '
+                  'maroon theme.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(PageBreak())

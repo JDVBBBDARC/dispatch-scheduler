@@ -62,17 +62,36 @@ def section_b():
         'truck cycle widget', image='dashboard.png', height_cm=11))
 
     out.append(h2('KPI Cards'))
-    out.append(p('Four headline indicators sit at the top of the page. '
-                  'Each card is clickable and opens a drill-down dialog '
-                  'showing the underlying trips.'))
+    out.append(p('Eight headline indicators sit at the top of the page, '
+                  'all computed over the selected date range. Each card '
+                  'is clickable: most open a drill-down dialog showing '
+                  'the underlying trips; the GPS Toll card jumps to the '
+                  'Toll Log module (B.6).'))
     kpi_rows = [
-        ['KPI', 'Definition', 'Drill-down'],
-        ['Trips Today',    'Count of TripRecord rows with a Wave date equal to today, excluding cancelled trips.', 'List of today\'s trips with status, plate, driver, client.'],
-        ['Toll Fee',       'Sum of toll_fee across today\'s non-cancelled trips. Recorded manually by the dispatcher from the physical receipt or RFID statement.', 'Same trip list with toll figures highlighted.'],
-        ['Delivered',      'Count of trips with status = Delivered.',                                                'Filtered list of completed trips only.'],
-        ['Fleet Util. %',  'Earned points divided by daily target points across all plates with at least one assignment.','Per-plate breakdown of points earned.'],
+        ['KPI', 'Definition'],
+        ['Total Trips',     'Count of trips whose Wave date falls in the selected range.'],
+        ['Delivered',       'Trips with status = Delivered, with % of total.'],
+        ['In Transit',      'Trips currently on the road.'],
+        ['Toll Fee',        'Sum of toll_fee across non-cancelled trips. Recorded manually by the dispatcher from the physical receipt or RFID statement — the billing source of truth.'],
+        ['GPS Toll',        'Sum of GPS-detected toll fees from the Toll Log (B.6) over the same range. Independent of the manual figure; used for reconciliation, never for billing.'],
+        ['Breakdown Hours', 'Total completed job-order hours from the Breakdown module in the range. Click for J.O. details.'],
+        ['Pending',         'Trips not yet started.'],
+        ['Canceled',        'Cancelled trips (excluded from toll sums).'],
     ]
-    out.append(std_table(kpi_rows, col_widths=[3.3 * cm, 6.7 * cm, 6.5 * cm]))
+    out.append(std_table(kpi_rows, col_widths=[3.3 * cm, 13.2 * cm]))
+
+    out.append(h2('Trend Deltas (vs Previous Period)'))
+    out.append(pj(
+        'Below each KPI value a small arrow badge compares the figure '
+        'to the previous period of equal length — a fourteen-day range '
+        'is compared against the fourteen days immediately before it. '
+        'The colour reflects meaning, not merely direction: an '
+        'increase in Total Trips or Delivered shows green (good), an '
+        'increase in Breakdown Hours, Pending, or Canceled shows red '
+        '(needs attention), and toll figures show neutral grey. The '
+        'badge is hidden when the previous period had no data to '
+        'compare against. Hovering over the badge shows the exact '
+        'comparison window.'))
 
     out.append(h2('Fleet Utilisation Chart'))
     out.append(pj(
@@ -104,6 +123,31 @@ def section_b():
         'seven days, and Long Cycles (those exceeding twenty-four '
         'hours). Click the <b>Open Truck Cycle Time</b> button to '
         'jump to the dedicated cycle-time analytics page.'))
+
+    out.append(h2('Customising the Layout (Drag and Resize)'))
+    out.append(pj(
+        'Every chart panel below the KPI row can be rearranged and '
+        'resized to suit the user\'s workflow:'))
+    for x in bullet_list([
+        '<b>Move a chart</b> — drag it by its title bar (a grip icon '
+        'appears at the left of the header) and drop it in the desired '
+        'position. The other panels reflow automatically.',
+        '<b>Resize height</b> — hover over the chart and drag the '
+        'horizontal bar that appears along its bottom edge.',
+        '<b>Resize width</b> — drag the vertical bar at the panel\'s '
+        'right edge; width can be set between a quarter and the full '
+        'row.',
+        '<b>Reset layout</b> — a Reset button appears at the top of '
+        'the grid once anything differs from the default; clicking it '
+        'restores the original order and sizes.',
+    ]): out.append(x)
+    out.append(callout(
+        'Per-Browser Setting',
+        'The saved layout lives in the browser (localStorage), not in '
+        'the user account. Arranging the dashboard on one computer '
+        'does not carry the arrangement to another machine, and '
+        'clearing browser data resets it.',
+        kind='info'))
 
     out.append(callout(
         'Data Quality',
@@ -464,8 +508,62 @@ def section_b():
     ]
     out.append(std_table(exp_rows, col_widths=[10 * cm, 6.5 * cm]))
 
-    # ── B.6 Truck Cycle Time ──────────────────────────────────────────
-    out.append(h1('B.6 Truck Cycle Time'))
+    # ── B.6 Toll Log ──────────────────────────────────────────────────
+    out.append(h1('B.6 Toll Log'))
+    out.append(pj(
+        'The Toll Log records toll-plaza transits detected '
+        'automatically from GPS. Geofences drawn around the physical '
+        'toll booths in the Cartrack platform (96 plazas, positioned '
+        'at booth level) report when a mapped truck passes through; '
+        'the system pairs an entry plaza with the exit plaza and '
+        'computes the expected fee from the same rate matrix the Toll '
+        'Calculator uses.'))
+    out.append(screenshot_placeholder(
+        'Toll Log — KPI cards, filters, and the paired entry→exit '
+        'trips table', image='toll_log.png', height_cm=10))
+
+    out.append(h2('What the Page Shows'))
+    for x in bullet_list([
+        '<b>KPI cards</b> — Plaza Enters and Plaza Exits over the '
+        'last seven days, Trips Auto-Filled, and Toll Fees Today.',
+        '<b>Toll Trips view</b> (default) — one row per completed '
+        'transit: date/time, plate, entry plaza, exit plaza, the '
+        'expressway(s) traversed, and the computed fee. Routes that '
+        'span more than one expressway list the actual chain, e.g. '
+        '<i>NLEX_SCTEX + NLEX_Connector</i>.',
+        '<b>Audit Detail view</b> — the raw enter/exit event stream '
+        'behind the paired trips, for verifying an individual '
+        'crossing.',
+        '<b>Filters</b> — date range, plate, and expressway; '
+        '<b>Export to Excel</b> respects the active filters.',
+    ]): out.append(x)
+
+    out.append(h2('How a Trip Is Assembled'))
+    for x in numbered_list([
+        'The truck enters any toll geofence — this opens a pending '
+        'transit and records the entry plaza.',
+        'Passing further plazas updates the running exit candidate.',
+        'When the truck has been clear of toll geofences for a '
+        'configured idle window (45 minutes), the transit closes: '
+        'entry and latest plaza become the pair, and the fee is '
+        'computed for the plate\'s vehicle class (Class 1, 2, or 3 '
+        'from Master Data).',
+        'A truck that touches only one plaza (e.g., a U-turn before '
+        'the barrier) is discarded — a single touch is not a transit.',
+    ]): out.append(x)
+
+    out.append(callout(
+        'GPS Toll Is for Reconciliation, Not Billing',
+        'The GPS-detected fee is never written into the Schedule\'s '
+        'toll_fee field. Manual encoding from physical receipts and '
+        'RFID statements remains the billing source of truth. The '
+        'value of the Toll Log is comparison: a GPS-detected transit '
+        'with no matching receipt (or the reverse) surfaces missed '
+        'encoding, toll exemptions, or RFID glitches. See SOP-004.',
+        kind='warn'))
+
+    # ── B.7 Truck Cycle Time ──────────────────────────────────────────
+    out.append(h1('B.7 Truck Cycle Time'))
     out.append(pj(
         'The Truck Cycle Time module is the fleet manager\'s live '
         'situational-awareness view. It shows, for every active plate, '
@@ -637,8 +735,8 @@ def section_b():
                   'system until this sync runs. The sync is safe to '
                   'run on demand.'))
 
-    # ── B.7 Reports ───────────────────────────────────────────────────
-    out.append(h1('B.7 Reports'))
+    # ── B.8 Reports ───────────────────────────────────────────────────
+    out.append(h1('B.8 Reports'))
     out.append(pj(
         'The Reports module produces summarised views over '
         'configurable date ranges. Reports are intended for '
@@ -660,8 +758,8 @@ def section_b():
                   '<b>Sync to Google Sheets</b> to push the data into '
                   'the configured shared sheet for finance.'))
 
-    # ── B.8 Admin / Settings ──────────────────────────────────────────
-    out.append(h1('B.8 Administration and Settings'))
+    # ── B.9 Admin / Settings ──────────────────────────────────────────
+    out.append(h1('B.9 Administration and Settings'))
     out.append(pj(
         'The Admin module is restricted by convention to the IT '
         'Administrator and the Operations Manager. It provides access '

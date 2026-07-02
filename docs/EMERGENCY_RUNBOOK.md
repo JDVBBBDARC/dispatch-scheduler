@@ -32,7 +32,8 @@ detection, toll detection, at breakdown sync.
 | Hosting | PythonAnywhere, account **jdvbbbdarc** |
 | Code | https://github.com/JDVBBBDARC/dispatch-scheduler (branch: `main`) |
 | App folder sa server | `~/dispatch-scheduler` |
-| Database | SQLite file sa loob ng app folder (`instance/` directory) |
+| Database | `dispatch.db` — SQLite file sa mismong app folder (`~/dispatch-scheduler/dispatch.db`) |
+| Mga backup ng database | `~/dispatch-scheduler/backups/` — gabi-gabing kopya, 14 araw (Section 7) |
 | **Mga credential** | `.env` file sa app folder sa PythonAnywhere (HINDI kasama sa GitHub) + PythonAnywhere Web tab → Environment variables |
 | Cartrack API password | Cartrack Fleet Web → Settings → API Settings (pwedeng i-regenerate doon) |
 | ERP (workshop) | gainersand.ph — ang breakdown records ay galing dito |
@@ -60,7 +61,7 @@ Sa PythonAnywhere **Bash console**:
 ```bash
 cd ~/dispatch-scheduler
 # BACKUP MUNA (laging gawin bago mag-pull):
-cp instance/*.db /tmp/db-backup-$(date +%Y%m%d-%H%M%S).db
+python scripts/backup_db.py    # o manual: cp dispatch.db /tmp/db-backup-$(date +%Y%m%d-%H%M%S).db
 git rev-parse HEAD > .last_safe_sha
 
 git pull
@@ -75,14 +76,39 @@ Tapos i-restart ang worker (Section 4) kung may binago sa
 ```bash
 cd ~/dispatch-scheduler
 git checkout $(cat .last_safe_sha)
-# kung kailangan ibalik ang database:
-cp /tmp/db-backup-XXXXXX.db instance/<pangalan-ng-db-file>.db
+# kung kailangan ibalik ang database — tingnan ang Section 7 sa baba
 touch /var/www/jdvbbbdarc_pythonanywhere_com_wsgi.py
 ```
 
 Tapos restart ang worker.
 
-## 7. Mga karaniwang sira at lunas
+## 7. Awtomatikong BACKUP gabi-gabi + paano mag-RESTORE
+
+May **scheduled task** na tumatakbo **2:00 AM (PHT) gabi-gabi**
+(Tasks tab, naka-set sa 18:00 UTC) na kumukuha ng kopya ng database:
+
+- Naka-save sa `~/dispatch-scheduler/backups/` bilang
+  `dispatch-YYYY-MM-DD.db.gz`
+- Awtomatikong binubura ang mas luma sa **14 araw**
+- Para i-check kung tumatakbo: `ls -lh ~/dispatch-scheduler/backups/`
+  — dapat may file na may petsa ng kagabi
+
+**Paano mag-restore kapag nasira o nabura ang database:**
+
+```bash
+cd ~/dispatch-scheduler
+ls backups/                                    # piliin ang pinakabagong maayos na petsa
+gunzip -k backups/dispatch-YYYY-MM-DD.db.gz    # i-unzip (mananatili ang .gz)
+cp dispatch.db dispatch.db.broken              # itabi ang sira para sa diagnosis
+mv backups/dispatch-YYYY-MM-DD.db dispatch.db  # ipalit ang snapshot
+touch /var/www/jdvbbbdarc_pythonanywhere_com_wsgi.py   # reload web
+```
+
+Tapos restart ang worker (Section 4). **Tandaan:** ang mga na-encode
+PAGKATAPOS ng snapshot (hanggang isang araw) ay kailangang i-encode
+ulit mula sa papel.
+
+## 8. Mga karaniwang sira at lunas
 
 | Sintomas | Malamang na dahilan | Lunas |
 |---|---|---|
@@ -92,7 +118,7 @@ Tapos restart ang worker.
 | "Database is locked" errors | Sabay na nagsusulat ang web at worker | Karaniwang self-healing. Kung tuloy-tuloy: restart worker muna, tapos Reload ng web app |
 | Login ayaw tumanggap kahit tama | Account inactive o na-lock | Ibang admin account ang gamitin → Admin page → i-activate ulit |
 
-## 8. Daily health check (1 minuto)
+## 9. Daily health check (1 minuto)
 
 1. Buksan ang Dashboard — may laman ba ang KPIs ngayong araw?
 2. Truck Cycle Time — may "last updated" ba na bago (hindi ilang oras na)?
@@ -100,7 +126,7 @@ Tapos restart ang worker.
 
 Kapag lahat ng tatlo ay OK — buhay ang buong sistema.
 
-## 9. Mga kontak
+## 10. Mga kontak
 
 | Sino | Para saan | Detalye |
 |---|---|---|

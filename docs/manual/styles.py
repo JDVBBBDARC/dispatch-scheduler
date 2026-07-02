@@ -22,12 +22,12 @@ from reportlab.pdfgen.canvas import Canvas
 COMPANY_NAME   = 'Dispatch Operations'
 DOC_TITLE      = 'Dispatch Scheduler System Manual'
 DOC_ID         = 'DSM-001'
-DOC_VERSION    = '1.6'
-DOC_DATE       = 'June 2026'
+DOC_VERSION    = '1.7'
+DOC_DATE       = 'July 2026'
 PAGE_SIZE      = A4
 
 # ── Brand palette ─────────────────────────────────────────────────────
-MAROON         = colors.HexColor('#8B1A2B')   # primary brand (matches app)
+MAROON         = colors.HexColor('#5A0F1C')   # primary brand (matches app)
 MAROON_LIGHT   = colors.HexColor('#F5E6E8')
 GREY_DARK      = colors.HexColor('#2C3E50')
 GREY_MID       = colors.HexColor('#7F8C8D')

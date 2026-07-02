@@ -131,14 +131,15 @@ def section_a():
 
     # ── A.4 Modules Overview ──────────────────────────────────────────
     out.append(h1('A.4 Modules Overview'))
-    out.append(p('The application is organised into eight functional '
+    out.append(p('The application is organised into nine functional '
                   'modules, each accessible from the left-hand sidebar.'))
 
     mod_rows = [
         ['#', 'Module', 'Primary Users', 'Purpose'],
         ['1', 'Dashboard',         'All',
-         'Snapshot of today\'s operations — trip counts, fleet utilisation, '
-         'cycle time, breakdowns, KPIs.'],
+         'Snapshot of operations over a selectable range — trip counts, '
+         'fleet utilisation, cycle time, breakdowns, KPIs with '
+         'previous-period trend deltas.'],
         ['2', 'Schedule',          'Dispatchers, Supervisors',
          'Create and edit the daily trip plan, assign personnel and plates, '
          'update trip status.'],
@@ -151,13 +152,17 @@ def section_a():
         ['5', 'Toll Calculator',   'Dispatchers',
          'Compute the expected toll fee between any two plazas on any '
          'expressway, with multi-route support.'],
-        ['6', 'Truck Cycle Time',  'Fleet Manager, Management',
+        ['6', 'Toll Log',          'Finance, Dispatchers',
+         'GPS-detected toll transits: paired entry→exit trips with '
+         'computed fees from 96 booth-accurate plaza geofences. Used to '
+         'reconcile against manually encoded receipts.'],
+        ['7', 'Truck Cycle Time',  'Fleet Manager, Management',
          'Live plate status, per-truck audit trail (visits, plaza events, '
          'in-progress stops), idling-rate ranking, multi-day cycle '
          'tracking. Configurable thresholds and admin Clear Logs.'],
-        ['7', 'Reports',           'Management, Finance',
+        ['8', 'Reports',           'Management, Finance',
          'Aggregated KPIs and trend charts across configurable date ranges.'],
-        ['8', 'Admin / Settings',  'IT, Operations Manager',
+        ['9', 'Admin / Settings',  'IT, Operations Manager',
          'User account management, password resets, environment configuration.'],
     ]
     out.append(std_table(mod_rows,

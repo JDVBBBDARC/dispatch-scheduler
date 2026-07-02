@@ -158,19 +158,27 @@ def section_d():
     # ── D.5 Backup & Recovery ─────────────────────────────────────────
     out.append(h1('D.5 Backup and Recovery'))
     out.append(pj(
-        'Operational continuity is protected by a layered backup '
-        'strategy. See SOP-005 for the full procedure. Recovery '
-        'objectives are stated below.'))
+        'The production database (a single SQLite file) is backed up '
+        'automatically every night by a scheduled task on the hosting '
+        'platform, which runs <b>scripts/backup_db.py</b> at 2:00 AM '
+        'Philippine time. The script takes an online snapshot (safe '
+        'even while the application is writing), verifies the '
+        'snapshot\'s integrity, compresses it to '
+        '<b>backups/dispatch-YYYY-MM-DD.db.gz</b>, and deletes copies '
+        'older than fourteen days. Restore steps are in the Emergency '
+        'Runbook (Appendix F.4). Recovery objectives:'))
     rto_rows = [
         ['Metric', 'Target'],
         ['Recovery Time Objective (RTO)',
          '4 hours — from incident detection to operational restore.'],
         ['Recovery Point Objective (RPO)',
-         '24 hours — at worst, one day of operational data is lost.'],
+         '24 hours — at worst, one day of operational data is lost '
+         '(nightly backup cadence).'],
         ['Backup Frequency',
-         'Daily (automated); Weekly (off-site copy).'],
+         'Daily at 2:00 AM PHT (automated scheduled task).'],
         ['Backup Retention',
-         '7 daily on-host + indefinite weekly off-site.'],
+         '14 daily snapshots on-host; download a monthly copy '
+         'off-site manually.'],
         ['Restore Testing',
          'Quarterly drill, documented in the restore-drill log.'],
     ]
@@ -520,6 +528,29 @@ def section_f():
          'first, then reload the web app.'],
     ]
     out.append(std_table(fail_rows, col_widths=[6.5 * cm, 10 * cm]))
+
+    out.append(h2('Database Backup and Restore'))
+    out.append(pj(
+        'A scheduled task backs up the database every night at 2:00 AM '
+        'Philippine time (18:00 UTC on the hosting platform\'s Tasks '
+        'tab). Snapshots live in the <b>backups/</b> folder inside the '
+        'project, named <b>dispatch-YYYY-MM-DD.db.gz</b>; the newest '
+        'fourteen days are kept. To verify it is running, check that '
+        'the newest file in that folder is from last night.'))
+    out.append(p('<b>To restore after data loss or corruption</b> — '
+                  'in a server console:'))
+    for x in numbered_list([
+        'cd ~/dispatch-scheduler',
+        'gunzip -k backups/dispatch-YYYY-MM-DD.db.gz  (pick the '
+        'newest good date)',
+        'cp dispatch.db dispatch.db.broken  (keep the damaged copy '
+        'for diagnosis)',
+        'mv backups/dispatch-YYYY-MM-DD.db dispatch.db',
+        'Reload the web app (Web tab) and restart the worker '
+        '(Tasks tab).',
+    ]): out.append(x)
+    out.append(p('Data entered after the snapshot was taken (at most '
+                  'one day) must be re-encoded from the paper trail.'))
 
     out.append(callout(
         'When in doubt, never delete',
