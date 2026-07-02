@@ -315,6 +315,31 @@ def _normalize_for_match(name):
     return s
 
 
+# Cached fee matrix — compute_toll_fee() used to re-open and re-parse
+# toll_rates.json on EVERY call (once per closed trip in the worker, once
+# per row in the recompute script). Cache it keyed on the file's mtime so
+# a rate update on disk is still picked up without restarting the
+# long-running worker.
+_TOLL_RATES_CACHE = None
+_TOLL_RATES_MTIME = None
+
+
+def _load_toll_rates():
+    """Return the parsed toll_rates.json, re-reading only when the file
+    changes on disk."""
+    global _TOLL_RATES_CACHE, _TOLL_RATES_MTIME
+    path = os.path.join(_HERE, 'static', 'toll_rates.json')
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return {}
+    if _TOLL_RATES_CACHE is None or mtime != _TOLL_RATES_MTIME:
+        with open(path, encoding='utf-8') as f:
+            _TOLL_RATES_CACHE = json.load(f)
+        _TOLL_RATES_MTIME = mtime
+    return _TOLL_RATES_CACHE
+
+
 # Cached lookup tables — built lazily from toll_rates.json on first use.
 _PLAZA_CANONICAL_KEYS = None
 _PLAZA_NORM_TO_CANONICAL = None
@@ -329,9 +354,7 @@ def _load_plaza_keys():
         return _PLAZA_CANONICAL_KEYS, _PLAZA_NORM_TO_CANONICAL
     keys = set()
     try:
-        path = os.path.join(_HERE, 'static', 'toll_rates.json')
-        with open(path, encoding='utf-8') as f:
-            data = json.load(f)
+        data = _load_toll_rates()
         for exp_key, exp_data in data.items():
             if not isinstance(exp_data, dict):
                 continue
@@ -732,9 +755,7 @@ def find_plazas_at_position(lat, lng, plazas):
 
 def compute_toll_fee(entry_plaza, exit_plaza, toll_class='Class 3'):
     """Compute toll fee for entry -> exit. Returns (fee, expressway_key) or (None, None)."""
-    path = os.path.join(_HERE, 'static', 'toll_rates.json')
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    data = _load_toll_rates()
 
     # Try direct lookup in each expressway first
     for exp_key, exp_data in data.items():
@@ -747,9 +768,19 @@ def compute_toll_fee(entry_plaza, exit_plaza, toll_class='Class 3'):
     # Fallback to BFS multi-expressway routing (mirrors app_v3.find_toll_route)
     try:
         from app_v3 import find_toll_route
-        cost, _segs = find_toll_route(entry_plaza, exit_plaza, toll_class, data)
+        cost, segs = find_toll_route(entry_plaza, exit_plaza, toll_class, data)
         if cost is not None:
-            return float(cost), 'multi'
+            # Label with the actual expressways traversed ("NLEX_SCTEX +
+            # NLEX_Connector") instead of an opaque "multi" — dedup while
+            # keeping route order; zero-cost connector hops (same-station
+            # transfers) carry no fee but still name their expressway.
+            chain = []
+            for s in (segs or []):
+                e = s.get('expressway')
+                if e and e not in chain:
+                    chain.append(e)
+            label = ' + '.join(chain) if chain else 'multi'
+            return float(cost), label
     except Exception:
         pass
     return None, None
