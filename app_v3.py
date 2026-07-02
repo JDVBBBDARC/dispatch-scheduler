@@ -936,14 +936,23 @@ def dashboard():
         _ttf = TruckTypeDef.query.filter_by(code=filter_truck).first()
         _tt_id = _ttf.id if _ttf else None
 
-    _pq = (db.session.query(TripRecord).join(Wave)
+    # Aggregate in SQL instead of loading every previous-period TripRecord.
+    _pq = (db.session.query(TripRecord.status,
+                            db.func.count(TripRecord.id),
+                            db.func.coalesce(db.func.sum(TripRecord.toll_fee), 0.0))
+           .join(Wave)
            .filter(Wave.date >= prev_start_d, Wave.date <= prev_end_d))
     if _tt_id:
         _pq = _pq.filter(Wave.truck_type_id == _tt_id)
-    prev_trips     = _pq.all()
-    prev_total     = len(prev_trips)
-    prev_by_status = {s: sum(1 for t in prev_trips if t.status == s) for s in STATUSES}
-    prev_toll_fee  = sum((t.toll_fee or 0) for t in prev_trips if t.status != 'Canceled')
+    _prev_rows     = _pq.group_by(TripRecord.status).all()
+    prev_total     = sum(r[1] for r in _prev_rows)
+    prev_by_status = {s: 0 for s in STATUSES}
+    prev_toll_fee  = 0.0
+    for st, cnt, toll in _prev_rows:
+        if st in prev_by_status:
+            prev_by_status[st] = cnt
+        if st != 'Canceled':          # NULL-status rows count too
+            prev_toll_fee += float(toll or 0)
     prev_gps_total, _ = _gps_toll_for(prev_start_d, prev_end_d)
 
     _pbd = (db.session.query(BreakdownLog)
@@ -980,31 +989,39 @@ def dashboard():
                   if t.wave and t.wave.truck_type_id == tt.id)
         by_truck[tt.code] = {'name': tt.name, 'color': tt.color, 'count': cnt}
 
-    # Trend — total (iterate day by day over selected range)
-    trend_days, trend_counts = [], []
+    # Trend — one GROUP BY over the whole range instead of a COUNT query
+    # per day per truck type (14 days x 8 types was ~112 round-trips; this
+    # is a single query for the totals and one for the per-type series).
+    day_list = []
     cur = trend_start_d
     while cur <= trend_end_d:
-        cnt = (db.session.query(db.func.count(TripRecord.id))
-               .join(Wave).filter(Wave.date == cur).scalar() or 0)
-        trend_days.append(cur.strftime('%b %d'))
-        trend_counts.append(cnt)
+        day_list.append(cur)
         cur += timedelta(days=1)
 
-    # Trend per truck type
+    trend_days = [dd.strftime('%b %d') for dd in day_list]
+
+    _tot_rows = (db.session.query(Wave.date, db.func.count(TripRecord.id))
+                 .join(TripRecord, TripRecord.wave_id == Wave.id)
+                 .filter(Wave.date >= trend_start_d, Wave.date <= trend_end_d)
+                 .group_by(Wave.date).all())
+    _tot_by_day = {r[0]: r[1] for r in _tot_rows}
+    trend_counts = [_tot_by_day.get(dd, 0) for dd in day_list]
+
+    _tt_rows = (db.session.query(Wave.truck_type_id, Wave.date,
+                                 db.func.count(TripRecord.id))
+                .join(TripRecord, TripRecord.wave_id == Wave.id)
+                .filter(Wave.date >= trend_start_d, Wave.date <= trend_end_d)
+                .group_by(Wave.truck_type_id, Wave.date).all())
+    _tt_by_day = defaultdict(dict)
+    for tt_id, dd, cnt in _tt_rows:
+        _tt_by_day[tt_id][dd] = cnt
+
     trend_by_truck = []
     for tt in truck_types:
-        day_counts = []
-        cur = trend_start_d
-        while cur <= trend_end_d:
-            cnt = (db.session.query(db.func.count(TripRecord.id))
-                   .join(Wave)
-                   .filter(Wave.date == cur, Wave.truck_type_id == tt.id)
-                   .scalar() or 0)
-            day_counts.append(cnt)
-            cur += timedelta(days=1)
+        per_day = _tt_by_day.get(tt.id, {})
         trend_by_truck.append({
-            'code': tt.code, 'name': tt.name,
-            'color': tt.color, 'counts': day_counts
+            'code': tt.code, 'name': tt.name, 'color': tt.color,
+            'counts': [per_day.get(dd, 0) for dd in day_list],
         })
 
     # Recent changes
