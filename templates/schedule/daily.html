@@ -38,6 +38,46 @@
        class="btn btn-ghost btn-sm">Today</a>
     <a href="{{ url_for('schedule', date_str=(d + timedelta(1)).isoformat()) }}"
        class="btn btn-ghost btn-sm">Next <i class="bi bi-chevron-right"></i></a>
+    <button class="btn btn-outline-secondary btn-sm" type="button"
+            onclick="openImportModal()" title="Import a monthly monitoring workbook (.xlsx)">
+      <i class="bi bi-file-earmark-arrow-up"></i> Import Excel
+    </button>
+  </div>
+</div>
+
+<!-- ── IMPORT SCHEDULE MODAL ────────────────────────────────────────────── -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2"></i>Import Schedule from Excel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">
+          Upload the monthly <b>Daily Sales and Logistics Materials
+          Monitoring</b> workbook. The importer reads the
+          <b>2.0 Data Input</b> sheet and creates waves and trips per
+          delivery date. Wave number follows each plate's trip sequence
+          for the day (1st trip → Wave 1, 2nd → Wave 2 …). Re-uploading
+          the same file will not create duplicates.
+        </p>
+        <input type="file" id="importFile" class="form-control form-control-sm mb-3"
+               accept=".xlsx,.xlsm" onchange="document.getElementById('importResult').innerHTML='';">
+        <div id="importResult"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-outline-primary btn-sm" id="importPreviewBtn"
+                onclick="runImport(false)">
+          <i class="bi bi-search"></i> Preview
+        </button>
+        <button class="btn btn-success btn-sm" id="importCommitBtn"
+                onclick="runImport(true)" disabled>
+          <i class="bi bi-check2-circle"></i> Import Now
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -850,6 +890,80 @@ function updateTabCount(truckCode, forceCount) {
     // (.tab-count[data-count="0"]) reacts immediately. Without this,
     // the badge would keep showing "0" after the last trip is deleted.
     tab.dataset.count = total;
+  }
+}
+
+// ── EXCEL SCHEDULE IMPORT ────────────────────────────────────────────────
+function openImportModal() {
+  document.getElementById('importFile').value = '';
+  document.getElementById('importResult').innerHTML = '';
+  document.getElementById('importCommitBtn').disabled = true;
+  new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+
+function escH(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function runImport(commit) {
+  const fileEl = document.getElementById('importFile');
+  const resEl  = document.getElementById('importResult');
+  const btnP   = document.getElementById('importPreviewBtn');
+  const btnC   = document.getElementById('importCommitBtn');
+  if (!fileEl.files.length) {
+    resEl.innerHTML = '<div class="alert alert-warning py-2">Pumili muna ng .xlsx file.</div>';
+    return;
+  }
+  // Commit only after a preview of the SAME selected file.
+  const fd = new FormData();
+  fd.append('file', fileEl.files[0]);
+  fd.append('commit', commit ? '1' : '0');
+
+  btnP.disabled = btnC.disabled = true;
+  resEl.innerHTML = '<div class="text-muted py-2"><span class="spinner-border spinner-border-sm me-2"></span>' +
+                    (commit ? 'Importing…' : 'Reading the workbook…') + '</div>';
+  try {
+    const r = await fetch('/api/schedule/import-xlsx', {method: 'POST', body: fd});
+    const j = await r.json();
+    if (!r.ok || j.error) {
+      resEl.innerHTML = `<div class="alert alert-danger py-2">${escH(j.error || ('HTTP ' + r.status))}</div>`;
+      btnP.disabled = false;
+      return;
+    }
+    const s = j.stats;
+    const dates = Object.entries(j.dates || {});
+    let html = `
+      <div class="alert ${commit ? 'alert-success' : 'alert-info'} py-2 mb-2">
+        <b>${commit ? 'Imported!' : 'Preview'}</b> — sheet: ${escH(j.sheet)} ·
+        ${s.imported} trips ${commit ? 'created' : 'to create'} across ${dates.length} date(s),
+        ${s.waves_created} new wave(s), ${s.skipped_dupe} duplicate(s) skipped,
+        ${s.skipped_no_plate} row(s) without a plate skipped.
+      </div>`;
+    const nm = j.new_master || {};
+    const nmKeys = Object.keys(nm);
+    if (nmKeys.length) {
+      html += '<div class="small mb-2"><b>Bagong gagawin sa Master Data:</b><ul class="mb-1">';
+      nmKeys.forEach(k => {
+        html += `<li><b>${escH(k)}</b> (${nm[k].length}): ${nm[k].slice(0, 12).map(escH).join(', ')}${nm[k].length > 12 ? ' …' : ''}</li>`;
+      });
+      html += '</ul><span class="text-muted">Ang bagong plates ay mapupunta sa truck type '
+           + '<b>OT (Others)</b> — ayusin sa Master Data pagkatapos.</span></div>';
+    }
+    if (dates.length) {
+      html += '<div class="small"><b>Trips per date:</b> '
+           + dates.map(([d, n]) => `${escH(d)} (${n})`).join(' · ') + '</div>';
+    }
+    resEl.innerHTML = html;
+    btnP.disabled = false;
+    // Enable Import Now only when the preview found something to do.
+    btnC.disabled = commit || s.imported === 0;
+    if (commit) {
+      setTimeout(() => window.location.reload(), 1800);
+    }
+  } catch (e) {
+    resEl.innerHTML = `<div class="alert alert-danger py-2">Request failed: ${escH(e)}</div>`;
+    btnP.disabled = false;
   }
 }
 </script>

@@ -420,6 +420,344 @@ def api_trip_delete(tid):
     return jsonify({'ok': True})
 
 
+# ── API: SCHEDULE IMPORT (monthly monitoring workbook) ─────────────────────
+def _imp_norm(s):
+    """Lowercase alphanumeric-only key for tolerant name matching
+    ('NIZ 1044' == 'niz1044', 'A. Eusebio' == 'A EUSEBIO')."""
+    return ''.join(c for c in str(s or '').lower() if c.isalnum())
+
+
+def _imp_header_key(v):
+    """Collapse a header cell to a comparable key: newlines and runs of
+    spaces become one space, punctuation dropped, lowercased."""
+    s = ' '.join(str(v or '').split()).lower()
+    return s.replace('.', '').replace(',', '').replace('/', ' ').strip()
+
+
+# Header-cell text (in _imp_header_key form) -> field name. Matched
+# EXACTLY so 'source dr no' can never claim the 'dr no' column.
+_IMPORT_HEADERS = {
+    'delivery date':            'date',
+    'client name':              'client',
+    'product description':      'product',
+    'truck plate no & id':      'plate',
+    'driver name':              'driver',
+    'helper name':              'helper',
+    'dispatcher':               'dispatcher',
+    'delivery status':          'status',
+    'rs no':                    'rs_no',
+    'client po no':             'po_no',
+    'dr no':                    'dr_no',
+    'po volume aggregates m3':  'volume',
+}
+
+_IMPORT_STATUS_MAP = {
+    'completed': 'Delivered',
+    'delivered': 'Delivered',
+    'cancelled': 'Canceled',
+    'canceled':  'Canceled',
+    'intransit': 'In Transit',
+}
+
+
+@app.route('/api/schedule/import-xlsx', methods=['POST'])
+@login_required
+def api_schedule_import_xlsx():
+    """Import a monthly 'Daily Sales and Logistics Materials Monitoring'
+    workbook into Waves + TripRecords.
+
+    Called twice by the UI with the same file: commit=0 returns a
+    preview (nothing written); commit=1 performs the import.
+
+    Rules (agreed with operations, July 2026):
+      - Wave = the plate's Nth trip of that day: a plate's first trip
+        lands in Wave 1 of its truck type, its second in Wave 2, etc.
+      - Unknown clients/products/drivers/helpers/dispatchers/plates are
+        auto-created (new plates get truck type OT — recategorise in
+        Master Data afterwards; the preview lists everything new).
+      - Only fields the app already has are imported; the rest of the
+        workbook's 56 columns are ignored.
+      - Re-uploading the same (or an updated) file never duplicates:
+        a row is skipped when its DR No. already exists on that date,
+        or when an identical trip already sits in the same wave.
+    """
+    up = request.files.get('file')
+    if not up or not up.filename:
+        return jsonify({'error': 'No file uploaded.'}), 400
+    commit = request.form.get('commit') == '1'
+
+    try:
+        wb = openpyxl.load_workbook(up, data_only=True, read_only=True)
+    except Exception as e:
+        return jsonify({'error': f'Could not read the Excel file: {e}'}), 400
+
+    # ── Locate the data sheet + header row ──────────────────────────
+    # Prefer the canonical '2.0 Data Input' sheet, but fall back to
+    # scanning every sheet so a renamed tab still imports.
+    sheet_names = list(wb.sheetnames)
+    sheet_names.sort(key=lambda n: 0 if 'data input' in n.lower() else 1)
+
+    ws = colmap = None
+    hdr_row_idx = 0
+    for name in sheet_names:
+        cand = wb[name]
+        for r_idx, row in enumerate(cand.iter_rows(min_row=1, max_row=15,
+                                                    values_only=True), 1):
+            found = {}
+            for c_idx, cell in enumerate(row or ()):
+                key = _imp_header_key(cell)
+                if key in _IMPORT_HEADERS:
+                    found.setdefault(_IMPORT_HEADERS[key], c_idx)
+            if len(found) >= 6:            # enough recognised columns
+                ws, colmap, hdr_row_idx = cand, found, r_idx
+                break
+        if ws is not None:
+            break
+    if ws is None:
+        return jsonify({'error':
+            'Could not find the schedule columns in any sheet. Expected '
+            'headers like "Delivery Date", "Client Name", "Truck Plate '
+            'No. & ID" (the 2.0 Data Input sheet of the monitoring '
+            'workbook).'}), 400
+
+    # ── Parse data rows ──────────────────────────────────────────────
+    def _cell(row, field):
+        i = colmap.get(field)
+        if i is None or i >= len(row):
+            return None
+        return row[i]
+
+    def _text(row, field, limit=120):
+        v = _cell(row, field)
+        if v is None:
+            return ''
+        return ' '.join(str(v).split())[:limit]
+
+    parsed, bad_dates = [], 0
+    for row in ws.iter_rows(min_row=hdr_row_idx + 1, values_only=True):
+        raw_date = _cell(row, 'date')
+        if raw_date is None:
+            continue
+        if isinstance(raw_date, datetime):
+            d = raw_date.date()
+        elif isinstance(raw_date, date):
+            d = raw_date
+        else:
+            try:
+                d = parse_date(str(raw_date)[:10])
+            except Exception:
+                bad_dates += 1
+                continue
+        # A schedule row needs at least a client or a plate to mean
+        # anything; header-noise and summary rows have neither.
+        if not (_text(row, 'client') or _text(row, 'plate')):
+            continue
+        parsed.append({
+            'date':       d,
+            'client':     _text(row, 'client'),
+            'product':    _text(row, 'product'),
+            'plate':      _text(row, 'plate', 60),
+            'driver':     _text(row, 'driver', 80),
+            'helper':     _text(row, 'helper', 80),
+            'dispatcher': _text(row, 'dispatcher', 80),
+            'status':     _IMPORT_STATUS_MAP.get(
+                              _imp_norm(_text(row, 'status')), 'Pending'),
+            'rs_no':      _text(row, 'rs_no', 60),
+            'po_no':      _text(row, 'po_no', 60),
+            'dr_no':      _text(row, 'dr_no', 60),
+            'volume':     _text(row, 'volume', 30),
+        })
+    wb.close()
+    if not parsed:
+        return jsonify({'error': 'No rows with a Delivery Date found.'}), 400
+
+    # ── Entity resolution (existing first, auto-create otherwise) ────
+    caches = {
+        'client':     {_imp_norm(x.name): x for x in Client.query.all()},
+        'product':    {_imp_norm(x.name): x for x in Product.query.all()},
+        'driver':     {_imp_norm(x.name): x for x in Driver.query.all()},
+        'helper':     {_imp_norm(x.name): x for x in Helper.query.all()},
+        'dispatcher': {_imp_norm(x.name): x for x in Dispatcher.query.all()},
+    }
+    model_for = {'client': Client, 'product': Product, 'driver': Driver,
+                 'helper': Helper, 'dispatcher': Dispatcher}
+    plates_by_no   = {_imp_norm(p.plate_no): p for p in Plate.query.all()
+                      if p.plate_no}
+    plates_by_body = {_imp_norm(p.body_no): p for p in Plate.query.all()
+                      if p.body_no}
+    ot_type = TruckTypeDef.query.filter_by(code='OT').first() \
+              or TruckTypeDef.query.order_by(TruckTypeDef.sort_order.desc()).first()
+
+    new_master = {k: [] for k in
+                  ('client', 'product', 'driver', 'helper', 'dispatcher',
+                   'plate')}
+
+    def resolve(kind, name):
+        """Return the entity for `name`, creating it when committing.
+        Returns None for blank names."""
+        if not name:
+            return None
+        key = _imp_norm(name)
+        obj = caches[kind].get(key)
+        if obj is not None:
+            return obj
+        if name not in new_master[kind]:
+            new_master[kind].append(name)
+        if not commit:
+            return None                    # preview: record, don't create
+        obj = model_for[kind](name=name, active=True)
+        db.session.add(obj)
+        db.session.flush()
+        caches[kind][key] = obj
+        return obj
+
+    def resolve_plate(raw):
+        """'NIZ 1044_DT-32' -> Plate row (matched on plate no OR body
+        no, either side of the underscore)."""
+        if not raw:
+            return None
+        parts = [p.strip() for p in raw.replace('_', '|').split('|')
+                 if p.strip()]
+        for part in parts:
+            hit = plates_by_no.get(_imp_norm(part)) \
+                  or plates_by_body.get(_imp_norm(part))
+            if hit:
+                return hit
+        if raw not in new_master['plate']:
+            new_master['plate'].append(raw)
+        if not commit:
+            return None
+        p = Plate(plate_no=parts[0] if parts else raw,
+                  body_no=parts[1] if len(parts) > 1 else '',
+                  truck_type_id=ot_type.id, active=True)
+        db.session.add(p)
+        db.session.flush()
+        plates_by_no[_imp_norm(p.plate_no)] = p
+        if p.body_no:
+            plates_by_body[_imp_norm(p.body_no)] = p
+        return p
+
+    # ── Assemble waves + trips ───────────────────────────────────────
+    # Keep the workbook's row order within each date so a plate's
+    # first-listed trip becomes Wave 1, its second Wave 2, and so on.
+    parsed.sort(key=lambda r: r['date'])
+    plate_seq   = {}     # (date, plate_key) -> how many trips seen so far
+    wave_cache  = {}     # (date, tt_id, wave_number) -> Wave
+    planned     = set()  # wave keys counted as to-create (preview mode)
+    trip_counts = {}     # wave key -> next trip_number bookkeeping
+    existing_dr = {}     # date -> set of dr_no already in the DB
+
+    stats = {'total_rows': len(parsed), 'imported': 0, 'skipped_dupe': 0,
+             'skipped_no_plate': 0, 'waves_created': 0, 'bad_dates': bad_dates}
+    per_date = {}
+
+    for r in parsed:
+        d = r['date']
+        plate = resolve_plate(r['plate'])
+        plate_key = _imp_norm(r['plate']) or '(none)'
+        if plate is None and commit:
+            # blank plate cell — a trip row needs a truck
+            stats['skipped_no_plate'] += 1
+            continue
+        if not r['plate']:
+            stats['skipped_no_plate'] += 1
+            continue
+
+        seq_key = (d, plate_key)
+        plate_seq[seq_key] = plate_seq.get(seq_key, 0) + 1
+        wave_no = plate_seq[seq_key]
+
+        tt_id = plate.truck_type_id if plate else (ot_type.id)
+        wkey = (d, tt_id, wave_no)
+        wave = wave_cache.get(wkey)
+        if wave is None:
+            wave = Wave.query.filter_by(date=d, truck_type_id=tt_id,
+                                        wave_number=wave_no).first()
+            if wave is None and wkey not in planned:
+                # Count each missing wave once — in preview mode nothing
+                # is created, so without `planned` every row that lands
+                # in the same new wave would inflate the count.
+                planned.add(wkey)
+                stats['waves_created'] += 1
+                if commit:
+                    wave = Wave(date=d, truck_type_id=tt_id,
+                                wave_number=wave_no)
+                    db.session.add(wave)
+                    db.session.flush()
+            if wave is not None:
+                wave_cache[wkey] = wave
+
+        # ── Dedup ────────────────────────────────────────────────────
+        if d not in existing_dr:
+            existing_dr[d] = {t.dr_no for t in
+                              (TripRecord.query.join(Wave)
+                               .filter(Wave.date == d,
+                                       TripRecord.dr_no.isnot(None),
+                                       TripRecord.dr_no != '').all())}
+        if r['dr_no'] and r['dr_no'] in existing_dr[d]:
+            stats['skipped_dupe'] += 1
+            continue
+
+        client     = resolve('client', r['client'])
+        product    = resolve('product', r['product'])
+        driver     = resolve('driver', r['driver'])
+        helper     = resolve('helper', r['helper'])
+        dispatcher = resolve('dispatcher', r['dispatcher'])
+
+        if wave is not None and plate is not None:
+            dup = (TripRecord.query
+                   .filter_by(wave_id=wave.id, plate_id=plate.id,
+                              client_id=client.id if client else None,
+                              product_id=product.id if product else None,
+                              driver_id=driver.id if driver else None)
+                   .first())
+            if dup is not None:
+                stats['skipped_dupe'] += 1
+                continue
+
+        stats['imported'] += 1
+        per_date[d.isoformat()] = per_date.get(d.isoformat(), 0) + 1
+
+        if commit:
+            tkey = wave.id
+            if tkey not in trip_counts:
+                last = (TripRecord.query.filter_by(wave_id=wave.id)
+                        .order_by(TripRecord.trip_number.desc()).first())
+                trip_counts[tkey] = last.trip_number if last else 0
+            trip_counts[tkey] += 1
+            db.session.add(TripRecord(
+                wave_id=wave.id, trip_number=trip_counts[tkey],
+                plate_id=plate.id,
+                client_id=client.id if client else None,
+                product_id=product.id if product else None,
+                driver_id=driver.id if driver else None,
+                helper_id=helper.id if helper else None,
+                dispatcher_id=dispatcher.id if dispatcher else None,
+                status=r['status'],
+                rs_no=r['rs_no'] or None, po_no=r['po_no'] or None,
+                dr_no=r['dr_no'] or None, volume=r['volume'] or None,
+            ))
+            if r['dr_no']:
+                existing_dr[d].add(r['dr_no'])
+
+    if commit:
+        db.session.commit()
+        log_change(
+            f"Imported {stats['imported']} trips "
+            f"({stats['waves_created']} new waves, "
+            f"{stats['skipped_dupe']} duplicates skipped) from "
+            f"{up.filename}", 'trip')
+        db.session.commit()
+
+    return jsonify({
+        'preview':    not commit,
+        'sheet':      ws.title,
+        'stats':      stats,
+        'dates':      dict(sorted(per_date.items())),
+        'new_master': {k: v for k, v in new_master.items() if v},
+    })
+
+
 # ── DASHBOARD KPI REFRESH API ──────────────────────────────────────────────
 @app.route('/api/dashboard/kpis')
 @login_required
