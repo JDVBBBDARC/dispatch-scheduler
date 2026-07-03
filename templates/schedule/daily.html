@@ -994,7 +994,9 @@ async function runImport(commit) {
     const nm = j.new_master || {};
     const nmKeys = Object.keys(nm);
     if (nmKeys.length) {
-      html += '<div class="small mb-2"><b>Bagong gagawin sa Master Data:</b><ul class="mb-1">';
+      html += `<div class="small mb-2"><b>${commit
+                 ? 'Na-auto-create sa Master Data:'
+                 : 'Bagong gagawin sa Master Data (auto-create sa Import Now):'}</b><ul class="mb-1">`;
       nmKeys.forEach(k => {
         html += `<li><b>${escH(k)}</b> (${nm[k].length}): ${nm[k].slice(0, 12).map(escH).join(', ')}${nm[k].length > 12 ? ' …' : ''}</li>`;
       });
