@@ -353,7 +353,13 @@ def api_trip_save():
     if trip_id:
         trip = TripRecord.query.get_or_404(trip_id)
     else:
-        # new row — get next trip number
+        # New row — the wave must still exist. SQLite runs without FK
+        # enforcement, so inserting against a deleted wave (stale page
+        # after a revert/cleanup removed it) would persist an orphan
+        # trip that no schedule query can display or delete.
+        if not db.session.get(Wave, wave_id):
+            return jsonify({'error': 'This wave no longer exists — '
+                            'reload the page.'}), 409
         last = (TripRecord.query.filter_by(wave_id=wave_id)
                 .order_by(TripRecord.trip_number.desc()).first())
         trip = TripRecord(wave_id=wave_id,
@@ -608,9 +614,30 @@ def api_schedule_import_xlsx():
             elif isinstance(raw_date, date):
                 d = raw_date
             else:
-                try:
-                    d = parse_date(str(raw_date)[:10])
-                except Exception:
+                # STRICT text-date parsing. parse_date() falls back to
+                # ph_today() on garbage, which turned rows whose date
+                # cell held the text 'Cancelled' into trips dated the
+                # day of the import — never accept a non-date here.
+                # Accepted shapes: ISO date/datetime text
+                # ('2026-05-15', '2026-05-15 00:00:00'), m/d/y with or
+                # without a time tail ('5/15/2026 8:00'), and month-name
+                # dates ('September 3, 2026'). No %d/%m fallback — the
+                # operation writes m/d/y, and a d/m guess would silently
+                # month-swap instead of flagging the row.
+                s = str(raw_date).strip()
+                d = None
+                try:                       # ISO prefix, time tail ignored
+                    d = date.fromisoformat(s[:10])
+                except ValueError:
+                    tok = s.split()[0] if s.split() else s
+                    for cand, fmt in ((tok, '%m/%d/%Y'), (tok, '%m-%d-%Y'),
+                                      (s, '%B %d, %Y'), (s, '%b %d, %Y')):
+                        try:
+                            d = datetime.strptime(cand, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                if d is None:
                     bad_dates += 1
                     continue
             # A schedule row needs at least a client or a plate to mean
@@ -968,10 +995,12 @@ def api_schedule_import_revert():
 
     trip_ids = batch.get('trips', [])
     removed_trips = 0
-    if trip_ids:
-        removed_trips = (TripRecord.query
-                         .filter(TripRecord.id.in_(trip_ids))
-                         .delete(synchronize_session=False))
+    # Chunked: PythonAnywhere's SQLite caps bound parameters at 999,
+    # and a 4-sheet month can exceed that.
+    for i in range(0, len(trip_ids), 500):
+        removed_trips += (TripRecord.query
+                          .filter(TripRecord.id.in_(trip_ids[i:i + 500]))
+                          .delete(synchronize_session=False))
     db.session.flush()
 
     removed_waves = 0
