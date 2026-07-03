@@ -498,6 +498,23 @@ _IMPORT_STATUS_MAP = {
     'intransit': 'In Transit',
 }
 
+# Trip-type + hauling rules (per operations, July 2026):
+#   - Internal material transfers (client is the LOG/RMP stockpile, the
+#     RMC plant, or RMP) are BACK LOADS; every other client is a FRONT
+#     LOAD. Matched on whole word tokens so e.g. 'Ready Mix Concrete
+#     Corp.' does NOT trigger the 'RMC' rule.
+#   - 'Hauling': a 12W or 22WD dump truck serving the internal RMC /
+#     Asphalt Plant / CPS clients. Hauling is excluded from fleet
+#     utilisation, so those trips are filed under the OT (Others)
+#     truck category instead of the plate's own type.
+_IMPORT_BACKLOAD_TOKENS = {'rmc', 'rmp', 'stockpile'}
+_IMPORT_HAUL_TOKENS     = {'rmc', 'cps'}
+_IMPORT_HAUL_TT_CODES   = {'12W', '22WD'}
+
+
+def _imp_client_tokens(name):
+    return set(re.findall(r'[a-z0-9]+', str(name or '').lower()))
+
 
 @app.route('/api/schedule/import-xlsx', methods=['POST'])
 @login_required
@@ -650,6 +667,7 @@ def api_schedule_import_xlsx():
                       if p.body_no}
     ot_type = TruckTypeDef.query.filter_by(code='OT').first() \
               or TruckTypeDef.query.order_by(TruckTypeDef.sort_order.desc()).first()
+    tt_code_by_id = {t.id: t.code for t in TruckTypeDef.query.all()}
 
     # Person-name variant matching: 'Arnel Eusebio' == 'A. Eusebio' ==
     # 'A.EUSEBIO' — reuse the Breakdown module's canonical initial +
@@ -758,7 +776,8 @@ def api_schedule_import_xlsx():
 
     stats = {'total_rows': len(parsed), 'imported': 0, 'skipped_dupe': 0,
              'skipped_no_plate': 0, 'waves_created': 0,
-             'skipped_cross_sheet': skipped_cross, 'bad_dates': bad_dates}
+             'skipped_cross_sheet': skipped_cross, 'bad_dates': bad_dates,
+             'hauling_to_others': 0}
     per_date = {}
 
     for r in parsed:
@@ -777,7 +796,22 @@ def api_schedule_import_xlsx():
         plate_seq[seq_key] = plate_seq.get(seq_key, 0) + 1
         wave_no = plate_seq[seq_key]
 
-        tt_id = plate.truck_type_id if plate else (ot_type.id)
+        # Trip type from the client: internal stockpile/RMC/RMP
+        # transfers are back loads, everything else is a front load.
+        c_toks = _imp_client_tokens(r['client'])
+        trip_type = ('Back Load' if (c_toks & _IMPORT_BACKLOAD_TOKENS)
+                     else 'Front Load')
+
+        # Hauling detection: a 12W/22WD dump truck serving RMC /
+        # Asphalt Plant / CPS files under OT so utilisation ignores it.
+        tt_id = plate.truck_type_id if plate else ot_type.id
+        plate_tt_code = tt_code_by_id.get(tt_id, '')
+        is_hauling = (plate_tt_code in _IMPORT_HAUL_TT_CODES
+                      and bool((c_toks & _IMPORT_HAUL_TOKENS)
+                               or 'asphalt' in (r['client'] or '').lower()))
+        if is_hauling:
+            tt_id = ot_type.id
+            stats['hauling_to_others'] += 1
         wkey = (d, tt_id, wave_no)
         wave = wave_cache.get(wkey)
         if wave is None:
@@ -844,6 +878,7 @@ def api_schedule_import_xlsx():
                 driver_id=driver.id if driver else None,
                 helper_id=helper.id if helper else None,
                 dispatcher_id=dispatcher.id if dispatcher else None,
+                trip_type=trip_type,
                 status=r['status'],
                 rs_no=r['rs_no'] or None, po_no=r['po_no'] or None,
                 dr_no=r['dr_no'] or None, volume=r['volume'] or None,

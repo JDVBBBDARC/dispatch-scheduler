@@ -989,7 +989,8 @@ async function runImport(commit) {
         ${s.imported} trips ${commit ? 'created' : 'to create'} across ${dates.length} date(s),
         ${s.waves_created} new wave(s), ${s.skipped_dupe} duplicate(s) skipped,
         ${s.skipped_cross_sheet} cross-sheet double-entr${s.skipped_cross_sheet === 1 ? 'y' : 'ies'} skipped,
-        ${s.skipped_no_plate} row(s) without a plate skipped.
+        ${s.skipped_no_plate} row(s) without a plate skipped${
+        s.hauling_to_others ? `, ${s.hauling_to_others} hauling trip(s) filed under Others` : ''}.
       </div>`;
     const nm = j.new_master || {};
     const nmKeys = Object.keys(nm);
