@@ -468,8 +468,14 @@ _IMPORT_HEADERS = {
     'hrf no':                    'rs_no',
     'client po no':              'po_no',
     'dr no':                     'dr_no',
-    'po volume aggregates m3':   'volume',
-    'volume m3':                 'volume',
+    # Volume must be the PER-TRIP load, never the PO total ("PO Volume
+    # Aggregates" is the whole order and repeats on every row of that
+    # PO). Leftmost matching column wins per sheet, so 2.0 uses the
+    # source-loaded volume (col 15) with the received volume as backup.
+    'source aggregates volume m3': 'volume',
+    'agg received volume m3':      'volume',
+    'received quantity':           'volume',
+    'volume m3':                   'volume',
 }
 
 # Import batches are journaled here so a bad import can be reverted.
