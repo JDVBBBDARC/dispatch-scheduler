@@ -798,9 +798,17 @@ def api_schedule_import_xlsx():
 
         # Trip type from the client: internal stockpile/RMC/RMP
         # transfers are back loads, everything else is a front load.
+        # Waste hauling (6.0 Waste Input sheet) flips the default:
+        # only Eco Protect runs are front loads; every other waste
+        # destination is a back load.
         c_toks = _imp_client_tokens(r['client'])
-        trip_type = ('Back Load' if (c_toks & _IMPORT_BACKLOAD_TOKENS)
-                     else 'Front Load')
+        if 'waste input' in r['sheet'].lower().replace('_', ' '):
+            trip_type = ('Front Load'
+                         if 'ecoprotect' in _imp_norm(r['client'])
+                         else 'Back Load')
+        else:
+            trip_type = ('Back Load' if (c_toks & _IMPORT_BACKLOAD_TOKENS)
+                         else 'Front Load')
 
         # Hauling detection: a 12W/22WD dump truck serving RMC /
         # Asphalt Plant / CPS files under OT so utilisation ignores it.
