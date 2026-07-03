@@ -1,4 +1,4 @@
-import os, io, re, socket, calendar
+import os, io, re, json, socket, calendar
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -431,25 +431,64 @@ def _imp_header_key(v):
     """Collapse a header cell to a comparable key: newlines and runs of
     spaces become one space, punctuation dropped, lowercased."""
     s = ' '.join(str(v or '').split()).lower()
-    return s.replace('.', '').replace(',', '').replace('/', ' ').strip()
+    s = s.replace('.', '').replace(',', '').replace('/', ' ')
+    return ' '.join(s.split())
 
+
+# Only these tabs of the monitoring workbook hold trip records
+# (agreed with operations, July 2026). Matched on the normalised
+# sheet name so '2.1 Data_Rental' and 'Data Rental' both qualify.
+_IMPORT_SHEET_KEYWORDS = ('data input', 'data rental', 'data cps',
+                          'waste input')
 
 # Header-cell text (in _imp_header_key form) -> field name. Matched
-# EXACTLY so 'source dr no' can never claim the 'dr no' column.
+# EXACTLY so 'source dr no' can never claim the 'dr no' column. Each
+# sheet names its columns slightly differently, hence the aliases:
+#   2.0 Data Input   - Delivery Date / Product Description / RS No.
+#   2.1 Data_Rental  - Date of Rental / Product / Service Category
+#   2.2 Data_CPS     - Delivery Date / Status
+#   6.0 Waste Input  - Date / Waste Materials / Destination / HRF No.
 _IMPORT_HEADERS = {
-    'delivery date':            'date',
-    'client name':              'client',
-    'product description':      'product',
-    'truck plate no & id':      'plate',
-    'driver name':              'driver',
-    'helper name':              'helper',
-    'dispatcher':               'dispatcher',
-    'delivery status':          'status',
-    'rs no':                    'rs_no',
-    'client po no':             'po_no',
-    'dr no':                    'dr_no',
-    'po volume aggregates m3':  'volume',
+    'delivery date':             'date',
+    'date of rental':            'date',
+    'date':                      'date',
+    'client name':               'client',
+    'destination':               'client',      # waste runs: haul-to site
+    'product description':       'product',
+    'product service category':  'product',
+    'waste materials':           'product',
+    'truck plate no & id':       'plate',
+    'driver name':               'driver',
+    'helper name':               'helper',
+    'helper 1 name':             'helper',
+    'dispatcher':                'dispatcher',
+    'delivery status':           'status',
+    'status':                    'status',
+    'rs no':                     'rs_no',
+    'hrf no':                    'rs_no',
+    'client po no':              'po_no',
+    'dr no':                     'dr_no',
+    'po volume aggregates m3':   'volume',
+    'volume m3':                 'volume',
 }
+
+# Import batches are journaled here so a bad import can be reverted.
+_IMPORT_BATCH_FILE = os.path.join(BASE_DIR, 'instance',
+                                  'schedule_import_batches.json')
+
+
+def _load_import_batches():
+    try:
+        with open(_IMPORT_BATCH_FILE, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def _save_import_batches(batches):
+    os.makedirs(os.path.dirname(_IMPORT_BATCH_FILE), exist_ok=True)
+    with open(_IMPORT_BATCH_FILE, 'w', encoding='utf-8') as f:
+        json.dump(batches[-10:], f, indent=1)
 
 _IMPORT_STATUS_MAP = {
     'completed': 'Delivered',
@@ -491,85 +530,109 @@ def api_schedule_import_xlsx():
     except Exception as e:
         return jsonify({'error': f'Could not read the Excel file: {e}'}), 400
 
-    # ── Locate the data sheet + header row ──────────────────────────
-    # Prefer the canonical '2.0 Data Input' sheet, but fall back to
-    # scanning every sheet so a renamed tab still imports.
-    sheet_names = list(wb.sheetnames)
-    sheet_names.sort(key=lambda n: 0 if 'data input' in n.lower() else 1)
+    # ── Locate the trip-record sheets ────────────────────────────────
+    # Only the agreed tabs are read (2.0 Data Input, 2.1 Data_Rental,
+    # 2.2 Data_CPS, 6.0 Waste Input) — matched on normalised sheet
+    # name; the Data Input sheet is scanned first so cross-sheet
+    # duplicates keep the primary sheet's copy.
+    target_sheets = [n for n in wb.sheetnames
+                     if any(k in n.lower().replace('_', ' ')
+                            for k in _IMPORT_SHEET_KEYWORDS)]
+    target_sheets.sort(key=lambda n:
+                       0 if 'data input' in n.lower().replace('_', ' ') else 1)
+    if not target_sheets:
+        return jsonify({'error':
+            'None of the expected sheets (2.0 Data Input, 2.1 '
+            'Data_Rental, 2.2 Data_CPS, 6.0 Waste Input) were found in '
+            'this workbook.'}), 400
 
-    ws = colmap = None
-    hdr_row_idx = 0
-    for name in sheet_names:
-        cand = wb[name]
-        for r_idx, row in enumerate(cand.iter_rows(min_row=1, max_row=15,
-                                                    values_only=True), 1):
+    parsed, sheets_read, bad_dates = [], [], 0
+    for sheet_name in target_sheets:
+        ws = wb[sheet_name]
+        colmap, hdr_row_idx = None, 0
+        for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=15,
+                                                  values_only=True), 1):
             found = {}
             for c_idx, cell in enumerate(row or ()):
                 key = _imp_header_key(cell)
                 if key in _IMPORT_HEADERS:
                     found.setdefault(_IMPORT_HEADERS[key], c_idx)
-            if len(found) >= 6:            # enough recognised columns
-                ws, colmap, hdr_row_idx = cand, found, r_idx
+            if len(found) >= 5 and 'date' in found and 'plate' in found:
+                colmap, hdr_row_idx = found, r_idx
                 break
-        if ws is not None:
-            break
-    if ws is None:
-        return jsonify({'error':
-            'Could not find the schedule columns in any sheet. Expected '
-            'headers like "Delivery Date", "Client Name", "Truck Plate '
-            'No. & ID" (the 2.0 Data Input sheet of the monitoring '
-            'workbook).'}), 400
+        if colmap is None:
+            continue                       # tab exists but no data table
 
-    # ── Parse data rows ──────────────────────────────────────────────
-    def _cell(row, field):
-        i = colmap.get(field)
-        if i is None or i >= len(row):
-            return None
-        return row[i]
+        def _cell(row, field):
+            i = colmap.get(field)
+            if i is None or i >= len(row):
+                return None
+            return row[i]
 
-    def _text(row, field, limit=120):
-        v = _cell(row, field)
-        if v is None:
-            return ''
-        return ' '.join(str(v).split())[:limit]
+        def _text(row, field, limit=120):
+            v = _cell(row, field)
+            if v is None:
+                return ''
+            return ' '.join(str(v).split())[:limit]
 
-    parsed, bad_dates = [], 0
-    for row in ws.iter_rows(min_row=hdr_row_idx + 1, values_only=True):
-        raw_date = _cell(row, 'date')
-        if raw_date is None:
-            continue
-        if isinstance(raw_date, datetime):
-            d = raw_date.date()
-        elif isinstance(raw_date, date):
-            d = raw_date
-        else:
-            try:
-                d = parse_date(str(raw_date)[:10])
-            except Exception:
-                bad_dates += 1
+        n_before = len(parsed)
+        for row in ws.iter_rows(min_row=hdr_row_idx + 1, values_only=True):
+            raw_date = _cell(row, 'date')
+            if raw_date is None:
                 continue
-        # A schedule row needs at least a client or a plate to mean
-        # anything; header-noise and summary rows have neither.
-        if not (_text(row, 'client') or _text(row, 'plate')):
-            continue
-        parsed.append({
-            'date':       d,
-            'client':     _text(row, 'client'),
-            'product':    _text(row, 'product'),
-            'plate':      _text(row, 'plate', 60),
-            'driver':     _text(row, 'driver', 80),
-            'helper':     _text(row, 'helper', 80),
-            'dispatcher': _text(row, 'dispatcher', 80),
-            'status':     _IMPORT_STATUS_MAP.get(
-                              _imp_norm(_text(row, 'status')), 'Pending'),
-            'rs_no':      _text(row, 'rs_no', 60),
-            'po_no':      _text(row, 'po_no', 60),
-            'dr_no':      _text(row, 'dr_no', 60),
-            'volume':     _text(row, 'volume', 30),
-        })
+            if isinstance(raw_date, datetime):
+                d = raw_date.date()
+            elif isinstance(raw_date, date):
+                d = raw_date
+            else:
+                try:
+                    d = parse_date(str(raw_date)[:10])
+                except Exception:
+                    bad_dates += 1
+                    continue
+            # A schedule row needs at least a client or a plate to mean
+            # anything; header-noise and summary rows have neither.
+            if not (_text(row, 'client') or _text(row, 'plate')):
+                continue
+            parsed.append({
+                'sheet':      sheet_name,
+                'date':       d,
+                'client':     _text(row, 'client'),
+                'product':    _text(row, 'product'),
+                'plate':      _text(row, 'plate', 60),
+                'driver':     _text(row, 'driver', 80),
+                'helper':     _text(row, 'helper', 80),
+                'dispatcher': _text(row, 'dispatcher', 80),
+                'status':     _IMPORT_STATUS_MAP.get(
+                                  _imp_norm(_text(row, 'status')), 'Pending'),
+                'rs_no':      _text(row, 'rs_no', 60),
+                'po_no':      _text(row, 'po_no', 60),
+                'dr_no':      _text(row, 'dr_no', 60),
+                'volume':     _text(row, 'volume', 30),
+            })
+        sheets_read.append(f'{sheet_name} ({len(parsed) - n_before})')
     wb.close()
     if not parsed:
-        return jsonify({'error': 'No rows with a Delivery Date found.'}), 400
+        return jsonify({'error': 'No rows with a delivery date found in '
+                                 'the expected sheets.'}), 400
+
+    # ── Cross-sheet dedup ────────────────────────────────────────────
+    # The workbook intentionally double-enters some trips (e.g. rental
+    # rows mirrored between tabs). A row whose (date, plate, driver,
+    # DR no) signature was already read from ANOTHER sheet is a mirror
+    # and is skipped; repeats within the SAME sheet are genuine
+    # multiple runs and stay.
+    seen_sig, kept, skipped_cross = {}, [], 0
+    for r in parsed:
+        sig = (r['date'].isoformat(), _imp_norm(r['plate']),
+               _normalize_driver_key(r['driver']) or _imp_norm(r['driver']),
+               _imp_norm(r['dr_no']))
+        first_sheet = seen_sig.setdefault(sig, r['sheet'])
+        if first_sheet != r['sheet']:
+            skipped_cross += 1
+            continue
+        kept.append(r)
+    parsed = kept
 
     # ── Entity resolution (existing first, auto-create otherwise) ────
     caches = {
@@ -588,9 +651,42 @@ def api_schedule_import_xlsx():
     ot_type = TruckTypeDef.query.filter_by(code='OT').first() \
               or TruckTypeDef.query.order_by(TruckTypeDef.sort_order.desc()).first()
 
+    # Person-name variant matching: 'Arnel Eusebio' == 'A. Eusebio' ==
+    # 'A.EUSEBIO' — reuse the Breakdown module's canonical initial +
+    # surname key, plus a fuzzy-surname fallback (same initial,
+    # SequenceMatcher >= 0.85) so 'R. Hagonoy' still finds 'R. Hagunoy'
+    # instead of creating a double entry.
+    from difflib import SequenceMatcher
+    person_kinds = ('driver', 'helper', 'dispatcher')
+    person_keys = {k: {} for k in person_kinds}
+    for kind in person_kinds:
+        for key, obj in caches[kind].items():
+            pk = _normalize_driver_key(obj.name)
+            if pk:
+                person_keys[kind].setdefault(pk, obj)
+
+    def _person_match(kind, name):
+        pk = _normalize_driver_key(name)
+        if not pk:
+            return None
+        obj = person_keys[kind].get(pk)
+        if obj is not None:
+            return obj
+        initial, _, surname = pk.partition('.')
+        best, best_ratio = None, 0.0
+        for ek, ex in person_keys[kind].items():
+            e_init, _, e_sur = ek.partition('.')
+            if e_init != initial:
+                continue
+            ratio = SequenceMatcher(None, surname, e_sur).ratio()
+            if ratio > best_ratio:
+                best, best_ratio = ex, ratio
+        return best if best_ratio >= 0.85 else None
+
     new_master = {k: [] for k in
                   ('client', 'product', 'driver', 'helper', 'dispatcher',
                    'plate')}
+    created_ids = {k: [] for k in new_master}   # for the revert journal
 
     def resolve(kind, name):
         """Return the entity for `name`, creating it when committing.
@@ -601,6 +697,11 @@ def api_schedule_import_xlsx():
         obj = caches[kind].get(key)
         if obj is not None:
             return obj
+        if kind in person_kinds:
+            obj = _person_match(kind, name)
+            if obj is not None:
+                caches[kind][key] = obj    # remember the variant
+                return obj
         if name not in new_master[kind]:
             new_master[kind].append(name)
         if not commit:
@@ -609,6 +710,11 @@ def api_schedule_import_xlsx():
         db.session.add(obj)
         db.session.flush()
         caches[kind][key] = obj
+        created_ids[kind].append(obj.id)
+        if kind in person_kinds:
+            pk = _normalize_driver_key(name)
+            if pk:
+                person_keys[kind].setdefault(pk, obj)
         return obj
 
     def resolve_plate(raw):
@@ -632,6 +738,7 @@ def api_schedule_import_xlsx():
                   truck_type_id=ot_type.id, active=True)
         db.session.add(p)
         db.session.flush()
+        created_ids['plate'].append(p.id)
         plates_by_no[_imp_norm(p.plate_no)] = p
         if p.body_no:
             plates_by_body[_imp_norm(p.body_no)] = p
@@ -646,9 +753,12 @@ def api_schedule_import_xlsx():
     planned     = set()  # wave keys counted as to-create (preview mode)
     trip_counts = {}     # wave key -> next trip_number bookkeeping
     existing_dr = {}     # date -> set of dr_no already in the DB
+    new_waves   = []     # Wave objects created (revert journal)
+    new_trips   = []     # TripRecord objects created (revert journal)
 
     stats = {'total_rows': len(parsed), 'imported': 0, 'skipped_dupe': 0,
-             'skipped_no_plate': 0, 'waves_created': 0, 'bad_dates': bad_dates}
+             'skipped_no_plate': 0, 'waves_created': 0,
+             'skipped_cross_sheet': skipped_cross, 'bad_dates': bad_dates}
     per_date = {}
 
     for r in parsed:
@@ -684,6 +794,7 @@ def api_schedule_import_xlsx():
                                 wave_number=wave_no)
                     db.session.add(wave)
                     db.session.flush()
+                    new_waves.append(wave)
             if wave is not None:
                 wave_cache[wkey] = wave
 
@@ -725,7 +836,7 @@ def api_schedule_import_xlsx():
                         .order_by(TripRecord.trip_number.desc()).first())
                 trip_counts[tkey] = last.trip_number if last else 0
             trip_counts[tkey] += 1
-            db.session.add(TripRecord(
+            trip = TripRecord(
                 wave_id=wave.id, trip_number=trip_counts[tkey],
                 plate_id=plate.id,
                 client_id=client.id if client else None,
@@ -736,26 +847,124 @@ def api_schedule_import_xlsx():
                 status=r['status'],
                 rs_no=r['rs_no'] or None, po_no=r['po_no'] or None,
                 dr_no=r['dr_no'] or None, volume=r['volume'] or None,
-            ))
+            )
+            db.session.add(trip)
+            new_trips.append(trip)
             if r['dr_no']:
                 existing_dr[d].add(r['dr_no'])
 
+    batch_id = None
     if commit:
         db.session.commit()
+        # Journal the batch so it can be reverted from the UI.
+        batch_id = utc_now().strftime('%Y%m%d-%H%M%S')
+        batches = _load_import_batches()
+        batches.append({
+            'id':      batch_id,
+            'file':    up.filename,
+            'at':      utc_now().isoformat(),
+            'user':    session.get('user_name') or '',
+            'trips':   [t.id for t in new_trips],
+            'waves':   [w.id for w in new_waves],
+            'master':  {k: v for k, v in created_ids.items() if v},
+            'stats':   stats,
+        })
+        _save_import_batches(batches)
         log_change(
             f"Imported {stats['imported']} trips "
             f"({stats['waves_created']} new waves, "
             f"{stats['skipped_dupe']} duplicates skipped) from "
-            f"{up.filename}", 'trip')
+            f"{up.filename} [batch {batch_id}]", 'trip')
         db.session.commit()
 
+    dates_sorted = dict(sorted(per_date.items()))
     return jsonify({
         'preview':    not commit,
-        'sheet':      ws.title,
+        'batch_id':   batch_id,
+        'sheets':     sheets_read,
         'stats':      stats,
-        'dates':      dict(sorted(per_date.items())),
+        'dates':      dates_sorted,
+        'first_date': next(iter(dates_sorted), None),
         'new_master': {k: v for k, v in new_master.items() if v},
     })
+
+
+@app.route('/api/schedule/import-batches')
+@login_required
+def api_schedule_import_batches():
+    """Recent import batches (newest first) for the Revert UI."""
+    out = []
+    for b in reversed(_load_import_batches()):
+        out.append({'id': b['id'], 'file': b.get('file', ''),
+                    'at': b.get('at', ''), 'user': b.get('user', ''),
+                    'trips': len(b.get('trips', [])),
+                    'reverted': bool(b.get('reverted'))})
+    return jsonify({'batches': out[:5]})
+
+
+@app.route('/api/schedule/import-revert', methods=['POST'])
+@login_required
+def api_schedule_import_revert():
+    """Undo an import batch: delete the trips it created, then any of
+    its waves that are now empty, then any master-data rows it created
+    that nothing references anymore."""
+    data = request.get_json(silent=True) or {}
+    want = data.get('batch_id')
+    batches = _load_import_batches()
+    batch = next((b for b in reversed(batches)
+                  if not b.get('reverted')
+                  and (b['id'] == want if want else True)), None)
+    if batch is None:
+        return jsonify({'error': 'No import batch available to revert.'}), 404
+
+    trip_ids = batch.get('trips', [])
+    removed_trips = 0
+    if trip_ids:
+        removed_trips = (TripRecord.query
+                         .filter(TripRecord.id.in_(trip_ids))
+                         .delete(synchronize_session=False))
+    db.session.flush()
+
+    removed_waves = 0
+    for wid in batch.get('waves', []):
+        w = db.session.get(Wave, wid)
+        if w is not None and not TripRecord.query.filter_by(wave_id=wid).first():
+            db.session.delete(w)
+            removed_waves += 1
+
+    # Master data created by this batch: remove only rows nothing
+    # references anymore (a later manual trip may already be using a
+    # driver the import created — those stay).
+    fk_for = {'driver': TripRecord.driver_id, 'helper': TripRecord.helper_id,
+              'product': TripRecord.product_id, 'client': TripRecord.client_id,
+              'dispatcher': TripRecord.dispatcher_id,
+              'plate': TripRecord.plate_id}
+    mdl_for = {'driver': Driver, 'helper': Helper, 'product': Product,
+               'client': Client, 'dispatcher': Dispatcher, 'plate': Plate}
+    removed_master = {}
+    for kind, ids in (batch.get('master') or {}).items():
+        n = 0
+        for mid in ids:
+            obj = db.session.get(mdl_for[kind], mid)
+            if obj is not None and not (TripRecord.query
+                                        .filter(fk_for[kind] == mid).first()):
+                db.session.delete(obj)
+                n += 1
+        if n:
+            removed_master[kind] = n
+
+    batch['reverted'] = True
+    batch['reverted_at'] = utc_now().isoformat()
+    db.session.commit()
+    _save_import_batches(batches)
+    log_change(
+        f"Reverted schedule import batch {batch['id']} "
+        f"({removed_trips} trips, {removed_waves} waves removed)", 'trip')
+    db.session.commit()
+    return jsonify({'ok': True, 'batch_id': batch['id'],
+                    'removed_trips': removed_trips,
+                    'removed_waves': removed_waves,
+                    'removed_master': removed_master})
 
 
 # ── DASHBOARD KPI REFRESH API ──────────────────────────────────────────────

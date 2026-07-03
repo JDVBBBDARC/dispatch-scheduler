@@ -57,14 +57,17 @@
         <p class="small text-muted mb-2">
           Upload the monthly <b>Daily Sales and Logistics Materials
           Monitoring</b> workbook. The importer reads the
-          <b>2.0 Data Input</b> sheet and creates waves and trips per
+          <b>2.0 Data Input, 2.1 Data_Rental, 2.2 Data_CPS,</b> and
+          <b>6.0 Waste Input</b> sheets and creates waves and trips per
           delivery date. Wave number follows each plate's trip sequence
-          for the day (1st trip → Wave 1, 2nd → Wave 2 …). Re-uploading
+          for the day (1st trip → Wave 1, 2nd → Wave 2 …). Rows mirrored
+          across sheets ("double entry") count once, and re-uploading
           the same file will not create duplicates.
         </p>
         <input type="file" id="importFile" class="form-control form-control-sm mb-3"
                accept=".xlsx,.xlsm" onchange="document.getElementById('importResult').innerHTML='';">
         <div id="importResult"></div>
+        <div id="importRevertBox" class="mt-2"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -898,7 +901,53 @@ function openImportModal() {
   document.getElementById('importFile').value = '';
   document.getElementById('importResult').innerHTML = '';
   document.getElementById('importCommitBtn').disabled = true;
+  loadImportBatches();
   new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+
+async function loadImportBatches() {
+  const box = document.getElementById('importRevertBox');
+  box.innerHTML = '';
+  try {
+    const j = await (await fetch('/api/schedule/import-batches')).json();
+    const last = (j.batches || []).find(b => !b.reverted);
+    if (!last) return;
+    box.innerHTML = `
+      <div class="border rounded p-2 small d-flex align-items-center gap-2"
+           style="background:#fafafa;">
+        <i class="bi bi-clock-history"></i>
+        <span class="me-auto">Last import: <b>${escH(last.file)}</b>
+          — ${last.trips} trips (batch ${escH(last.id)})</span>
+        <button class="btn btn-outline-danger btn-sm" onclick="revertImport('${escH(last.id)}')">
+          <i class="bi bi-arrow-counterclockwise"></i> Revert this import
+        </button>
+      </div>`;
+  } catch (e) { /* non-fatal */ }
+}
+
+async function revertImport(batchId) {
+  if (!confirm('Buburahin nito ang LAHAT ng trips na ginawa ng import na ito ' +
+               '(pati ang mga na-empty na waves at bagong master data na wala ' +
+               'nang gumagamit). Ituloy?')) return;
+  const box = document.getElementById('importRevertBox');
+  box.innerHTML = '<div class="text-muted small py-1"><span class="spinner-border spinner-border-sm me-2"></span>Reverting…</div>';
+  try {
+    const r = await fetch('/api/schedule/import-revert', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({batch_id: batchId}),
+    });
+    const j = await r.json();
+    if (!r.ok || j.error) {
+      box.innerHTML = `<div class="alert alert-danger py-2 small">${escH(j.error || 'Revert failed')}</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="alert alert-success py-2 small">
+      Reverted batch ${escH(j.batch_id)} — ${j.removed_trips} trips at
+      ${j.removed_waves} waves ang binura. Nire-refresh ang page…</div>`;
+    setTimeout(() => window.location.reload(), 1500);
+  } catch (e) {
+    box.innerHTML = `<div class="alert alert-danger py-2 small">Request failed: ${escH(e)}</div>`;
+  }
 }
 
 function escH(s) {
@@ -935,9 +984,11 @@ async function runImport(commit) {
     const dates = Object.entries(j.dates || {});
     let html = `
       <div class="alert ${commit ? 'alert-success' : 'alert-info'} py-2 mb-2">
-        <b>${commit ? 'Imported!' : 'Preview'}</b> — sheet: ${escH(j.sheet)} ·
+        <b>${commit ? 'Imported!' : 'Preview'}</b> —
+        sheets: ${(j.sheets || []).map(escH).join(', ')} ·
         ${s.imported} trips ${commit ? 'created' : 'to create'} across ${dates.length} date(s),
         ${s.waves_created} new wave(s), ${s.skipped_dupe} duplicate(s) skipped,
+        ${s.skipped_cross_sheet} cross-sheet double-entr${s.skipped_cross_sheet === 1 ? 'y' : 'ies'} skipped,
         ${s.skipped_no_plate} row(s) without a plate skipped.
       </div>`;
     const nm = j.new_master || {};
@@ -959,7 +1010,10 @@ async function runImport(commit) {
     // Enable Import Now only when the preview found something to do.
     btnC.disabled = commit || s.imported === 0;
     if (commit) {
-      setTimeout(() => window.location.reload(), 1800);
+      // Land on the first imported date so the result is immediately
+      // visible (instead of reloading whatever date was open).
+      const dest = j.first_date ? '/schedule/' + j.first_date : window.location.href;
+      setTimeout(() => { window.location = dest; }, 1800);
     }
   } catch (e) {
     resEl.innerHTML = `<div class="alert alert-danger py-2">Request failed: ${escH(e)}</div>`;
