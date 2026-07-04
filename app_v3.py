@@ -825,10 +825,6 @@ def api_schedule_import_xlsx():
             stats['skipped_no_plate'] += 1
             continue
 
-        seq_key = (d, plate_key)
-        plate_seq[seq_key] = plate_seq.get(seq_key, 0) + 1
-        wave_no = plate_seq[seq_key]
-
         # Trip type from the client: internal stockpile/RMC/RMP
         # transfers are back loads, everything else is a front load.
         # Waste hauling (6.0 Waste Input sheet) flips the default:
@@ -856,6 +852,16 @@ def api_schedule_import_xlsx():
             tt_id = ot_type.id
             trip_type = 'Hustling'
             stats['hauling_to_others'] += 1
+
+        # Wave number = the plate's Nth trip of the day WITHIN this
+        # category. Hauling runs count against the OT tab and
+        # deliveries against the plate's own truck type — with one
+        # shared counter, a truck whose morning was spent hauling had
+        # its first DELIVERY land in e.g. Wave 3 of its own tab,
+        # scattering single-trip waves across the schedule.
+        seq_key = (d, plate_key, tt_id)
+        plate_seq[seq_key] = plate_seq.get(seq_key, 0) + 1
+        wave_no = plate_seq[seq_key]
         wkey = (d, tt_id, wave_no)
         wave = wave_cache.get(wkey)
         if wave is None:
