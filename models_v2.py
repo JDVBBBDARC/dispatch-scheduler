@@ -65,7 +65,10 @@ def is_product_full_day(product):
     name = (getattr(product, 'name', '') or '').lower()
     return any(kw in name for kw in FULL_DAY_KEYWORDS)
 
-TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load']
+# 'Hustling' = the operation's term for internal hauling runs (12W/22WD
+# dump trucks serving RMC / Asphalt Plant / CPS) — filed under the OT
+# truck category and excluded from fleet utilisation.
+TRIP_TYPES = ['Front Load', 'Back Load', 'Side Load', 'Hustling']
 
 DOC_HEADER_DEFAULTS = {
     'doc_title':    'LOGISTICS DELIVERY SCHEDULE',

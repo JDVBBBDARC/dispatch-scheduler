@@ -843,8 +843,10 @@ def api_schedule_import_xlsx():
             trip_type = ('Back Load' if (c_toks & _IMPORT_BACKLOAD_TOKENS)
                          else 'Front Load')
 
-        # Hauling detection: a 12W/22WD dump truck serving RMC /
-        # Asphalt Plant / CPS files under OT so utilisation ignores it.
+        # Hauling ("hustling") detection: a 12W/22WD dump truck serving
+        # RMC / Asphalt Plant / CPS files under OT so utilisation
+        # ignores it, and its trip type is Hustling rather than the
+        # client-derived front/back load.
         tt_id = plate.truck_type_id if plate else ot_type.id
         plate_tt_code = tt_code_by_id.get(tt_id, '')
         is_hauling = (plate_tt_code in _IMPORT_HAUL_TT_CODES
@@ -852,6 +854,7 @@ def api_schedule_import_xlsx():
                                or 'asphalt' in (r['client'] or '').lower()))
         if is_hauling:
             tt_id = ot_type.id
+            trip_type = 'Hustling'
             stats['hauling_to_others'] += 1
         wkey = (d, tt_id, wave_no)
         wave = wave_cache.get(wkey)
