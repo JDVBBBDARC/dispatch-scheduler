@@ -235,7 +235,9 @@
         </span>
         <div class="d-flex gap-1 flex-wrap" id="fleetUtilFilterBtns">
           <button class="trend-btn active" data-tt="all" onclick="setFleetUtilFilter('all',this)">All</button>
-          {% for tt in truck_types %}
+          {# OT excluded — hustling/hauling runs don't count toward
+             utilisation, so the API returns no OT series. #}
+          {% for tt in truck_types if tt.code != 'OT' %}
           <button class="trend-btn" data-tt="{{ tt.code }}" onclick="setFleetUtilFilter('{{ tt.code }}',this)"
                   style="--tc:{{ tt.color }}">{{ tt.code }}</button>
           {% endfor %}

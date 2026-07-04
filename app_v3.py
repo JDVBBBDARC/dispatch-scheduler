@@ -1194,9 +1194,13 @@ def api_dashboard_fleet_utilization():
         if wave.date in points_map[tt.id]:
             points_map[tt.id][wave.date] += pts
 
-    # Build series per truck type
+    # Build series per truck type. OT (Others) is EXCLUDED: it holds
+    # the hustling/hauling runs (and catch-all units), which operations
+    # deliberately keeps out of fleet utilisation.
     series = []
     for tt in truck_types:
+        if tt.code == 'OT':
+            continue
         truck_count   = plate_counts.get(tt.id, 0)
         target_per_truck = float(tt.daily_target_points or 1.5)
         max_per_day   = truck_count * target_per_truck if truck_count > 0 else 0
