@@ -23,14 +23,20 @@
       {% endfor %}
     </select>
   </div>
+  {# Date inputs deliberately do NOT auto-submit: picking "From" used
+     to reload the page before the user could set "To". The Apply
+     button submits both together. #}
   <div class="d-flex align-items-center gap-2">
     <label>From</label>
-    <input type="date" name="trend_start" value="{{ trend_start_str }}" onchange="this.form.submit()">
+    <input type="date" name="trend_start" value="{{ trend_start_str }}">
   </div>
   <div class="d-flex align-items-center gap-2">
     <label>To</label>
-    <input type="date" name="trend_end" value="{{ trend_end_str }}" onchange="this.form.submit()">
+    <input type="date" name="trend_end" value="{{ trend_end_str }}">
   </div>
+  <button type="submit" class="btn btn-maroon btn-sm">
+    <i class="bi bi-funnel-fill me-1"></i>Apply
+  </button>
   <a href="{{ url_for('schedule', date_str=today.isoformat()) }}" class="btn btn-maroon btn-sm ms-auto">
     <i class="bi bi-calendar3-week me-1"></i>View Schedule
   </a>
