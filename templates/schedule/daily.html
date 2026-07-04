@@ -22,6 +22,27 @@
 }
 .ac-item { padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-item:hover, .ac-item.hi { background: var(--maroon); color: #fff; }
+
+/* ── Excel-style resizable columns ── */
+.trip-table th { position: relative; }
+.col-resizer {
+  position: absolute;
+  top: 0; right: -4px; bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.col-resizer::after {
+  content: "";
+  position: absolute;
+  top: 15%; bottom: 15%; right: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background .12s;
+}
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after { background: var(--maroon); }
 </style>
 <!-- ── DATE NAVIGATION ──────────────────────────────────────────────────── -->
 <div class="page-header">
@@ -149,12 +170,10 @@
                 <th style="min-width:100px;">Dispatcher</th>
                 <th style="min-width:80px;">RS No.</th>
                 <th style="min-width:80px;">PO No.</th>
-                <th style="min-width:80px;">Reference</th>
-                <th style="min-width:80px;">DR No.</th>
+                      <th style="min-width:80px;">DR No.</th>
                 <th style="min-width:70px;">Volume</th>
                 <th style="min-width:110px;">Status</th>
-                <th style="min-width:85px;">Toll (₱)</th>
-                <th style="min-width:120px;">Notes</th>
+                      <th style="min-width:120px;">Notes</th>
                 <th class="center" style="width:38px;"></th>
               </tr>
             </thead>
@@ -216,14 +235,12 @@
                 </select></td>
                 <td><input class="ti ti-sm" type="text" data-field="rs_no"     value="{{ trip.rs_no or '' }}"     onchange="updateTrip({{ trip.id }},'rs_no',this.value)"     placeholder="RS No."></td>
                 <td><input class="ti ti-sm" type="text" data-field="po_no"     value="{{ trip.po_no or '' }}"     onchange="updateTrip({{ trip.id }},'po_no',this.value)"     placeholder="PO No."></td>
-                <td><input class="ti ti-sm" type="text" data-field="reference" value="{{ trip.reference or '' }}" onchange="updateTrip({{ trip.id }},'reference',this.value)" placeholder="Ref"></td>
                 <td><input class="ti ti-sm" type="text" data-field="dr_no"     value="{{ trip.dr_no or '' }}"     onchange="updateTrip({{ trip.id }},'dr_no',this.value)"     placeholder="DR No."></td>
                 <td><input class="ti ti-num" type="text" data-field="volume"   value="{{ trip.volume or '' }}"    onchange="updateTrip({{ trip.id }},'volume',this.value)"    placeholder="Vol."></td>
                 <td><span class="s-badge s-{{ (trip.status or 'Pending')|replace(' ','-') }}"
                           data-status="{{ trip.status or 'Pending' }}"
                           data-trip-id="{{ trip.id }}"
                           onclick="cycleStatus(this)">{{ trip.status or 'Pending' }}</span></td>
-                <td><input class="ti ti-num" type="number" data-field="toll_fee" value="{{ trip.toll_fee if trip.toll_fee else '' }}" onchange="updateTrip({{ trip.id }},'toll_fee',this.value)" placeholder="0" min="0" step="1"></td>
                 <td><input class="ti ti-md" type="text" data-field="notes" value="{{ trip.notes or '' }}" onchange="updateTrip({{ trip.id }},'notes',this.value)" placeholder="Notes…"></td>
                 <td class="center">
                   <button class="btn btn-danger btn-xs" onclick="deleteTrip({{ trip.id }}, this)" title="Delete row">
@@ -233,7 +250,7 @@
               </tr>
               {% else %}
               <tr class="empty-trip-row">
-                <td colspan="18" class="empty-state py-3">
+                <td colspan="16" class="empty-state py-3">
                   <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
                 </td>
               </tr>
@@ -332,6 +349,7 @@ function addWave(truckCode, dateStr) {
     panel.dataset.waveId = wid;
     panel.innerHTML = buildWavePanelHTML(wid, label);
     cont.appendChild(panel);
+    initColResizers();          // grips + saved widths for the new table
 
     showToast(`${label} added for ${truckCode}`);
     updateTabCount(truckCode, 0);
@@ -355,17 +373,15 @@ function buildWavePanelHTML(wid, label) {
           <th style="min-width:100px;">Dispatcher</th>
           <th style="min-width:80px;">RS No.</th>
           <th style="min-width:80px;">PO No.</th>
-          <th style="min-width:80px;">Reference</th>
           <th style="min-width:80px;">DR No.</th>
           <th style="min-width:70px;">Volume</th>
           <th style="min-width:110px;">Status</th>
-          <th style="min-width:85px;">Toll (₱)</th>
           <th style="min-width:120px;">Notes</th>
           <th class="center" style="width:38px;"></th>
         </tr></thead>
         <tbody id="wave-body-${wid}">
           <tr class="empty-trip-row">
-            <td colspan="18" class="empty-state py-3">
+            <td colspan="16" class="empty-state py-3">
               <i class="bi bi-truck"></i>No trips yet. Click <strong>+ Add Row</strong>.
             </td>
           </tr>
@@ -545,11 +561,9 @@ function addTrip(waveId) {
     <td>${makeAcHTML('dispatcher_id','')}</td>
     <td><input class="ti ti-sm"  type="text" data-field="rs_no"     placeholder="RS No."  onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-sm"  type="text" data-field="po_no"     placeholder="PO No."  onchange="saveNewTrip(${waveId},this)"></td>
-    <td><input class="ti ti-sm"  type="text" data-field="reference" placeholder="Ref"     onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-sm"  type="text" data-field="dr_no"     placeholder="DR No."  onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-num" type="text" data-field="volume"    placeholder="Vol."    onchange="saveNewTrip(${waveId},this)"></td>
     <td><span class="s-badge s-Pending" data-status="Pending" onclick="cycleStatusNew(this)">Pending</span></td>
-    <td><input class="ti ti-num" type="number" data-field="toll_fee" placeholder="0" min="0" step="1" onchange="saveNewTrip(${waveId},this)"></td>
     <td><input class="ti ti-md"  type="text"   data-field="notes"    placeholder="Notes…" onchange="saveNewTrip(${waveId},this)"></td>
     <td class="center">
       <button class="btn btn-danger btn-xs" onclick="this.closest('tr').remove()" title="Remove">
@@ -668,7 +682,7 @@ function deleteTrip(tripId, btn) {
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
-      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="18" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-trip-row"><td colspan="16" class="empty-state py-3"><i class="bi bi-truck"></i>No trips. Click <strong>+ Add Row</strong>.</td></tr>`;
     }
     updateWaveCount(waveId);
     showToast('Row deleted');
@@ -810,11 +824,9 @@ function duplicateTrip(tripId, waveId, btn) {
       <td>${makeAcHTML('dispatcher_id', payload.dispatcher_id || '')}</td>
       <td><input class="ti ti-sm"  type="text" data-field="rs_no"     value="${escAtt(payload.rs_no||'')}"     onchange="updateTrip(${data.id},'rs_no',this.value)"     placeholder="RS No."></td>
       <td><input class="ti ti-sm"  type="text" data-field="po_no"     value="${escAtt(payload.po_no||'')}"     onchange="updateTrip(${data.id},'po_no',this.value)"     placeholder="PO No."></td>
-      <td><input class="ti ti-sm"  type="text" data-field="reference" value="${escAtt(payload.reference||'')}" onchange="updateTrip(${data.id},'reference',this.value)" placeholder="Ref"></td>
       <td><input class="ti ti-sm"  type="text" data-field="dr_no"     value="${escAtt(payload.dr_no||'')}"     onchange="updateTrip(${data.id},'dr_no',this.value)"     placeholder="DR No."></td>
       <td><input class="ti ti-num" type="text" data-field="volume"    value="${escAtt(payload.volume||'')}"    onchange="updateTrip(${data.id},'volume',this.value)"    placeholder="Vol."></td>
       <td><span class="s-badge s-${status.replace(/ /g,'-')}" data-status="${status}" data-trip-id="${data.id}" onclick="cycleStatus(this)">${status}</span></td>
-      <td><input class="ti ti-num" type="number" data-field="toll_fee" value="${escAtt(payload.toll_fee||'')}" onchange="updateTrip(${data.id},'toll_fee',this.value)" placeholder="0" min="0" step="1"></td>
       <td><input class="ti ti-md"  type="text"   data-field="notes"    value="${escAtt(payload.notes||'')}"    onchange="updateTrip(${data.id},'notes',this.value)"    placeholder="Notes…"></td>
       <td class="center">
         <button class="btn btn-danger btn-xs" onclick="deleteTrip(${data.id},this)" title="Delete row"><i class="bi bi-trash"></i></button>
@@ -1023,5 +1035,88 @@ async function runImport(commit) {
     btnP.disabled = false;
   }
 }
+
+// ── EXCEL-STYLE RESIZABLE COLUMNS ────────────────────────────────────────
+// Drag the right edge of any column header to resize it; the width is
+// applied to the SAME column in every wave table (they share one
+// structure) and saved per header label in localStorage. Double-click
+// a grip to reset that column to its default width.
+const COLW_KEY = 'schedColWidths_v1';
+
+function loadColWidths() {
+  try { return JSON.parse(localStorage.getItem(COLW_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function saveColWidths(m) {
+  try { localStorage.setItem(COLW_KEY, JSON.stringify(m)); } catch (e) {}
+}
+
+function applyColWidth(label, px) {
+  document.querySelectorAll('.trip-table thead th').forEach(th => {
+    if (thLabel(th) !== label) return;
+    if (px == null) {
+      th.style.width = ''; th.style.minWidth = '';
+    } else {
+      th.style.width = px + 'px'; th.style.minWidth = px + 'px';
+    }
+  });
+}
+
+function thLabel(th) {
+  // The grip div contributes no text; trim what's left.
+  return (th.textContent || '').trim();
+}
+
+function initColResizers() {
+  const widths = loadColWidths();
+  document.querySelectorAll('.trip-table thead th').forEach(th => {
+    const label = thLabel(th);
+    if (!label) return;                      // icon/expander columns stay fixed
+    if (widths[label] != null) {
+      th.style.width = widths[label] + 'px';
+      th.style.minWidth = widths[label] + 'px';
+    }
+    if (th.querySelector('.col-resizer')) return;   // already wired
+    const grip = document.createElement('div');
+    grip.className = 'col-resizer';
+    grip.title = 'Drag to resize · double-click to reset';
+    th.appendChild(grip);
+
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = th.getBoundingClientRect().width;
+      grip.classList.add('is-resizing');
+      grip.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const w = Math.max(48, Math.round(startW + (ev.clientX - startX)));
+        applyColWidth(label, w);
+      };
+      const up = (ev) => {
+        grip.classList.remove('is-resizing');
+        try { grip.releasePointerCapture(e.pointerId); } catch (_) {}
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        const m = loadColWidths();
+        m[label] = Math.round(th.getBoundingClientRect().width);
+        saveColWidths(m);
+      };
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+    });
+
+    grip.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const m = loadColWidths();
+      delete m[label];
+      saveColWidths(m);
+      applyColWidth(label, null);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initColResizers);
 </script>
 {% endblock %}
