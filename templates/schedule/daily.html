@@ -23,6 +23,18 @@
 .ac-item { padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ac-item:hover, .ac-item.hi { background: var(--maroon); color: #fff; }
 
+/* ── Excel-style row selection (copy/paste) ── */
+.trip-table td.trip-num {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+.trip-table td.trip-num:hover { background: var(--maroon-tint); }
+.trip-table tr.row-selected td {
+  background: rgba(90, 15, 28, .10) !important;
+  box-shadow: inset 3px 0 0 var(--maroon);
+}
+
 /* ── Excel-style resizable columns ── */
 .trip-table th { position: relative; }
 .col-resizer {
@@ -263,6 +275,10 @@
           <button class="btn btn-maroon btn-sm" onclick="addTrip({{ wave.id }})">
             <i class="bi bi-plus-lg me-1"></i>Add Row
           </button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="pasteRows({{ wave.id }})"
+                  title="Paste copied rows here (Ctrl+V)">
+            <i class="bi bi-clipboard-plus me-1"></i>Paste
+          </button>
         </div>
       </div>
       {% endfor %}
@@ -391,6 +407,10 @@ function buildWavePanelHTML(wid, label) {
     <div class="wave-panel-footer">
       <button class="btn btn-maroon btn-sm" onclick="addTrip(${wid})">
         <i class="bi bi-plus-lg me-1"></i>Add Row
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="pasteRows(${wid})"
+              title="Paste copied rows here (Ctrl+V)">
+        <i class="bi bi-clipboard-plus me-1"></i>Paste
       </button>
     </div>`;
 }
@@ -1118,5 +1138,152 @@ function initColResizers() {
 }
 
 document.addEventListener('DOMContentLoaded', initColResizers);
+
+// ── EXCEL-STYLE ROW COPY/PASTE ───────────────────────────────────────────
+// Click a row's number to select it (Ctrl+click = add/remove,
+// Shift+click = range). Ctrl+C copies the selected rows' ASSIGNMENTS
+// (trip type, driver, helper, plate, product, client, dispatcher) to a
+// localStorage clipboard that survives navigation — so rows can be
+// pasted into another wave, another truck tab, or another DAY. Ctrl+V
+// (or the Paste button) inserts them into the open wave as fresh
+// Pending trips with blank RS/PO/DR/volume.
+const CLIP_KEY = 'schedClipboard_v1';
+const COPY_FIELDS = ['trip_type', 'driver_id', 'helper_id', 'plate_id',
+                     'product_id', 'client_id', 'dispatcher_id'];
+let selAnchor = null;
+
+function selectedRows() {
+  return [...document.querySelectorAll('tr.row-selected[data-trip-id]')];
+}
+function clearSelection() {
+  selectedRows().forEach(tr => tr.classList.remove('row-selected'));
+  selAnchor = null;
+}
+
+document.addEventListener('click', (e) => {
+  const cell = e.target.closest('.trip-table td.trip-num');
+  if (!cell) return;
+  const tr = cell.closest('tr[data-trip-id]');
+  if (!tr) return;
+  e.preventDefault();
+  if (e.shiftKey && selAnchor && selAnchor.closest('tbody') === tr.closest('tbody')) {
+    // Range within the same wave table
+    const rows = [...tr.closest('tbody').querySelectorAll('tr[data-trip-id]')];
+    const a = rows.indexOf(selAnchor), b = rows.indexOf(tr);
+    rows.slice(Math.min(a, b), Math.max(a, b) + 1)
+        .forEach(r => r.classList.add('row-selected'));
+  } else if (e.ctrlKey || e.metaKey) {
+    tr.classList.toggle('row-selected');
+    selAnchor = tr;
+  } else {
+    const wasOnlySelected = tr.classList.contains('row-selected')
+                            && selectedRows().length === 1;
+    clearSelection();
+    if (!wasOnlySelected) { tr.classList.add('row-selected'); selAnchor = tr; }
+  }
+});
+
+function copySelectedRows() {
+  const rows = selectedRows();
+  if (!rows.length) return false;
+  const data = rows.map(tr => {
+    const out = {};
+    COPY_FIELDS.forEach(f => {
+      const el = tr.querySelector(`[data-field="${f}"]`);
+      out[f] = el ? (el.value || '') : '';
+    });
+    return out;
+  });
+  try {
+    localStorage.setItem(CLIP_KEY, JSON.stringify(
+      {v: 1, from: '{{ d.isoformat() }}', rows: data}));
+  } catch (e) { return false; }
+  showToast(`${data.length} row(s) copied — Ctrl+V sa kahit anong wave o araw`);
+  return true;
+}
+
+function loadClipboard() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CLIP_KEY) || 'null');
+    return (c && c.v === 1 && Array.isArray(c.rows) && c.rows.length) ? c : null;
+  } catch (e) { return null; }
+}
+
+function activeWaveId() {
+  const panel = document.querySelector(
+    '.truck-panel:not(.d-none) .wave-panel:not(.d-none)');
+  return panel ? panel.dataset.waveId : null;
+}
+
+function appendPastedRow(tbody, waveId, data, src) {
+  tbody.querySelector('.empty-trip-row')?.remove();
+  const tr = document.createElement('tr');
+  tr.dataset.tripId = data.id;
+  tr.innerHTML = `
+    <td class="center" style="padding:0 2px;">
+      ${buildCopyButtonHTML(data.id, waveId)}
+    </td>
+    <td class="trip-num">${tbody.rows.length + 1}</td>
+    <td>${makeAcHTML('trip_type',     src.trip_type     || '')}</td>
+    <td>${makeAcHTML('driver_id',     src.driver_id     || '')}</td>
+    <td>${makeAcHTML('helper_id',     src.helper_id     || '')}</td>
+    <td>${makeAcHTML('plate_id',      src.plate_id      || '')}</td>
+    <td>${makeAcHTML('product_id',    src.product_id    || '')}</td>
+    <td>${makeAcHTML('client_id',     src.client_id     || '')}</td>
+    <td>${makeAcHTML('dispatcher_id', src.dispatcher_id || '')}</td>
+    <td><input class="ti ti-sm"  type="text" data-field="rs_no"  value="" onchange="updateTrip(${data.id},'rs_no',this.value)"  placeholder="RS No."></td>
+    <td><input class="ti ti-sm"  type="text" data-field="po_no"  value="" onchange="updateTrip(${data.id},'po_no',this.value)"  placeholder="PO No."></td>
+    <td><input class="ti ti-sm"  type="text" data-field="dr_no"  value="" onchange="updateTrip(${data.id},'dr_no',this.value)"  placeholder="DR No."></td>
+    <td><input class="ti ti-num" type="text" data-field="volume" value="" onchange="updateTrip(${data.id},'volume',this.value)" placeholder="Vol."></td>
+    <td><span class="s-badge s-Pending" data-status="Pending" data-trip-id="${data.id}" onclick="cycleStatus(this)">Pending</span></td>
+    <td><input class="ti ti-md"  type="text" data-field="notes"  value="" onchange="updateTrip(${data.id},'notes',this.value)"  placeholder="Notes…"></td>
+    <td class="center">
+      <button class="btn btn-danger btn-xs" onclick="deleteTrip(${data.id},this)" title="Delete row"><i class="bi bi-trash"></i></button>
+    </td>`;
+  tbody.appendChild(tr);
+  tr.style.background = '#fffbe6';
+  setTimeout(() => { tr.style.transition = 'background .6s'; tr.style.background = ''; }, 50);
+}
+
+async function pasteRows(waveId) {
+  waveId = waveId || activeWaveId();
+  const clip = loadClipboard();
+  if (!clip) { showToast('Walang copied rows — select ng row tapos Ctrl+C muna'); return; }
+  const tbody = document.getElementById(`wave-body-${waveId}`);
+  if (!tbody) { showToast('Buksan muna ang wave na paglalagyan'); return; }
+
+  let ok = 0;
+  for (const src of clip.rows) {
+    const payload = {wave_id: waveId, status: 'Pending'};
+    COPY_FIELDS.forEach(f => { payload[f] = src[f] || ''; });
+    try {
+      const r = await fetch('/api/trip/save', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) continue;
+      appendPastedRow(tbody, waveId, await r.json(), src);
+      ok++;
+    } catch (e) { /* count via ok */ }
+  }
+  renumberRows(tbody);
+  updateWaveCount(waveId);
+  showToast(ok === clip.rows.length
+            ? `Pasted ${ok} row(s)${clip.from !== '{{ d.isoformat() }}' ? ' (galing ' + clip.from + ')' : ''}`
+            : `Pasted ${ok}/${clip.rows.length} — may pumalya, i-refresh at i-check`);
+}
+
+document.addEventListener('keydown', (e) => {
+  const el = document.activeElement;
+  const editing = el && (el.tagName === 'INPUT' || el.tagName === 'SELECT'
+                         || el.tagName === 'TEXTAREA' || el.isContentEditable);
+  if (e.key === 'Escape' && !editing) { clearSelection(); return; }
+  if (!(e.ctrlKey || e.metaKey) || editing) return;
+  if (e.key === 'c' || e.key === 'C') {
+    if (copySelectedRows()) e.preventDefault();
+  } else if (e.key === 'v' || e.key === 'V') {
+    if (loadClipboard()) { e.preventDefault(); pasteRows(); }
+  }
+});
 </script>
 {% endblock %}
