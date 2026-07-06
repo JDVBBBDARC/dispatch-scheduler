@@ -57,6 +57,12 @@ def section_b():
         'business day. The data refreshes automatically every sixty '
         'seconds, so the figures shown reflect the latest information '
         'available without manual reloading.'))
+    out.append(pj(
+        'The filter bar at the top scopes every KPI and chart: Truck '
+        'type and Status apply instantly on selection, while the From '
+        'and To dates apply only when the <b>Apply</b> button is '
+        'clicked — so picking the first date no longer reloads the '
+        'page before the second can be set.'))
     out.append(screenshot_placeholder(
         'Dashboard overview — KPI cards, fleet utilisation, breakdown chart, '
         'truck cycle widget', image='dashboard.png', height_cm=11))
@@ -100,7 +106,9 @@ def section_b():
         'per-leg point value (typically 1.0, or 0.5 for ten-wheelers) '
         'and a daily target (typically 1.5, or 4.0 for ten-wheelers). '
         'Bars are colour-coded green (≥100%), amber (70–99%), and red '
-        '(below 70%).'))
+        '(below 70%). The <b>OT (Others)</b> category is excluded '
+        'from this chart: it holds the hustling/hauling runs, which '
+        'operations deliberately keeps out of utilisation.'))
 
     out.append(h2('Driver-Truck Ratio'))
     out.append(pj(
@@ -245,18 +253,50 @@ def section_b():
         'standard daily dispatch flow.',
         kind='ok'))
 
+    out.append(h2('Copying and Pasting Rows (Excel-style)'))
+    out.append(pj(
+        'Beyond the single-row copy icon, whole rows can be selected '
+        'and pasted like spreadsheet cells — including into another '
+        'wave, another truck-type tab, or another <b>day</b>:'))
+    for x in bullet_list([
+        '<b>Select</b> — click a row\'s number to select it. '
+        'Ctrl+click adds or removes rows; Shift+click selects a '
+        'range; Esc clears the selection. Selected rows are '
+        'highlighted with a maroon edge.',
+        '<b>Copy (Ctrl+C)</b> — copies the selected rows\' '
+        'assignments: trip type, driver, helper, plate, product, '
+        'client, and dispatcher.',
+        '<b>Paste (Ctrl+V or the Paste button)</b> — inserts the '
+        'copied rows into the open wave as fresh <i>Pending</i> '
+        'trips. RS/PO/DR numbers and volume are left blank on '
+        'purpose: reference numbers belong to the new run.',
+    ]): out.append(x)
+    out.append(callout(
+        'Repeating daily patterns',
+        'The copied rows survive page navigation. Copy Monday\'s '
+        'rows, press Next to open Tuesday, and paste — the whole '
+        'pattern transfers without re-encoding. The clipboard is '
+        'per-browser, like the dashboard layout.',
+        kind='ok'))
+
+    out.append(h2('Adjusting Column Widths'))
+    out.append(pj(
+        'Drag the right edge of any column header to resize it, '
+        'exactly as in a spreadsheet. The width applies to the same '
+        'column in every wave table so the grids stay aligned, and it '
+        'is remembered by the browser. Double-click a column edge to '
+        'reset that column to its default width.'))
+
     out.append(h2('Updating Trip Status'))
-    out.append(p('The Status badge cycles through the four operational '
-                  'states when clicked: <b>Pending → Loading → In '
-                  'Transit → Delivered</b>. To set a non-linear status '
-                  '(e.g., Cancelled), use the dropdown control instead.'))
+    out.append(p('The Status badge cycles through the operational '
+                  'states when clicked: <b>Pending → In Transit → '
+                  'Delivered → Canceled</b>.'))
     status_rows = [
         ['Status',     'Meaning', 'When to set'],
         ['Pending',    'Trip planned but not yet started.',          'At trip creation, or when reverting an incorrect status.'],
-        ['Loading',    'Truck is at the origin loading cargo.',      'When the driver radios in at the loading point.'],
         ['In Transit', 'Truck is en route to the customer.',          'When the truck departs the loading point.'],
         ['Delivered',  'Cargo has been received and signed for.',     'On confirmation from the driver / customer.'],
-        ['Cancelled',  'Trip was assigned but did not run.',          'When a customer cancels, or weather / breakdown prevents execution.'],
+        ['Canceled',   'Trip was assigned but did not run.',          'When a customer cancels, or weather / breakdown prevents execution.'],
     ]
     out.append(std_table(status_rows,
                           col_widths=[2.6 * cm, 5.2 * cm, 8.7 * cm]))
@@ -275,6 +315,47 @@ def section_b():
         'audit trail and surfaces operational issues in the cancellation '
         'rate KPI.',
         kind='warn'))
+
+    out.append(h2('Importing the Monthly Monitoring Workbook'))
+    out.append(pj(
+        'The <b>Import Excel</b> button (top-right of the Schedule '
+        'page) creates an entire month of waves and trips from the '
+        '"Daily Sales and Logistics Materials Monitoring" workbook. '
+        'The importer reads four tabs — <b>2.0 Data Input, 2.1 '
+        'Data_Rental, 2.2 Data_CPS,</b> and <b>6.0 Waste Input</b> — '
+        'and finds the columns by their headers, so minor layout '
+        'changes between months do not break it.'))
+    for x in numbered_list([
+        'Click <b>Import Excel</b> and choose the workbook file.',
+        'Click <b>Preview</b> — nothing is written yet. Review the '
+        'counts: trips to create per date, duplicates skipped, rows '
+        'without a plate, and every NEW client / product / driver / '
+        'helper / plate the import would add to Master Data.',
+        'Click <b>Import Now</b>. The page then opens the first '
+        'imported date so the result is immediately visible.',
+    ]): out.append(x)
+
+    out.append(p('<b>Rules the importer applies automatically:</b>'))
+    import_rules = [
+        ['Rule', 'Behaviour'],
+        ['Waves',        'A plate\'s 1st trip of the day lands in Wave 1, its 2nd in Wave 2, and so on — counted separately per tab, so hauling runs never push a plate\'s deliveries into later waves.'],
+        ['Trip type',    'Clients containing RMC / RMP / Stockpile import as Back Load; all other clients as Front Load. Waste-input rows: Eco Protect is Front Load, every other destination Back Load.'],
+        ['Hustling',     'A 12W or 22WD dump truck serving RMC / Asphalt Plant / CPS is a hauling ("hustling") run: filed under the OT (Others) tab with trip type Hustling, and excluded from Fleet Utilisation.'],
+        ['Statuses',     'Completed → Delivered, Cancelled → Canceled, blank → Pending. Rows whose date cell holds text (e.g. "Cancelled") are skipped, never guessed.'],
+        ['Master data',  'Unknown names are auto-created. Name variants match automatically ("Arnel Eusebio" = "A. Eusebio"), so spelling differences do not create duplicates. New plates default to truck type OT — recategorise them in Master Data afterwards.'],
+        ['Duplicates',   'Re-uploading the same (or an updated) workbook never doubles trips: rows are skipped when their DR No. already exists on that date or an identical trip sits in the same wave. Upload the growing file weekly, safely.'],
+    ]
+    out.append(std_table(import_rules, col_widths=[2.8 * cm, 13.7 * cm]))
+
+    out.append(h2('Reverting an Import'))
+    out.append(pj(
+        'Every import is journaled. Re-opening the Import dialog shows '
+        'the last import with a <b>Revert this import</b> button: it '
+        'removes exactly the trips that import created, any waves left '
+        'empty by that removal, and any auto-created master-data '
+        'records nothing else uses. Trips a dispatcher has edited '
+        'since the import are kept. Typical use: revert, fix the '
+        'workbook, upload again.'))
 
     # ── B.3 Master Data ───────────────────────────────────────────────
     out.append(h1('B.3 Master Data'))

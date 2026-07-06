@@ -22,7 +22,7 @@ from reportlab.pdfgen.canvas import Canvas
 COMPANY_NAME   = 'Dispatch Operations'
 DOC_TITLE      = 'Dispatch Scheduler System Manual'
 DOC_ID         = 'DSM-001'
-DOC_VERSION    = '1.7'
+DOC_VERSION    = '1.8'
 DOC_DATE       = 'July 2026'
 PAGE_SIZE      = A4
 

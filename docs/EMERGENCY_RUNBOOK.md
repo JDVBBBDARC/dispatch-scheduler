@@ -116,6 +116,7 @@ ulit mula sa papel.
 | Trucks hindi gumagalaw sa Truck Cycle Time / walang bagong GPS data | Worker patay o expired ang Cartrack password | Restart worker (Sec. 4). Kung log ay puro `401`: i-regenerate ang API password sa Cartrack Fleet Web, i-update sa `.env`, restart |
 | Walang bagong breakdown mula ERP | ERP sync error | Buksan ang /breakdown page → pindutin **Sync from ERP** → basahin ang error message. Kung credential issue: i-check ang `.env` |
 | "Database is locked" errors | Sabay na nagsusulat ang web at worker | Karaniwang self-healing. Kung tuloy-tuloy: restart worker muna, tapos Reload ng web app |
+| Hindi na nag-a-auto-refresh ang mga browser / walang activity toasts | Nawala ang `firebase-admin` package (karaniwan pagkatapos magpalit ng Python version sa PA) — tahimik lang itong nilalaktawan ng app | Sa Bash console: `pip3.13 install --user firebase-admin` (itugma sa Python version sa Web tab), i-check na nasa app folder ang `*firebase-adminsdk*.json`, tapos Web tab → Reload. Subukan: mag-save ng trip, dapat gumalaw ang ibang nakabukas na browser |
 | Login ayaw tumanggap kahit tama | Account inactive o na-lock | Ibang admin account ang gamitin → Admin page → i-activate ulit |
 
 ## 9. Daily health check (1 minuto)

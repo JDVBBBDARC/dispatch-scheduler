@@ -376,6 +376,16 @@ def section_f():
          'Webhook URL mis-configured or expired Apps Script trigger.',
          'Verify the webhook URL in Admin / Settings. Re-publish the '
          'Google Apps Script if needed.'],
+        ['Live refresh / activity toasts stopped for everyone',
+         'The firebase-admin package is missing from the web app\'s '
+         'Python — typically after a hosting Python-version change '
+         '(the app skips Firebase silently instead of crashing).',
+         'IT Administrator: in a server console run '
+         'pip3.X install --user firebase-admin (matching the Web '
+         'tab\'s Python version), confirm the *firebase-adminsdk*.json '
+         'key file is in the app folder, then reload the web app. '
+         'Verify: saving any trip should write to the Firebase '
+         'dispatch_updates path.'],
     ]
     out.append(std_table(ts_rows, col_widths=[5 * cm, 5.5 * cm, 6 * cm]))
 
@@ -393,6 +403,14 @@ def section_f():
         ['Duplicate a trip to another wave',
          'Schedule',
          'Click the caret (▼) next to the copy icon → pick target wave.'],
+        ['Copy several rows to another wave or day',
+         'Schedule',
+         'Click row numbers to select (Ctrl/Shift+click for more) → '
+         'Ctrl+C → open the target wave or date → Ctrl+V.'],
+        ['Import a month of schedules from Excel',
+         'Schedule',
+         'Import Excel → choose the monitoring workbook → Preview → '
+         'Import Now. Revert available from the same dialog.'],
         ['Cancel a trip',
          'Schedule',
          'Click Status badge dropdown → Cancelled.'],

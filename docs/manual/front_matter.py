@@ -128,7 +128,7 @@ def document_control_page():
                   'non-programmer covering for the IT administrator. '
                   'Standalone Taglish copy lives at '
                   'docs/EMERGENCY_RUNBOOK.md in the repository.'])
-    rows.append(['1.7', DOC_DATE, 'B.1, B.6 (new), D.5, F.4',
+    rows.append(['1.7', 'July 2026', 'B.1, B.6 (new), D.5, F.4',
                   'GPS toll detection documented (deferred since 1.3): '
                   'new B.6 Toll Log module — 96 booth-accurate plaza '
                   'geofences, entry→exit trip pairing, per-class fees, '
@@ -142,6 +142,23 @@ def document_control_page():
                   'retention) with step-by-step restore procedure. '
                   'Manual accent colour matched to the app\'s dark '
                   'maroon theme.'])
+    rows.append(['1.8', DOC_DATE, 'B.1, B.2, F.1, F.2',
+                  'Excel workbook import documented (new B.2 '
+                  'subsection): four-tab reader with preview, '
+                  'auto-created master data with name-variant '
+                  'matching, per-category wave sequencing, automatic '
+                  'trip types incl. the new Hustling type for '
+                  '12W/22WD hauling runs (filed under OT, excluded '
+                  'from utilisation), duplicate-safe re-uploads, and '
+                  'one-click revert. Excel-style row copy/paste '
+                  '(cross-wave, cross-day) and draggable column '
+                  'widths documented; Reference and Toll columns '
+                  'retired from the schedule table. Status ladder '
+                  'corrected (Loading removed). Dashboard: date '
+                  'filters now use an Apply button; Fleet Utilisation '
+                  'notes the OT exclusion. F.1 gains the Firebase '
+                  'live-refresh outage entry (firebase-admin missing '
+                  'after a hosting Python upgrade) with its fix.'])
     out.append(std_table(rows,
                           col_widths=[1.4 * cm, 2.6 * cm, 3 * cm, 9.5 * cm]))
     out.append(PageBreak())
