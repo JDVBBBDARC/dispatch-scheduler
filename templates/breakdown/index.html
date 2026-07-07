@@ -148,6 +148,17 @@
   </div>
 </div>
 
+{# Stale-sync alarm — a dead ERP sync used to fail SILENTLY and the
+   dashboard quietly served old breakdown data for days. Populated by
+   checkSyncHealth() on load from /api/joborders/status. #}
+<div id="bdStaleBanner" class="alert alert-danger py-2 mb-3" style="display:none;">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <span id="bdStaleMsg"></span>
+  — ang Dashboard (Breakdown Hours, Driver/Truck Ratio) ay lumang data ang
+  pinapakita. Subukan ang <b>Sync from ERP</b>; kung may error, tingnan ang
+  Troubleshooting Guide (F.1) o kontakin ang IT admin.
+</div>
+
 <!-- KPI Row -->
 <div class="kpi-row mb-4">
   <div class="kpi-card">
@@ -997,5 +1008,39 @@ async function openUnitDetailModal(d) {
     },
   });
 })();
+
+// ── ERP SYNC HEALTH CHECK ────────────────────────────────────────────────
+// The sync can die silently (missing token/package after a hosting
+// change, worker down). Surface it instead of serving stale data.
+const SYNC_STALE_HOURS = 3;
+
+async function checkSyncHealth() {
+  try {
+    const j = await (await fetch('/api/joborders/status')).json();
+    const span = document.getElementById('bdLastSync');
+    const banner = document.getElementById('bdStaleBanner');
+    const msg = document.getElementById('bdStaleMsg');
+    if (!j.configured) {
+      if (msg) msg.textContent = 'Hindi naka-configure ang ERP sync (walang JOBORDERS_TOKEN)';
+      if (banner) banner.style.display = '';
+      return;
+    }
+    if (!j.last_sync) {
+      if (msg) msg.textContent = 'Wala pang kahit isang successful ERP sync';
+      if (banner) banner.style.display = '';
+      return;
+    }
+    const last = new Date(j.last_sync);
+    const hours = (Date.now() - last.getTime()) / 3600000;
+    if (span) span.textContent = `Last ERP sync: ${last.toLocaleString()}`;
+    if (hours > SYNC_STALE_HOURS) {
+      if (msg) msg.textContent =
+        `Ang huling successful ERP sync ay ${Math.round(hours)} ORAS na ang nakalipas (${last.toLocaleString()})`;
+      if (banner) banner.style.display = '';
+      if (span) span.style.color = '#dc2626';
+    }
+  } catch (e) { /* health check must never break the page */ }
+}
+document.addEventListener('DOMContentLoaded', checkSyncHealth);
 </script>
 {% endblock %}

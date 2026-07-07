@@ -1321,6 +1321,27 @@ function renderDriverTruckRatioChart() {
       hintEl.textContent = 'Drivers: actually using selected type(s) · Click a bar for details';
     }
   }
+  checkBreakdownSyncHealth();
+}
+
+// Warn on this chart when the ERP breakdown sync has gone stale — the
+// working-trucks line silently reflects OLD repair data otherwise.
+let _bdHealthChecked = false;
+async function checkBreakdownSyncHealth() {
+  if (_bdHealthChecked) return;
+  _bdHealthChecked = true;
+  try {
+    const j = await (await fetch('/api/joborders/status')).json();
+    const hintEl = document.getElementById('dtRatioSourceHint');
+    if (!hintEl) return;
+    const stale = !j.configured || !j.last_sync ||
+      (Date.now() - new Date(j.last_sync).getTime()) / 3600000 > 3;
+    if (stale) {
+      hintEl.innerHTML = '<span style="color:#dc2626;font-weight:700;">' +
+        '⚠ Breakdown data stale — patay ang ERP sync (tingnan ang ' +
+        'Breakdown page)</span>';
+    }
+  } catch (e) { /* never break the chart */ }
 }
 
 // Initial fetch is handled by loadDashActivity() in DOMContentLoaded.

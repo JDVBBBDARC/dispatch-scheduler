@@ -472,14 +472,26 @@ def _extract_equipment_code(equipment_name):
     return f'{prefix}{int(m.group(1)):02d}'
 
 
+def _plate_key(s):
+    """Alphanumeric-only uppercase key for tolerant plate matching:
+    'DT-04' == 'DT 04' == 'dt04', 'NIZ 1044' == 'NIZ1044'."""
+    return ''.join(c for c in str(s or '').upper() if c.isalnum())
+
+
 def _match_plate(ref_no, equipment_name, Plate):
     """Find the local Plate that corresponds to an ERP repair-request.
 
     Tried in priority order:
-      1. ref_no == Plate.body_no  (exact)
-      2. ref_no == Plate.plate_no (exact)
+      1. ref_no == Plate.body_no
+      2. ref_no == Plate.plate_no
       3. derived body_no from equipment.name == Plate.body_no
          (e.g., "Howo Dump Truck #04 (12W)" -> DT04 -> match)
+
+    All comparisons are ALPHANUMERIC-NORMALISED ('DT-04' == 'DT04' ==
+    'dt 04') — exact-string equality silently failed whenever the
+    Master Data body number carried punctuation the derived code
+    lacked, leaving the row unlinked and therefore invisible to the
+    Driver/Truck Ratio's working-trucks subtraction.
 
     Strategy 3 is the one that actually works for the gainersand.ph
     deployment — the ERP's ref_no is opaque ("D26E29") while our local
@@ -490,31 +502,26 @@ def _match_plate(ref_no, equipment_name, Plate):
     created with plate_id=NULL so the fleet manager can link it manually
     via the /breakdown UI later.
     """
-    # Strategy 1+2: exact ref_no match (legacy path, kept for forward
-    # compatibility — if the ERP ever issues a ref_no that matches our
-    # body_no/plate_no directly, we'd rather use that than infer.)
-    if ref_no:
-        ref_upper = ref_no.strip().upper()
-        p = Plate.query.filter(
-            db_func_upper(Plate.body_no) == ref_upper,
-            Plate.active.is_(True),
-        ).first()
-        if p:
-            return p
-        p = Plate.query.filter(
-            db_func_upper(Plate.plate_no) == ref_upper,
-            Plate.active.is_(True),
-        ).first()
+    plates = Plate.query.filter(Plate.active.is_(True)).all()
+    by_body  = {}
+    by_plate = {}
+    for p in plates:
+        bk = _plate_key(p.body_no)
+        pk = _plate_key(p.plate_no)
+        if bk:
+            by_body.setdefault(bk, p)
+        if pk:
+            by_plate.setdefault(pk, p)
+
+    ref_key = _plate_key(ref_no)
+    if ref_key:
+        p = by_body.get(ref_key) or by_plate.get(ref_key)
         if p:
             return p
 
-    # Strategy 3: derive body_no from equipment.name pattern.
-    expected = _extract_equipment_code(equipment_name)
+    expected = _plate_key(_extract_equipment_code(equipment_name))
     if expected:
-        p = Plate.query.filter(
-            db_func_upper(Plate.body_no) == expected.upper(),
-            Plate.active.is_(True),
-        ).first()
+        p = by_body.get(expected)
         if p:
             return p
 
@@ -715,8 +722,17 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                     log.warning('No plate match for ref_no=%r equipment=%r (record id=%s)',
                                 ref_no, equip_nm[:40], ext_id)
 
-                # Populate / refresh fields
-                row.plate_id                = plate.id if plate else None
+                # Populate / refresh fields.
+                # plate_id: NEVER null-out an existing link. The old
+                # unconditional assignment meant a plate the fleet
+                # manager linked MANUALLY in the /breakdown UI was
+                # wiped again on the very next sync (the matcher still
+                # found nothing), so the breakdown kept disappearing
+                # from the Driver/Truck Ratio.
+                if plate is not None:
+                    row.plate_id = plate.id
+                elif is_new:
+                    row.plate_id = None
                 row.jo_ref_no               = ref_no or None
                 row.equipment_name          = _g(rec, 'equipment', 'name')
                 row.equipment_brand         = _g(rec, 'equipment', 'brand')
@@ -804,6 +820,31 @@ def run_sync(app=None, log=None, filter='', from_date=None, to_date=None):
                 except Exception:
                     pass
                 continue
+
+        # ── Re-link pass ─────────────────────────────────────────────
+        # ERP rows that synced UNLINKED in the past (equipment name
+        # didn't match any plate then) get another chance every run —
+        # covers plates added to Master Data later and the tolerant
+        # matcher healing rows the old exact-match left behind.
+        try:
+            unlinked = (BreakdownLog.query
+                        .filter(BreakdownLog.jo_external_id.isnot(None),
+                                BreakdownLog.plate_id.is_(None))
+                        .all())
+            relinked = 0
+            for row in unlinked:
+                plate = _match_plate(row.jo_ref_no or '',
+                                     row.equipment_name or '', Plate)
+                if plate is not None:
+                    row.plate_id = plate.id
+                    relinked += 1
+            if relinked:
+                log.info('Re-link pass attached %d previously-unlinked '
+                         'breakdown(s) to plates', relinked)
+            summary['plates_relinked'] = relinked
+        except Exception as e:
+            summary['errors'].append(f're-link pass failed: {e}')
+            log.exception('re-link pass failed')
 
         try:
             db.session.commit()
