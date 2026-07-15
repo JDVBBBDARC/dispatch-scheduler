@@ -58,7 +58,7 @@
   <table>
     <thead>
       <tr>
-        <th style="width:34%;">Kind of Job Order</th>
+        <th style="width:38%;">Kind of Work</th>
         <th class="num">Job Orders</th>
         <th class="num">Under Repair</th>
         <th class="num">Fixed</th>
@@ -69,7 +69,12 @@
     <tbody>
       {% for g in rows %}
       <tr>
-        <td>{{ g.label }}</td>
+        <td>
+          <b>{{ g.label }}</b>
+          {% if g.detail %}
+          <div class="units" style="margin-top:2px;">{{ g.detail }}</div>
+          {% endif %}
+        </td>
         <td class="num">{{ g.count }}</td>
         <td class="num">{{ g.under_repair or '—' }}</td>
         <td class="num">{{ g.fixed or '—' }}</td>
@@ -80,7 +85,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <td>TOTAL — {{ rows|length }} kind(s) of work</td>
+        <td>TOTAL — {{ rows|length }} categor{{ 'y' if rows|length == 1 else 'ies' }}</td>
         <td class="num">{{ totals.count }}</td>
         <td class="num">{{ totals.under_repair }}</td>
         <td class="num">{{ totals.fixed }}</td>

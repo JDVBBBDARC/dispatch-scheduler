@@ -2423,6 +2423,45 @@ def breakdown():
 
 
 # ── PRINTABLE REPORTS ──────────────────────────────────────────────────────
+# JO descriptions in FixFlo are free text ("Flat tire (rear left)",
+# "Vulcanize tire", "CHANGE TIRE"...), so grouping by exact text is no
+# summary at all. Each description is bucketed into a repair CATEGORY
+# by keyword instead — first match wins, so more specific phrases come
+# before generic ones. Edit this list to match shop vocabulary; anything
+# unmatched lands in "Others".
+_JO_CATEGORIES = [
+    ('Tires',                  ['tire', 'gulong', 'vulcaniz', 'flat',
+                                'interchange']),
+    ('Change Oil / PMS',       ['change oil', 'pms', 'preventive',
+                                'oil filter', 'lubric', 'grease']),
+    ('Brakes',                 ['brake', 'preno']),
+    ('Aircon',                 ['aircon', 'a/c', 'freon']),
+    ('Electrical & Lights',    ['electrical', 'wiring', 'light', 'signal',
+                                'battery', 'starter', 'alternator', 'horn',
+                                'fuse', 'busted']),
+    ('Engine & Cooling',       ['engine', 'overheat', 'radiator', 'coolant',
+                                'fan belt', 'injector', 'turbo', 'makina',
+                                'oil leak', 'gasket', 'fuel']),
+    ('Clutch & Transmission',  ['clutch', 'transmission', 'gear']),
+    ('Suspension & Chassis',   ['suspension', 'spring', 'shock', 'bushing',
+                                'chassis', 'tie rod', 'axle', 'differential',
+                                'bearing']),
+    ('Hydraulics / Hoist',     ['hydraulic', 'hoist', 'cylinder']),
+    ('Welding / Body Works',   ['weld', 'fabricat', 'body', 'siding',
+                                'flooring', 'gate', 'bracket']),
+]
+
+
+def _jo_category(description):
+    d = ' '.join(str(description or '').split()).lower()
+    if not d:
+        return '(No description)'
+    for cat, keywords in _JO_CATEGORIES:
+        if any(k in d for k in keywords):
+            return cat
+    return 'Others'
+
+
 @app.route('/breakdown/print-report')
 @login_required
 def breakdown_print_report():
@@ -2449,19 +2488,20 @@ def breakdown_print_report():
             pass
     logs = q.all()
 
-    # Group by the normalised work description — that IS the "kind"
-    # of job order in FixFlo ("Change tire", "Repair aircon", ...).
+    # Bucket every JO into a repair category (see _JO_CATEGORIES), and
+    # keep a tally of the raw descriptions inside each bucket so the
+    # print-out still shows what the category actually contained
+    # ("Flat tire ×2 · Vulcanize tire ×1").
+    from collections import Counter
     groups = {}
     for l in logs:
-        key = ' '.join((l.description or '').split()).lower() \
-              or '(no description)'
-        g = groups.get(key)
+        cat = _jo_category(l.description)
+        g = groups.get(cat)
         if g is None:
-            g = groups[key] = {
-                'label': ' '.join((l.description or '').split())
-                         or '(No description)',
+            g = groups[cat] = {
+                'label': cat,
                 'count': 0, 'under_repair': 0, 'fixed': 0,
-                'hours': 0.0, 'units': set(),
+                'hours': 0.0, 'units': set(), 'details': Counter(),
             }
         g['count'] += 1
         if l.status == 'Under Repair':
@@ -2472,12 +2512,18 @@ def breakdown_print_report():
         unit = (l.plate.body_no or l.plate.plate_no) if l.plate \
                else (l.equipment_name or '—')
         g['units'].add(unit)
+        desc = ' '.join((l.description or '').split())
+        if desc:
+            g['details'][desc.capitalize()] += 1
 
     rows = sorted(groups.values(),
                   key=lambda g: (-g['count'], g['label'].lower()))
     for g in rows:
         g['units'] = ', '.join(sorted(g['units']))
         g['hours'] = round(g['hours'], 1)
+        g['detail'] = ' · '.join(
+            (f'{d} ×{n}' if n > 1 else d)
+            for d, n in g['details'].most_common())
 
     totals = {
         'count':        sum(g['count'] for g in rows),
