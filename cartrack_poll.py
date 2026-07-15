@@ -212,6 +212,15 @@ def _get_runtime_settings(app=None):
 # the fence is ever deleted upstream.
 _IGNORED_TOLL_GEOFENCES = {
     'toll - clark',
+    # The booth-accurate Clark South fence has the same disease in
+    # miniature: event coordinates from July 10-15 2026 show the SCTEX
+    # mainline passing ~46m from the booth position, inside any radius
+    # big enough to be useful — so every Pulilan<->Porac run tripped it
+    # and trips paired wrongly ("Porac -> Clark South" ₱203 instead of
+    # "Porac -> Pulilan" ₱746). The fleet never exits at Clark South;
+    # remove this entry if that ever changes (and shrink the fence to
+    # <40m, which would likely miss real exits anyway).
+    'toll - clark south',
 }
 
 
