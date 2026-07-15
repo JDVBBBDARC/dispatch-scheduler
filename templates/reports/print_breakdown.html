@@ -26,6 +26,11 @@
   tr:nth-child(even) td { background: #fafafa; }
   tfoot td { font-weight: 700; background: #f3e3e6 !important; }
   .units { font-size: 10.5px; color: #555; }
+  .detail-list {
+    margin: 4px 0 2px 18px;
+    font-size: 10.5px; color: #444;
+  }
+  .detail-list li { padding: 1px 0; }
   .sig-row {
     display: flex; gap: 40px; margin-top: 46px;
     page-break-inside: avoid;
@@ -71,8 +76,10 @@
       <tr>
         <td>
           <b>{{ g.label }}</b>
-          {% if g.detail %}
-          <div class="units" style="margin-top:2px;">{{ g.detail }}</div>
+          {% if g.detail_items %}
+          <ol class="detail-list">
+            {% for d in g.detail_items %}<li>{{ d }}</li>{% endfor %}
+          </ol>
           {% endif %}
         </td>
         <td class="num">{{ g.count }}</td>

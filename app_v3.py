@@ -2512,7 +2512,10 @@ def breakdown_print_report():
         unit = (l.plate.body_no or l.plate.plate_no) if l.plate \
                else (l.equipment_name or '—')
         g['units'].add(unit)
-        desc = ' '.join((l.description or '').split())
+        # Sub-item key: drop parentheticals so "Flat tire (rear left)"
+        # and "Flat tire (front)" tally together as "Flat tire".
+        desc = re.sub(r'\([^)]*\)', '', l.description or '')
+        desc = ' '.join(desc.split())
         if desc:
             g['details'][desc.capitalize()] += 1
 
@@ -2521,9 +2524,9 @@ def breakdown_print_report():
     for g in rows:
         g['units'] = ', '.join(sorted(g['units']))
         g['hours'] = round(g['hours'], 1)
-        g['detail'] = ' · '.join(
-            (f'{d} ×{n}' if n > 1 else d)
-            for d, n in g['details'].most_common())
+        g['detail_items'] = [
+            (f'{d} — {n}' if n > 1 else d)
+            for d, n in g['details'].most_common()]
 
     totals = {
         'count':        sum(g['count'] for g in rows),
