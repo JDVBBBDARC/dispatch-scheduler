@@ -75,6 +75,38 @@
             onclick="openImportModal()" title="Import a monthly monitoring workbook (.xlsx)">
       <i class="bi bi-file-earmark-arrow-up"></i> Import Excel
     </button>
+    <button class="btn btn-outline-secondary btn-sm" type="button"
+            onclick="openMaterialsReport()" title="Printable materials & volume summary">
+      <i class="bi bi-printer"></i> Print Materials
+    </button>
+  </div>
+</div>
+
+<!-- ── MATERIALS REPORT MODAL ───────────────────────────────────────────── -->
+<div class="modal fade" id="matReportModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-printer me-2"></i>Materials &amp; Volume Report</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Kabuuang volume kada material sa
+          napiling petsa (o range). Cancelled trips ay hindi kasama.</p>
+        <label class="form-label small fw-semibold mb-1">From</label>
+        <input type="date" id="matRepFrom" class="form-control form-control-sm mb-2"
+               value="{{ d.isoformat() }}">
+        <label class="form-label small fw-semibold mb-1">To</label>
+        <input type="date" id="matRepTo" class="form-control form-control-sm"
+               value="{{ d.isoformat() }}">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-maroon btn-sm" onclick="generateMaterialsReport()">
+          <i class="bi bi-printer me-1"></i>Generate
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1285,5 +1317,16 @@ document.addEventListener('keydown', (e) => {
     if (loadClipboard()) { e.preventDefault(); pasteRows(); }
   }
 });
+
+// ── PRINTABLE MATERIALS REPORT ───────────────────────────────────────────
+function openMaterialsReport() {
+  new bootstrap.Modal(document.getElementById('matReportModal')).show();
+}
+function generateMaterialsReport() {
+  const f = document.getElementById('matRepFrom').value;
+  const t = document.getElementById('matRepTo').value;
+  if (!f || !t) { showToast('Piliin ang From at To dates'); return; }
+  window.open(`/schedule/print-report?from=${f}&to=${t}`, '_blank');
+}
 </script>
 {% endblock %}

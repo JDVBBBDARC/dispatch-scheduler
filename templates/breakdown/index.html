@@ -139,6 +139,11 @@
   #}
   <div class="d-flex gap-2 align-items-center">
     <span id="bdLastSync" style="font-size:.7rem;color:var(--muted);"></span>
+    <button class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;"
+            onclick="printBreakdownReport()"
+            title="Printable summary of job orders by kind of work, using the current filters">
+      <i class="bi bi-printer me-1"></i>Print Report
+    </button>
     <button id="bdSyncBtn"
             class="btn btn-sm"
             style="background:var(--maroon);color:#fff;font-size:.78rem;"
@@ -1042,5 +1047,17 @@ async function checkSyncHealth() {
   } catch (e) { /* health check must never break the page */ }
 }
 document.addEventListener('DOMContentLoaded', checkSyncHealth);
+
+// ── PRINTABLE JO-KIND SUMMARY ────────────────────────────────────────────
+// Opens /breakdown/print-report in a new tab carrying the SAME filters
+// the page is showing (year / month / status / plate selects).
+function printBreakdownReport() {
+  const params = new URLSearchParams();
+  document.querySelectorAll(
+    '.bd-filter-bar select[name="year"], .bd-filter-bar select[name="month"], ' +
+    '.bd-filter-bar select[name="status"], .bd-filter-bar select[name="plate"]'
+  ).forEach(sel => { if (sel.value) params.set(sel.name, sel.value); });
+  window.open('/breakdown/print-report?' + params.toString(), '_blank');
+}
 </script>
 {% endblock %}

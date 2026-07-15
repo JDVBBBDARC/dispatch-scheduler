@@ -2422,6 +2422,141 @@ def breakdown():
         operator_breakdown_chart=operator_breakdown_chart)
 
 
+# ── PRINTABLE REPORTS ──────────────────────────────────────────────────────
+@app.route('/breakdown/print-report')
+@login_required
+def breakdown_print_report():
+    """Printable summary of Job Orders grouped by KIND of work
+    ("Change tire", "Repair brake", ...) for the same Year/Month/
+    Status/Plate window the Breakdown page is filtered to. Opens in a
+    new tab and auto-triggers the browser's print dialog."""
+    year   = request.args.get('year',  ph_today().year,  type=int)
+    month  = request.args.get('month', ph_today().month, type=int)
+    filter_status = request.args.get('status', 'all')
+    filter_plate  = request.args.get('plate', 'all')
+
+    last_day = calendar.monthrange(year, month)[1]
+    mo_s, mo_e = date(year, month, 1), date(year, month, last_day)
+
+    q = BreakdownLog.query.filter(BreakdownLog.date >= mo_s,
+                                  BreakdownLog.date <= mo_e)
+    if filter_status != 'all':
+        q = q.filter(BreakdownLog.status == filter_status)
+    if filter_plate != 'all':
+        try:
+            q = q.filter(BreakdownLog.plate_id == int(filter_plate))
+        except ValueError:
+            pass
+    logs = q.all()
+
+    # Group by the normalised work description — that IS the "kind"
+    # of job order in FixFlo ("Change tire", "Repair aircon", ...).
+    groups = {}
+    for l in logs:
+        key = ' '.join((l.description or '').split()).lower() \
+              or '(no description)'
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {
+                'label': ' '.join((l.description or '').split())
+                         or '(No description)',
+                'count': 0, 'under_repair': 0, 'fixed': 0,
+                'hours': 0.0, 'units': set(),
+            }
+        g['count'] += 1
+        if l.status == 'Under Repair':
+            g['under_repair'] += 1
+        elif l.status == 'Fixed':
+            g['fixed'] += 1
+        g['hours'] += l.duration_hours
+        unit = (l.plate.body_no or l.plate.plate_no) if l.plate \
+               else (l.equipment_name or '—')
+        g['units'].add(unit)
+
+    rows = sorted(groups.values(),
+                  key=lambda g: (-g['count'], g['label'].lower()))
+    for g in rows:
+        g['units'] = ', '.join(sorted(g['units']))
+        g['hours'] = round(g['hours'], 1)
+
+    totals = {
+        'count':        sum(g['count'] for g in rows),
+        'under_repair': sum(g['under_repair'] for g in rows),
+        'fixed':        sum(g['fixed'] for g in rows),
+        'hours':        round(sum(g['hours'] for g in rows), 1),
+    }
+    plate_label = 'All units'
+    if filter_plate != 'all':
+        p = db.session.get(Plate, int(filter_plate)) \
+            if filter_plate.isdigit() else None
+        if p:
+            plate_label = p.display
+
+    return render_template('reports/print_breakdown.html',
+        rows=rows, totals=totals,
+        period=mo_s.strftime('%B %Y'),
+        status_label=('All statuses' if filter_status == 'all'
+                      else filter_status),
+        plate_label=plate_label,
+        generated=datetime.now(PH_TZ).strftime('%b %d, %Y %I:%M %p'),
+        generated_by=get_user())
+
+
+@app.route('/schedule/print-report')
+@login_required
+def schedule_print_report():
+    """Printable materials summary: every product hauled in the date
+    range with trip counts and total volume. Cancelled trips are
+    excluded. Opens in a new tab and auto-triggers printing."""
+    from_d = parse_date(request.args.get('from', ph_today().isoformat()))
+    to_d   = parse_date(request.args.get('to',   ph_today().isoformat()))
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+
+    trips = (db.session.query(TripRecord, Wave)
+             .join(Wave, TripRecord.wave_id == Wave.id)
+             .filter(Wave.date >= from_d, Wave.date <= to_d,
+                     db.or_(TripRecord.status.is_(None),
+                            TripRecord.status != 'Canceled'))
+             .all())
+
+    groups = {}
+    for t, w in trips:
+        name = t.product.name if t.product else '(No product)'
+        g = groups.get(name)
+        if g is None:
+            g = groups[name] = {'label': name, 'trips': 0,
+                                'delivered': 0, 'volume': 0.0,
+                                'no_volume': 0}
+        g['trips'] += 1
+        if t.status == 'Delivered':
+            g['delivered'] += 1
+        try:
+            g['volume'] += float(str(t.volume).replace(',', ''))
+        except (TypeError, ValueError):
+            g['no_volume'] += 1
+
+    rows = sorted(groups.values(),
+                  key=lambda g: (-g['volume'], g['label'].lower()))
+    for g in rows:
+        g['volume'] = round(g['volume'], 2)
+
+    totals = {
+        'trips':     sum(g['trips'] for g in rows),
+        'delivered': sum(g['delivered'] for g in rows),
+        'volume':    round(sum(g['volume'] for g in rows), 2),
+        'no_volume': sum(g['no_volume'] for g in rows),
+    }
+    doc = {k: AppSetting.get(k, v) for k, v in DOC_HEADER_DEFAULTS.items()}
+    period = (from_d.strftime('%B %d, %Y') if from_d == to_d else
+              f"{from_d.strftime('%b %d, %Y')} – {to_d.strftime('%b %d, %Y')}")
+
+    return render_template('reports/print_materials.html',
+        rows=rows, totals=totals, period=period, doc=doc,
+        generated=datetime.now(PH_TZ).strftime('%b %d, %Y %I:%M %p'),
+        generated_by=get_user())
+
+
 @app.route('/api/breakdown/unit-logs')
 @login_required
 def api_breakdown_unit_logs():

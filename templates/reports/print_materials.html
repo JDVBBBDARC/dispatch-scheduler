@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Materials Summary — {{ period }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 12px; color: #1a1a1a;
+    padding: 28px 34px;
+  }
+  .doc-head { text-align: center; margin-bottom: 4px; }
+  .doc-head h1 { font-size: 17px; letter-spacing: 1px; color: #5A0F1C; }
+  .doc-head .sub { font-size: 12px; color: #444; margin-top: 2px; }
+  .doc-head .form-code { font-size: 10px; color: #888; margin-top: 2px; }
+  .meta {
+    display: flex; justify-content: space-between;
+    font-size: 10.5px; color: #555;
+    border-top: 2px solid #5A0F1C; border-bottom: 1px solid #ccc;
+    padding: 5px 2px; margin: 10px 0 14px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #bbb; padding: 5px 8px; text-align: left; }
+  th { background: #f3e3e6; color: #5A0F1C; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr:nth-child(even) td { background: #fafafa; }
+  tfoot td { font-weight: 700; background: #f3e3e6 !important; }
+  .note { font-size: 10px; color: #777; margin-top: 8px; }
+  .sig-row {
+    display: flex; gap: 40px; margin-top: 46px;
+    page-break-inside: avoid;
+  }
+  .sig { flex: 1; text-align: center; font-size: 11px; }
+  .sig .line { border-top: 1px solid #333; margin-top: 34px; padding-top: 4px; }
+  .no-print { text-align: right; margin-bottom: 10px; }
+  .no-print button {
+    background: #5A0F1C; color: #fff; border: 0; border-radius: 6px;
+    padding: 7px 16px; font-size: 12px; cursor: pointer;
+  }
+  @media print { .no-print { display: none; } body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="no-print"><button onclick="window.print()">🖨 Print</button></div>
+
+  <div class="doc-head">
+    <h1>{{ doc.doc_title or 'LOGISTICS DELIVERY SCHEDULE' }}</h1>
+    <div class="sub">Materials &amp; Volume Summary</div>
+    <div class="form-code">{{ doc.doc_form_code }} · {{ doc.doc_revision }}</div>
+  </div>
+  <div class="meta">
+    <span><b>Period:</b> {{ period }}</span>
+    <span><b>Generated:</b> {{ generated }} by {{ generated_by }}</span>
+  </div>
+
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40%;">Material / Product</th>
+        <th class="num">Trips</th>
+        <th class="num">Delivered</th>
+        <th class="num">Total Volume / Qty</th>
+        <th class="num">Trips w/o Volume</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in rows %}
+      <tr>
+        <td>{{ g.label }}</td>
+        <td class="num">{{ g.trips }}</td>
+        <td class="num">{{ g.delivered or '—' }}</td>
+        <td class="num">{{ '{:,.2f}'.format(g.volume) if g.volume else '—' }}</td>
+        <td class="num">{{ g.no_volume or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>TOTAL — {{ rows|length }} material(s)</td>
+        <td class="num">{{ totals.trips }}</td>
+        <td class="num">{{ totals.delivered }}</td>
+        <td class="num">{{ '{:,.2f}'.format(totals.volume) }}</td>
+        <td class="num">{{ totals.no_volume }}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <p class="note">
+    Cancelled trips are excluded. Volume/Qty follows the unit used at
+    encoding (m³ for aggregates, pcs for blocks, kg for hauling).
+    "Trips w/o Volume" counts trips whose volume field is blank or
+    non-numeric — they are included in the trip
+    counts but contribute nothing to Total Volume.
+  </p>
+  {% else %}
+  <p style="text-align:center;color:#777;padding:40px 0;">
+    No trips found for this period.
+  </p>
+  {% endif %}
+
+  <div class="sig-row">
+    <div class="sig"><div class="line">Prepared by</div></div>
+    <div class="sig"><div class="line">Checked by</div></div>
+    <div class="sig"><div class="line">Noted by</div></div>
+  </div>
+
+  <script>
+    window.addEventListener('load', () => setTimeout(() => window.print(), 350));
+  </script>
+</body>
+</html>
