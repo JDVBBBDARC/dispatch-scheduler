@@ -1054,6 +1054,16 @@ def api_schedule_import_revert():
                     'removed_master': removed_master})
 
 
+# ── HEARTBEAT ──────────────────────────────────────────────────────────────
+@app.route('/api/ping')
+def api_ping():
+    """Tiny reachability probe for the offline-mode client heartbeat.
+    No auth, no DB — a failed fetch means the server (PythonAnywhere)
+    is unreachable, which is exactly what we want to detect. Returns
+    the server time so the client can also spot clock drift if needed."""
+    return jsonify({'ok': True, 'ts': int(utc_now().timestamp() * 1000)})
+
+
 # ── DASHBOARD KPI REFRESH API ──────────────────────────────────────────────
 @app.route('/api/dashboard/kpis')
 @login_required

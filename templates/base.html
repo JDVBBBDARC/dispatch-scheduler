@@ -318,6 +318,15 @@
 <!-- ── MAIN CONTENT ──────────────────────────────────────────────────────── -->
 <div class="main-content" id="mainContent">
 
+  <!-- Offline / server-down banner (shown by the heartbeat below) -->
+  <div id="offlineBanner" style="display:none;position:sticky;top:0;z-index:1200;
+       background:#b02a37;color:#fff;font-size:.82rem;font-weight:600;
+       padding:7px 14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+    <i class="bi bi-wifi-off me-1"></i>
+    <span id="offlineBannerMsg">OFFLINE — hindi maabot ang server. Cached data ang pinapakita.</span>
+    <span id="offlinePending" style="margin-left:8px;"></span>
+  </div>
+
   <!-- Topbar -->
   <header class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
@@ -670,6 +679,37 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js')
     .catch(e => console.warn('SW register failed:', e));
 }
+
+// ── SERVER-REACHABILITY HEARTBEAT (offline-mode detection) ───────────────
+// navigator.onLine only knows if THIS device has a network; it can't tell
+// that PythonAnywhere itself is down. So we poll a tiny /api/ping. When it
+// fails we flip to offline mode (banner + a global window.APP_OFFLINE flag
+// the Schedule page's write queue reads in Phase 2); when it recovers we
+// clear it and fire an 'app:online' event so a sync can run.
+window.APP_OFFLINE = false;
+(function heartbeat() {
+  const OK_MS = 20000, FAIL_MS = 6000;
+  async function beat() {
+    let up = false;
+    try {
+      const r = await fetch('/api/ping', { cache: 'no-store' });
+      up = r.ok;
+    } catch (e) { up = false; }
+    setOffline(!up);
+    setTimeout(beat, up ? OK_MS : FAIL_MS);   // check more often while down
+  }
+  function setOffline(off) {
+    const banner = document.getElementById('offlineBanner');
+    if (off === window.APP_OFFLINE) { if (banner) banner.style.display = off ? '' : 'none'; return; }
+    window.APP_OFFLINE = off;
+    if (banner) banner.style.display = off ? '' : 'none';
+    document.dispatchEvent(new CustomEvent(off ? 'app:offline' : 'app:online'));
+  }
+  // First beat after a short delay so the page settles.
+  setTimeout(beat, 3000);
+  window.addEventListener('online',  () => setTimeout(beat, 500));
+  window.addEventListener('offline', () => setOffline(true));
+})();
 
 // ── LIVE PHILIPPINE TIME CLOCK ────────────────────────────────────────────
 (function tickClock() {
