@@ -365,12 +365,118 @@ function switchWave(truckCode, waveId) {
 }
 
 // ── ADD WAVE ──────────────────────────────────────────────────────────────
+// ══ OFFLINE WRITE QUEUE (Schedule) ══════════════════════════════════════
+// When the server is unreachable (window.APP_OFFLINE from base.html's
+// heartbeat), schedule mutations apply optimistically to the UI and queue
+// in localStorage. On reconnect (app:online) the queue replays IN ORDER,
+// mapping offline temp IDs (tmpW*/tmpT*) to the real IDs the server
+// assigns. Conflict policy = last-write-wins (a straight replay).
+const OQ_KEY = 'schedOfflineQueue_v1';
+// Temp IDs are NEGATIVE integers (-1, -2, …). They render as valid JS
+// numbers inside interpolated onclick handlers (deleteTrip(-3,this)) so
+// no attribute-quoting is needed, never collide with real positive
+// server IDs, and object-key lookups coerce -3 and '-3' to the same key
+// during id remapping on sync.
+let _tmpSeq = 0;
+function _tmpId() { return --_tmpSeq; }
+function oqLoad() { try { return JSON.parse(localStorage.getItem(OQ_KEY) || '[]'); } catch (e) { return []; } }
+function oqSave(q) { try { localStorage.setItem(OQ_KEY, JSON.stringify(q)); } catch (e) {} oqUpdateUI(); }
+function oqLen() { return oqLoad().length; }
+function _ordinal(n) { const s=['th','st','nd','rd'], v=n%100; return n + (s[(v-20)%10] || s[v] || s[0]); }
+
+function oqUpdateUI() {
+  const n = oqLen();
+  const pend = document.getElementById('offlinePending');
+  if (pend) pend.textContent = n ? `· ${n} pending change${n===1?'':'s'}` : '';
+  const banner = document.getElementById('offlineBanner');
+  const msg = document.getElementById('offlineBannerMsg');
+  if (banner && !window.APP_OFFLINE) {
+    banner.style.display = n ? '' : 'none';
+    if (n && msg) { banner.style.background = '#0d6efd'; msg.textContent = 'Nagsi-sync ng offline na pagbabago…'; }
+  }
+}
+
+// Single choke point for all schedule mutations. Online = real POST.
+// Offline = synthesize a response (temp id for creates) + queue the op.
+async function schedFetch(url, payload) {
+  if (!window.APP_OFFLINE) {
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload||{})});
+    if (!r.ok) { const e = new Error('HTTP '+r.status); e.status = r.status; throw e; }
+    return r.json();
+  }
+  const q = oqLoad(); let resp, m;
+  if (url === '/api/wave/add') {
+    const tmp = _tmpId();
+    const tabs = document.getElementById(`waveTabs-${payload.truck_code}`);
+    const num = tabs ? tabs.querySelectorAll('.wave-tab').length + 1 : 1;
+    resp = {wave_id: tmp, wave_number: num, label: `${_ordinal(num)} Wave`};
+    q.push({op:'wave_add', tmp, payload});
+  } else if (url === '/api/trip/save' && payload.trip_id) {
+    q.push({op:'trip_update', payload});
+    resp = Object.assign({}, payload, {id: payload.trip_id});
+  } else if (url === '/api/trip/save') {
+    const tmp = _tmpId();
+    q.push({op:'trip_create', tmp, payload});
+    resp = Object.assign({}, payload, {id: tmp});
+  } else if ((m = url.match(/^\/api\/trip\/(.+)\/delete$/))) {
+    q.push({op:'trip_delete', id: m[1]}); resp = {ok:true};
+  } else if ((m = url.match(/^\/api\/wave\/(.+)\/delete$/))) {
+    q.push({op:'wave_delete', id: m[1]}); resp = {ok:true};
+  } else { throw new Error('offline: unsupported ' + url); }
+  oqSave(q);
+  return resp;
+}
+
+async function _oqPost(url, payload) {
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload||{})});
+  if (!r.ok && r.status !== 404) { const e = new Error('HTTP '+r.status); e.status = r.status; throw e; }
+  try { return await r.json(); } catch (e) { return {}; }
+}
+
+let _syncing = false;
+async function oqSync() {
+  if (_syncing || window.APP_OFFLINE) return;
+  let q = oqLoad(); if (!q.length) return;
+  _syncing = true; oqUpdateUI();
+  const idMap = {}; const rz = id => idMap[id] || id; let ok = 0;
+  while (q.length) {
+    const op = q[0];
+    try {
+      if (op.op === 'wave_add') {
+        const d = await _oqPost('/api/wave/add', op.payload);
+        if (d.wave_id) idMap[op.tmp] = d.wave_id;
+      } else if (op.op === 'trip_create') {
+        const d = await _oqPost('/api/trip/save', Object.assign({}, op.payload, {wave_id: rz(op.payload.wave_id)}));
+        if (d.id) idMap[op.tmp] = d.id;
+      } else if (op.op === 'trip_update') {
+        await _oqPost('/api/trip/save', Object.assign({}, op.payload, {trip_id: rz(op.payload.trip_id)}));
+      } else if (op.op === 'trip_delete') {
+        await _oqPost(`/api/trip/${rz(op.id)}/delete`, {});
+      } else if (op.op === 'wave_delete') {
+        await _oqPost(`/api/wave/${rz(op.id)}/delete`, {});
+      }
+      ok++; q.shift(); oqSave(q);
+    } catch (e) {
+      console.error('offline sync stopped at op', op, e);
+      break;   // keep the rest; retry on the next reconnect
+    }
+  }
+  _syncing = false; oqUpdateUI();
+  if (!oqLen()) {
+    showToast(`Na-sync ang ${ok} offline na pagbabago`);
+    setTimeout(() => window.location.reload(), 1200);
+  } else {
+    showToast(`Sync: ${ok} ok, ${oqLen()} natira — susubukan ulit`);
+  }
+}
+document.addEventListener('app:online', oqSync);
+document.addEventListener('DOMContentLoaded', () => {
+  oqUpdateUI();
+  if (!window.APP_OFFLINE && oqLen()) setTimeout(oqSync, 2000);
+});
+
 function addWave(truckCode, dateStr) {
-  fetch('/api/wave/add', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({date: dateStr, truck_code: truckCode})
-  })
-  .then(r => r.json())
+  schedFetch('/api/wave/add', {date: dateStr, truck_code: truckCode})
   .then(data => {
     const wid  = data.wave_id;
     const label = data.label;
@@ -661,14 +767,7 @@ function saveNewTrip(waveId, changedEl) {
   const badge = tr.querySelector('.s-badge');
   if (badge) payload.status = badge.dataset.status || 'Pending';
 
-  tr._savePromise = fetch('/api/trip/save', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
+  tr._savePromise = schedFetch('/api/trip/save', payload)
   .then(data => {
     tr.dataset.tripId = data.id;
     tr.querySelectorAll('[data-field]').forEach(el => {
@@ -701,14 +800,7 @@ function saveNewTrip(waveId, changedEl) {
 // surfaces failures via toast so dispatchers can retry immediately.
 function updateTrip(tripId, field, value) {
   if (!tripId) return;
-  fetch('/api/trip/save', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({trip_id: tripId, [field]: value})
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
+  schedFetch('/api/trip/save', {trip_id: tripId, [field]: value})
   .catch(err => {
     showToast('Update failed — please retry');
     console.error('updateTrip failed for trip #' + tripId + ' field=' + field + ':', err);
@@ -721,16 +813,8 @@ function deleteTrip(tripId, btn) {
   const tr     = btn.closest('tr');
   const tbody  = tr.parentElement;
   const waveId = tbody.id.replace('wave-body-', '');
-  fetch(`/api/trip/${tripId}/delete`, {method:'POST'})
-  .then(r => {
-    if (r.status === 403) {
-      requestDeletion('trip', tripId, `Trip row #${tripId}`);
-      return null;
-    }
-    return r.json();
-  })
+  schedFetch(`/api/trip/${tripId}/delete`)
   .then(d => {
-    if (!d) return;
     tr.remove();
     renumberRows(tbody);
     if (!tbody.rows.length) {
@@ -738,6 +822,11 @@ function deleteTrip(tripId, btn) {
     }
     updateWaveCount(waveId);
     showToast('Row deleted');
+  })
+  .catch(err => {
+    if (err.status === 403) { requestDeletion('trip', tripId, `Trip row #${tripId}`); return; }
+    showToast('Delete failed — please retry');
+    console.error('deleteTrip failed:', err);
   });
 }
 
@@ -850,11 +939,7 @@ function duplicateTrip(tripId, waveId, btn) {
   payload.status = badge ? (badge.dataset.status || 'Pending') : 'Pending';
 
   btn.disabled = true;
-  fetch('/api/trip/save', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
+  schedFetch('/api/trip/save', payload)
   .then(data => {
     btn.disabled = false;
     tbody.querySelector('.empty-trip-row')?.remove();
@@ -962,6 +1047,10 @@ function updateTabCount(truckCode, forceCount) {
 
 // ── EXCEL SCHEDULE IMPORT ────────────────────────────────────────────────
 function openImportModal() {
+  if (window.APP_OFFLINE) {
+    showToast('Offline — ang Excel import/revert ay kailangan ng koneksyon sa server.');
+    return;
+  }
   document.getElementById('importFile').value = '';
   document.getElementById('importResult').innerHTML = '';
   document.getElementById('importCommitBtn').disabled = true;
@@ -1289,12 +1378,8 @@ async function pasteRows(waveId) {
     const payload = {wave_id: waveId, status: 'Pending'};
     COPY_FIELDS.forEach(f => { payload[f] = src[f] || ''; });
     try {
-      const r = await fetch('/api/trip/save', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) continue;
-      appendPastedRow(tbody, waveId, await r.json(), src);
+      const data = await schedFetch('/api/trip/save', payload);
+      appendPastedRow(tbody, waveId, data, src);
       ok++;
     } catch (e) { /* count via ok */ }
   }
