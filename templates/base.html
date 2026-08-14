@@ -721,6 +721,45 @@ window.APP_OFFLINE = false;
   window.addEventListener('offline', () => setOffline(true));
 })();
 
+// ── AUTO-PREPARE THE OFFLINE CACHE ───────────────────────────────────────
+// Relying on the user to press "Prepare Offline" fails in the case that
+// matters most: arriving with NO connection — you can't prepare then. So
+// every time the app is used WHILE ONLINE we quietly cache today + the
+// next 3 days (and the dashboard) in the background, throttled so it runs
+// at most once every 30 minutes. By the time a connection is lost, the
+// week ahead is already on the device.
+(function () {
+  const PREP_KEY = 'offlinePreparedAt';          // shared with the manual button
+  const EVERY_MS = 30 * 60 * 1000;
+  function ymd(d) {
+    const p = n => String(n).padStart(2, '0');
+    // local parts, not toISOString() — that would shift a day in PH time
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+  async function autoPrepare() {
+    try {
+      if (window.APP_OFFLINE || !('serviceWorker' in navigator)) return;
+      const last = Date.parse(localStorage.getItem(PREP_KEY) || '') || 0;
+      if (Date.now() - last < EVERY_MS) return;
+      await navigator.serviceWorker.ready;
+      const ctrl = navigator.serviceWorker.controller;
+      if (!ctrl) return;                     // not controlling us yet
+      const urls = [];
+      const base = new Date();
+      for (let i = 0; i < 4; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        urls.push('/schedule/' + ymd(d));
+      }
+      urls.push('/dashboard');
+      ctrl.postMessage({ type: 'PRECACHE_PAGES', reqId: 'auto', urls });
+      localStorage.setItem(PREP_KEY, new Date().toISOString());
+    } catch (e) { /* best-effort only */ }
+  }
+  // Late enough not to compete with the page's own data loading.
+  setTimeout(autoPrepare, 6000);
+})();
+
 // ── LIVE PHILIPPINE TIME CLOCK ────────────────────────────────────────────
 (function tickClock() {
   const el = document.getElementById('liveClock');

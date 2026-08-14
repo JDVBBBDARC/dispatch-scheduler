@@ -101,6 +101,13 @@
           mawalan ng internet o mag-down ang server. Ang mga pagbabago mo
           habang offline ay awtomatikong mag-sy-sync pagbalik ng koneksyon.
         </p>
+        <p class="small text-muted mb-2">
+          <i class="bi bi-info-circle me-1"></i>Awtomatiko na rin itong
+          tumatakbo tuwing gagamitin mo ang app habang may internet (isang
+          beses kada 30 minuto), para handa na kahit walang koneksyon
+          pagpasok. Pindutin ito kung <b>kailangan mo agad</b> — hal. bago
+          umalis papuntang lugar na walang signal.
+        </p>
         <div class="small mb-2" id="prepLastRun"></div>
         <div id="prepResult" class="small"></div>
       </div>
@@ -1516,9 +1523,13 @@ async function runPrepOffline() {
       return;
     }
     const urls = prepUrls();
+    // reqId: base.html also runs a background auto-prepare; without an id
+    // this listener could resolve on ITS reply and report the wrong pages.
+    const reqId = 'manual-' + Date.now();
     const done = new Promise((resolve, reject) => {
       const onMsg = ev => {
         if (!ev.data || ev.data.type !== 'PRECACHE_DONE') return;
+        if (ev.data.reqId !== reqId) return;
         navigator.serviceWorker.removeEventListener('message', onMsg);
         resolve(ev.data.results || []);
       };
@@ -1528,7 +1539,7 @@ async function runPrepOffline() {
         reject(new Error('timeout'));
       }, 45000);
     });
-    ctrl.postMessage({ type: 'PRECACHE_PAGES', urls });
+    ctrl.postMessage({ type: 'PRECACHE_PAGES', reqId, urls });
     const results = await done;
 
     const okCount = results.filter(r => r.ok).length;
