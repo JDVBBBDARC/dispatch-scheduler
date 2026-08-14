@@ -1374,7 +1374,11 @@ function loadClipboard() {
   try {
     const c = JSON.parse(localStorage.getItem(CLIP_KEY) || 'null');
     if (!c || c.v !== 1 || !Array.isArray(c.rows) || !c.rows.length) return null;
-    if (c.at && Date.now() - c.at > CLIP_MAX_AGE_MS) {
+    // An entry with NO timestamp was written before clipboard expiry
+    // existed, so its age is unknowable — and `c.at && ...` let exactly
+    // those immortal entries through, which is why a copy from days ago
+    // could still paste. Treat undatable entries as expired.
+    if (!c.at || Date.now() - c.at > CLIP_MAX_AGE_MS) {
       localStorage.removeItem(CLIP_KEY);     // stale — forget it
       return null;
     }
