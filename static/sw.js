@@ -120,26 +120,38 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Page navigations: network-first, cache the good HTML, fall back to
-  // the last cached copy of that page when the server is unreachable.
+  // Page navigations: network-first, cache the good HTML, fall back to the
+  // last cached copy whenever the network can't give us a usable page.
+  //
+  // ignoreVary throughout: Flask stamps session responses with
+  // "Vary: Cookie", which would make an otherwise-good cache entry miss
+  // (e.g. after the session cookie is refreshed). The URL is identity
+  // enough here.
   if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request).then(res => {
-        // Only cache a real, non-redirected page (a redirect to /login
-        // when the session expired must never be cached as the page).
+    e.respondWith((async () => {
+      try {
+        const res = await fetch(e.request);
         if (res.ok && !res.redirected && res.type === 'basic') {
-          const clone = res.clone();
-          caches.open(PAGE_CACHE).then(c => c.put(e.request, clone));
+          caches.open(PAGE_CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
         }
-        return res;
-      }).catch(() =>
-        // ignoreVary: Flask stamps session responses with "Vary: Cookie",
-        // which would make an otherwise-good cache entry miss (e.g. after
-        // the session cookie is refreshed). The URL is identity enough here.
-        caches.match(e.request, { ignoreVary: true })
-          .then(cached => cached || offlineIndexResponse())
-      )
-    );
+        // A redirect is a real answer (typically /login after the session
+        // expired) — never mask it with a stale page, or the user gets
+        // trapped on a schedule they can no longer save to.
+        if (res.redirected) return res;
+        // The server answered, but not with a usable page: 5xx, or an
+        // empty/zero-status reply (this is what ERR_EMPTY_RESPONSE looks
+        // like from a half-dead host). Previously this was passed straight
+        // through, so a broken server beat a perfectly good cached copy —
+        // the "This page isn't working" screen despite being prepared.
+        const cached = await caches.match(e.request, { ignoreVary: true });
+        return cached || res;
+      } catch (err) {
+        // Hard network failure (truly offline, DNS, connection refused).
+        const cached = await caches.match(e.request, { ignoreVary: true });
+        return cached || offlineIndexResponse();
+      }
+    })());
     return;
   }
 
