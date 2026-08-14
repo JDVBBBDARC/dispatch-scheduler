@@ -79,6 +79,38 @@
             onclick="openMaterialsReport()" title="Printable materials & volume summary">
       <i class="bi bi-printer"></i> Print Materials
     </button>
+    <button class="btn btn-outline-secondary btn-sm" type="button" id="prepOfflineBtn"
+            onclick="openPrepOffline()" title="I-save ang schedule sa device para magamit kahit walang internet">
+      <i class="bi bi-cloud-arrow-down"></i> Prepare Offline
+    </button>
+  </div>
+</div>
+
+<!-- ── PREPARE OFFLINE MODAL ────────────────────────────────────────────── -->
+<div class="modal fade" id="prepOfflineModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-cloud-arrow-down me-2"></i>Prepare for Offline Use</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">
+          Isasave sa device na ito ang schedule ng <b>napiling araw at ang
+          susunod na 3 araw</b> (kasama ang Dashboard), para magamit kahit
+          mawalan ng internet o mag-down ang server. Ang mga pagbabago mo
+          habang offline ay awtomatikong mag-sy-sync pagbalik ng koneksyon.
+        </p>
+        <div class="small mb-2" id="prepLastRun"></div>
+        <div id="prepResult" class="small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-maroon btn-sm" id="prepRunBtn" onclick="runPrepOffline()">
+          <i class="bi bi-download me-1"></i>Prepare Now
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -429,6 +461,13 @@ async function schedFetch(url, payload) {
 
 async function _oqPost(url, payload) {
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload||{})});
+  // A lapsed session makes @login_required redirect to /login, which
+  // answers 200 — treating that as success would silently DISCARD the
+  // queued edit. Detect it and fail so the queue is kept for a retry
+  // after the user logs back in.
+  if (r.redirected && /\/login\b/.test(r.url)) {
+    const e = new Error('session expired — please log in again'); e.status = 401; throw e;
+  }
   if (!r.ok && r.status !== 404) { const e = new Error('HTTP '+r.status); e.status = r.status; throw e; }
   try { return await r.json(); } catch (e) { return {}; }
 }
@@ -1412,6 +1451,103 @@ function generateMaterialsReport() {
   const t = document.getElementById('matRepTo').value;
   if (!f || !t) { showToast('Piliin ang From at To dates'); return; }
   window.open(`/schedule/print-report?from=${f}&to=${t}`, '_blank');
+}
+
+// ── PREPARE OFFLINE ──────────────────────────────────────────────────────
+// The service worker only auto-caches pages you actually navigate to, so
+// working offline on a future date used to mean remembering to open that
+// date while still online. This asks the SW to fetch + cache a small
+// window of dates in one click.
+const PREP_KEY = 'offlinePreparedAt';
+const PREP_DAYS = 4;                    // selected date + next 3
+
+function _ymd(d) {
+  const p = n => String(n).padStart(2, '0');
+  // Built from local parts on purpose — toISOString() would shift the
+  // date back a day in PH time (UTC+8).
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function prepUrls() {
+  const base = new Date('{{ d.isoformat() }}T00:00:00');
+  const urls = [];
+  for (let i = 0; i < PREP_DAYS; i++) {
+    const dd = new Date(base);
+    dd.setDate(base.getDate() + i);
+    urls.push('/schedule/' + _ymd(dd));
+  }
+  urls.push('/dashboard');
+  return urls;
+}
+
+function openPrepOffline() {
+  const last = localStorage.getItem(PREP_KEY);
+  const el = document.getElementById('prepLastRun');
+  if (el) {
+    el.innerHTML = last
+      ? `<span class="text-muted">Huling prepare: <b>${escH(new Date(last).toLocaleString())}</b></span>`
+      : '<span class="text-danger">Wala pang naka-save na offline copy sa device na ito.</span>';
+  }
+  document.getElementById('prepResult').innerHTML =
+    '<ul class="mb-0">' + prepUrls().map(u => `<li>${escH(u)}</li>`).join('') + '</ul>';
+  new bootstrap.Modal(document.getElementById('prepOfflineModal')).show();
+}
+
+async function runPrepOffline() {
+  const res = document.getElementById('prepResult');
+  const btn = document.getElementById('prepRunBtn');
+  if (window.APP_OFFLINE) {
+    res.innerHTML = '<div class="alert alert-warning py-2 mb-0">Offline ka ngayon — kailangan ng koneksyon para makapag-save ng offline copy.</div>';
+    return;
+  }
+  if (!('serviceWorker' in navigator)) {
+    res.innerHTML = '<div class="alert alert-danger py-2 mb-0">Hindi supportado ng browser na ito ang offline mode.</div>';
+    return;
+  }
+  btn.disabled = true;
+  res.innerHTML = '<div class="text-muted py-1"><span class="spinner-border spinner-border-sm me-2"></span>Sinasave ang mga page…</div>';
+  try {
+    await navigator.serviceWorker.ready;
+    const ctrl = navigator.serviceWorker.controller;
+    if (!ctrl) {
+      // First load after the SW installs doesn't control the page yet.
+      res.innerHTML = '<div class="alert alert-warning py-2 mb-0">Kaka-install pa lang ng offline engine. I-refresh muna ang page (Ctrl+Shift+R), tapos subukan ulit.</div>';
+      btn.disabled = false;
+      return;
+    }
+    const urls = prepUrls();
+    const done = new Promise((resolve, reject) => {
+      const onMsg = ev => {
+        if (!ev.data || ev.data.type !== 'PRECACHE_DONE') return;
+        navigator.serviceWorker.removeEventListener('message', onMsg);
+        resolve(ev.data.results || []);
+      };
+      navigator.serviceWorker.addEventListener('message', onMsg);
+      setTimeout(() => {
+        navigator.serviceWorker.removeEventListener('message', onMsg);
+        reject(new Error('timeout'));
+      }, 45000);
+    });
+    ctrl.postMessage({ type: 'PRECACHE_PAGES', urls });
+    const results = await done;
+
+    const okCount = results.filter(r => r.ok).length;
+    localStorage.setItem(PREP_KEY, new Date().toISOString());
+    res.innerHTML =
+      `<div class="alert ${okCount === results.length ? 'alert-success' : 'alert-warning'} py-2 mb-2">
+         ${okCount}/${results.length} page(s) na-save para sa offline use.
+       </div><ul class="mb-0">` +
+      results.map(r => `<li>${r.ok ? '✅' : '❌'} ${escH(r.url)}` +
+        (r.ok ? '' : ` <span class="text-muted">(${escH(r.status || r.error || 'failed')})</span>`) +
+        '</li>').join('') + '</ul>';
+    document.getElementById('prepLastRun').innerHTML =
+      `<span class="text-muted">Huling prepare: <b>${escH(new Date().toLocaleString())}</b></span>`;
+    showToast(`Offline copy ready (${okCount} page)`);
+  } catch (e) {
+    res.innerHTML = `<div class="alert alert-danger py-2 mb-0">Hindi natapos: ${escH(e.message || e)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
 }
 </script>
 {% endblock %}

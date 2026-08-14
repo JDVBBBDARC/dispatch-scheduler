@@ -675,8 +675,18 @@ function saveDocHeader() {
 }
 
 // ── SERVICE WORKER (PWA) ─────────────────────────────────────────────────
+// Registered from '/sw.js' (a root route that serves static/sw.js), NOT
+// '/static/sw.js': a worker's scope is its script's directory, so the old
+// path limited it to /static/ and it could never intercept page
+// navigations — offline mode was a silent no-op.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js')
+  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+    .then(async () => {
+      // Retire the old /static/-scoped registration left on browsers that
+      // loaded the previous version.
+      const regs = await navigator.serviceWorker.getRegistrations();
+      regs.forEach(r => { if (r.scope.endsWith('/static/')) r.unregister(); });
+    })
     .catch(e => console.warn('SW register failed:', e));
 }
 

@@ -1054,6 +1054,25 @@ def api_schedule_import_revert():
                     'removed_master': removed_master})
 
 
+# ── SERVICE WORKER (must be served from the ROOT) ──────────────────────────
+@app.route('/sw.js')
+def service_worker_js():
+    """Serve the service worker from / so its scope covers the whole app.
+
+    A worker registered from /static/sw.js only gets scope /static/, so it
+    can never intercept navigations to /schedule/... or /dashboard — which
+    silently made offline mode a no-op for every real page. Serving the
+    same file from the root (plus Service-Worker-Allowed for good measure)
+    gives it scope '/'. no-cache so an updated worker is picked up on the
+    next load instead of being pinned by the HTTP cache.
+    """
+    resp = send_file(os.path.join(BASE_DIR, 'static', 'sw.js'),
+                     mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
+
 # ── HEARTBEAT ──────────────────────────────────────────────────────────────
 @app.route('/api/ping')
 def api_ping():

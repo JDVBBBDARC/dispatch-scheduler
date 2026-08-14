@@ -26,6 +26,37 @@ self.addEventListener('activate', e => {
   );
 });
 
+// ── On-demand page pre-caching ("Prepare Offline") ─────────────────────
+// A page's own fetch() is mode:'cors'/'same-origin', never 'navigate', so
+// the navigate branch below can't capture it. The client instead posts the
+// URLs it wants available offline and we cache them here, then report each
+// result back so the UI can show ✓/✗ per day.
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type !== 'PRECACHE_PAGES' || !Array.isArray(d.urls)) return;
+  e.waitUntil((async () => {
+    const cache = await caches.open(PAGE_CACHE);
+    const results = [];
+    for (const u of d.urls) {
+      try {
+        // credentials: the session cookie must ride along or we'd cache
+        // a login redirect instead of the real page.
+        const res = await fetch(u, { credentials: 'same-origin', cache: 'reload' });
+        if (res.ok && !res.redirected) {
+          await cache.put(u, res.clone());
+          results.push({ url: u, ok: true });
+        } else {
+          results.push({ url: u, ok: false, status: res.status,
+                         redirected: res.redirected });
+        }
+      } catch (err) {
+        results.push({ url: u, ok: false, error: String(err) });
+      }
+    }
+    if (e.source) e.source.postMessage({ type: 'PRECACHE_DONE', results });
+  })());
+});
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;   // never touch POST/PUT/DELETE
   const url = new URL(e.request.url);
@@ -54,7 +85,10 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }).catch(() =>
-        caches.match(e.request).then(cached =>
+        // ignoreVary: Flask stamps session responses with "Vary: Cookie",
+        // which would make an otherwise-good cache entry miss (e.g. after
+        // the session cookie is refreshed). The URL is identity enough here.
+        caches.match(e.request, { ignoreVary: true }).then(cached =>
           cached || new Response(
             '<!doctype html><meta charset="utf-8">' +
             '<title>Offline</title><body style="font-family:sans-serif;' +
