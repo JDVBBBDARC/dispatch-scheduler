@@ -43,7 +43,7 @@ self.addEventListener('message', e => {
         // a login redirect instead of the real page.
         const res = await fetch(u, { credentials: 'same-origin', cache: 'reload' });
         if (res.ok && !res.redirected) {
-          await cache.put(u, res.clone());
+          await cachePage(cache, u, res);
           results.push({ url: u, ok: true });
         } else {
           results.push({ url: u, ok: false, status: res.status,
@@ -59,6 +59,36 @@ self.addEventListener('message', e => {
                                          reqId: d.reqId || null, results });
   })());
 });
+
+
+// Store a page in the cache with the time it was captured, so a later
+// offline hit can tell the user HOW OLD the copy is.
+async function cachePage(cache, request, res) {
+  const buf = await res.clone().arrayBuffer();
+  const headers = new Headers(res.headers);
+  headers.set('X-SW-Cached-At', new Date().toISOString());
+  await cache.put(request, new Response(buf, {
+    status: res.status, statusText: res.statusText, headers }));
+}
+
+// Serve a cached page, stamping a <meta name="sw-cached-at"> into it. The
+// page reads that meta and shows a "saved copy from <time>" banner —
+// without it a stale cached page is indistinguishable from live data,
+// which is how edits could look "lost" after reopening the app.
+async function servePageFromCache(request) {
+  const cached = await caches.match(request, { ignoreVary: true });
+  if (!cached) return null;
+  const ct = cached.headers.get('Content-Type') || '';
+  if (!/text\/html/i.test(ct)) return cached;
+  const at = cached.headers.get('X-SW-Cached-At') || '';
+  let html = await cached.text();
+  const meta = `<meta name="sw-cached-at" content="${at}">`;
+  html = html.includes('</head>') ? html.replace('</head>', meta + '</head>')
+                                  : meta + html;
+  return new Response(html, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
 
 
 // Offline dead-end rescue: the requested page isn't cached (e.g. a date
@@ -132,7 +162,8 @@ self.addEventListener('fetch', e => {
       try {
         const res = await fetch(e.request);
         if (res.ok && !res.redirected && res.type === 'basic') {
-          caches.open(PAGE_CACHE).then(c => c.put(e.request, res.clone()));
+          const clone = res.clone();
+          caches.open(PAGE_CACHE).then(c => cachePage(c, e.request, clone));
           return res;
         }
         // A redirect is a real answer (typically /login after the session
@@ -144,12 +175,10 @@ self.addEventListener('fetch', e => {
         // like from a half-dead host). Previously this was passed straight
         // through, so a broken server beat a perfectly good cached copy —
         // the "This page isn't working" screen despite being prepared.
-        const cached = await caches.match(e.request, { ignoreVary: true });
-        return cached || res;
+        return (await servePageFromCache(e.request)) || res;
       } catch (err) {
         // Hard network failure (truly offline, DNS, connection refused).
-        const cached = await caches.match(e.request, { ignoreVary: true });
-        return cached || offlineIndexResponse();
+        return (await servePageFromCache(e.request)) || offlineIndexResponse();
       }
     })());
     return;

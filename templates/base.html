@@ -327,6 +327,17 @@
     <span id="offlinePending" style="margin-left:8px;"></span>
   </div>
 
+  {# Stale-copy banner. The service worker stamps a <meta name="sw-cached-at">
+     into any page it serves from the cache; without this the saved copy is
+     indistinguishable from live data, which is how edits made during an
+     outage look "lost" after reopening the app. #}
+  <div id="staleBanner" style="display:none;position:sticky;top:0;z-index:1199;
+       background:#D97706;color:#fff;font-size:.82rem;font-weight:600;
+       padding:7px 14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+    <i class="bi bi-clock-history me-1"></i>
+    <span id="staleBannerMsg"></span>
+  </div>
+
   <!-- Topbar -->
   <header class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
@@ -697,6 +708,36 @@ if ('serviceWorker' in navigator) {
 // the Schedule page's write queue reads in Phase 2); when it recovers we
 // clear it and fire an 'app:online' event so a sync can run.
 window.APP_OFFLINE = false;
+
+// Single source of truth for the top banner. Both the heartbeat and the
+// Schedule page's write queue call this instead of poking the element
+// themselves — they used to, and the queue's "syncing" styling could
+// overwrite the offline message and never revert (a blue "syncing" bar
+// while actually offline).
+window.renderOfflineBanner = function () {
+  const banner = document.getElementById('offlineBanner');
+  const msg    = document.getElementById('offlineBannerMsg');
+  const pend   = document.getElementById('offlinePending');
+  if (!banner || !msg) return;
+  let n = 0;
+  try {
+    const q = JSON.parse(localStorage.getItem('schedOfflineQueue_v1') || '[]');
+    n = Array.isArray(q) ? q.length : 0;
+  } catch (e) { /* ignore */ }
+  if (pend) pend.textContent = n ? `· ${n} pending change${n === 1 ? '' : 's'}` : '';
+  if (window.APP_OFFLINE) {
+    banner.style.background = '#b02a37';
+    msg.textContent = 'OFFLINE — hindi maabot ang server. Cached data ang pinapakita.';
+    banner.style.display = '';
+  } else if (n) {
+    banner.style.background = '#0d6efd';
+    msg.textContent = 'Nagsi-sync ng offline na pagbabago…';
+    banner.style.display = '';
+  } else {
+    banner.style.display = 'none';
+  }
+};
+
 (function heartbeat() {
   const OK_MS = 20000, FAIL_MS = 6000;
   async function beat() {
@@ -709,11 +750,12 @@ window.APP_OFFLINE = false;
     setTimeout(beat, up ? OK_MS : FAIL_MS);   // check more often while down
   }
   function setOffline(off) {
-    const banner = document.getElementById('offlineBanner');
-    if (off === window.APP_OFFLINE) { if (banner) banner.style.display = off ? '' : 'none'; return; }
+    const changed = off !== window.APP_OFFLINE;
     window.APP_OFFLINE = off;
-    if (banner) banner.style.display = off ? '' : 'none';
-    document.dispatchEvent(new CustomEvent(off ? 'app:offline' : 'app:online'));
+    window.renderOfflineBanner();
+    if (changed) {
+      document.dispatchEvent(new CustomEvent(off ? 'app:offline' : 'app:online'));
+    }
   }
   // First beat after a short delay so the page settles.
   setTimeout(beat, 3000);
@@ -758,6 +800,50 @@ window.APP_OFFLINE = false;
   }
   // Late enough not to compete with the page's own data loading.
   setTimeout(autoPrepare, 6000);
+})();
+
+// ── STALE-COPY + PENDING-CHANGES VISIBILITY ──────────────────────────────
+// Two things the user could not previously see, which together made work
+// look lost: (a) that a page came from the offline cache and may predate
+// their latest edits, and (b) that edits are still sitting in the queue
+// waiting for the server.
+(function () {
+  function pendingCount() {
+    try {
+      const q = JSON.parse(localStorage.getItem('schedOfflineQueue_v1') || '[]');
+      return Array.isArray(q) ? q.length : 0;
+    } catch (e) { return 0; }
+  }
+  function show() {
+    const meta = document.querySelector('meta[name="sw-cached-at"]');
+    const n = pendingCount();
+    const banner = document.getElementById('staleBanner');
+    const msg = document.getElementById('staleBannerMsg');
+    if (!banner || !msg) return;
+
+    if (meta) {
+      const raw = meta.getAttribute('content');
+      const when = raw ? new Date(raw) : null;
+      const t = when && !isNaN(when) ? when.toLocaleString() : 'hindi alam';
+      msg.innerHTML =
+        `NAKA-SAVE NA KOPYA (${t}) — hindi ito live. Maaaring wala pa rito ang ` +
+        `mga pinakabagong pagbabago.` +
+        (n ? ` <b>${n} pagbabago mo ang naka-queue</b> at mag-sy-sync pagbalik ng server.` : '');
+      banner.style.display = '';
+      return;
+    }
+    // Live page, but queued edits exist (e.g. reopened on the Dashboard —
+    // the queue only replays from the Schedule page).
+    if (n) {
+      msg.innerHTML = `${n} offline na pagbabago ang hindi pa naka-sync. ` +
+        `Buksan ang <b>Schedule</b> para awtomatikong ipadala sa server.`;
+      banner.style.display = '';
+      return;
+    }
+    banner.style.display = 'none';
+  }
+  document.addEventListener('DOMContentLoaded', show);
+  document.addEventListener('app:online', () => setTimeout(show, 1500));
 })();
 
 // ── LIVE PHILIPPINE TIME CLOCK ────────────────────────────────────────────

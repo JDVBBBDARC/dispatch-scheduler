@@ -346,7 +346,7 @@
           <button class="btn btn-maroon btn-sm" onclick="addTrip({{ wave.id }})">
             <i class="bi bi-plus-lg me-1"></i>Add Row
           </button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="pasteRows({{ wave.id }})"
+          <button class="btn btn-outline-secondary btn-sm btn-paste" onclick="pasteRows({{ wave.id }})"
                   title="Paste copied rows here (Ctrl+V)">
             <i class="bi bi-clipboard-plus me-1"></i>Paste
           </button>
@@ -424,15 +424,9 @@ function oqLen() { return oqLoad().length; }
 function _ordinal(n) { const s=['th','st','nd','rd'], v=n%100; return n + (s[(v-20)%10] || s[v] || s[0]); }
 
 function oqUpdateUI() {
-  const n = oqLen();
-  const pend = document.getElementById('offlinePending');
-  if (pend) pend.textContent = n ? `· ${n} pending change${n===1?'':'s'}` : '';
-  const banner = document.getElementById('offlineBanner');
-  const msg = document.getElementById('offlineBannerMsg');
-  if (banner && !window.APP_OFFLINE) {
-    banner.style.display = n ? '' : 'none';
-    if (n && msg) { banner.style.background = '#0d6efd'; msg.textContent = 'Nagsi-sync ng offline na pagbabago…'; }
-  }
+  // base.html owns the banner (offline message vs "syncing" vs hidden) so
+  // the two can't fight over its text and colour.
+  if (window.renderOfflineBanner) window.renderOfflineBanner();
 }
 
 // Single choke point for all schedule mutations. Online = real POST.
@@ -550,6 +544,7 @@ function addWave(truckCode, dateStr) {
     panel.innerHTML = buildWavePanelHTML(wid, label);
     cont.appendChild(panel);
     initColResizers();          // grips + saved widths for the new table
+    updatePasteButtons();       // the new footer's Paste must reflect state
 
     showToast(`${label} added for ${truckCode}`);
     updateTabCount(truckCode, 0);
@@ -592,7 +587,7 @@ function buildWavePanelHTML(wid, label) {
       <button class="btn btn-maroon btn-sm" onclick="addTrip(${wid})">
         <i class="bi bi-plus-lg me-1"></i>Add Row
       </button>
-      <button class="btn btn-outline-secondary btn-sm" onclick="pasteRows(${wid})"
+      <button class="btn btn-outline-secondary btn-sm btn-paste" onclick="pasteRows(${wid})"
               title="Paste copied rows here (Ctrl+V)">
         <i class="bi bi-clipboard-plus me-1"></i>Paste
       </button>
@@ -1363,18 +1358,52 @@ function copySelectedRows() {
   });
   try {
     localStorage.setItem(CLIP_KEY, JSON.stringify(
-      {v: 1, from: '{{ d.isoformat() }}', rows: data}));
+      {v: 1, from: '{{ d.isoformat() }}', at: Date.now(), rows: data}));
   } catch (e) { return false; }
   showToast(`${data.length} row(s) copied — Ctrl+V sa kahit anong wave o araw`);
+  updatePasteButtons();
   return true;
 }
+
+// The clipboard lives in localStorage so it survives navigation — but it
+// used to survive FOREVER, so a copy from days ago would still paste and
+// look like the app inventing rows out of nowhere. Expire it.
+const CLIP_MAX_AGE_MS = 12 * 60 * 60 * 1000;    // 12 hours
 
 function loadClipboard() {
   try {
     const c = JSON.parse(localStorage.getItem(CLIP_KEY) || 'null');
-    return (c && c.v === 1 && Array.isArray(c.rows) && c.rows.length) ? c : null;
+    if (!c || c.v !== 1 || !Array.isArray(c.rows) || !c.rows.length) return null;
+    if (c.at && Date.now() - c.at > CLIP_MAX_AGE_MS) {
+      localStorage.removeItem(CLIP_KEY);     // stale — forget it
+      return null;
+    }
+    return c;
   } catch (e) { return null; }
 }
+
+function clearClipboard() {
+  localStorage.removeItem(CLIP_KEY);
+  updatePasteButtons();
+  showToast('Clipboard cleared');
+}
+
+// Paste buttons must show what (if anything) is on the clipboard —
+// a permanently-enabled "Paste" is what made a stale paste a surprise.
+function updatePasteButtons() {
+  const clip = loadClipboard();
+  const n = clip ? clip.rows.length : 0;
+  document.querySelectorAll('.btn-paste').forEach(b => {
+    b.disabled = !n;
+    b.innerHTML = '<i class="bi bi-clipboard-plus me-1"></i>' +
+                  (n ? `Paste ${n} row${n === 1 ? '' : 's'}` : 'Paste');
+    b.title = n
+      ? `Paste ${n} copied row(s)` +
+        (clip.from ? ` (kinopya mula ${clip.from})` : '') + ' — Ctrl+V'
+      : 'Wala pang nakopyang row. I-click ang row number tapos Ctrl+C.';
+  });
+}
+document.addEventListener('DOMContentLoaded', updatePasteButtons);
 
 function activeWaveId() {
   const panel = document.querySelector(
