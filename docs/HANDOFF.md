@@ -48,9 +48,20 @@ Tasks tab) that pulls Cartrack GPS + syncs FixFlo/ERP breakdowns.
    `cartrack_poll.py` / `joborders_sync.py`). Full steps + rollback:
    `docs/EMERGENCY_RUNBOOK.md`.
 
-## Branches
-`main` = single source of truth. `feature/cartrack-integration` is kept
-in lock-step (every push goes to both). Branch from main, merge to main.
+## Branches — `main` ONLY
+One branch. Commit to `main`, push with:
+
+```bash
+git push origin main
+```
+
+There is no mirror branch and no long-lived feature branch to keep in
+sync. (August 2026: nine stale branches were deleted — eight April
+feature branches whose tips were already ancestors of `main`, plus the
+`feature/cartrack-integration` mirror that had become byte-identical to
+it. The dual-push it required is what let work scatter and one commit go
+orphaned back in June.) If you ever need a branch for a risky
+experiment, make it short-lived, merge it to `main`, then delete it.
 
 ## Where things live
 | Thing | Location |

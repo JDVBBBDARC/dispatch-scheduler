@@ -179,6 +179,22 @@ each would have shipped broken:**
 
 ---
 
+## August 2026 — branch cleanup, one source of truth
+
+A fresh session on a new machine flagged nine stale branches. Verified
+each one first: every tip was already an **ancestor of `main`**, with
+zero unique commits and zero differing files — they were labels pointing
+at old points of `main`, not parallel work. Deleted, along with the
+`feature/cartrack-integration` mirror, which had become byte-identical to
+`main` while still costing a second push on every commit.
+
+That dual-push is not a hypothetical cost: back in June it let work
+scatter across branches and left one commit orphaned, recovered only via
+the reflog. The rule is now simply `git push origin main`, recorded in
+HANDOFF so a fresh session doesn't recreate the mirror.
+
+---
+
 ## Recurring themes worth carrying forward
 
 - **Silent degradation is the enemy.** Nearly every long-lived bug here
