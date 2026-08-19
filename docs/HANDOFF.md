@@ -6,6 +6,30 @@
 > picture. No credentials are in this file — they live only in the
 > PythonAnywhere `.env` and Cartrack/ERP web consoles.
 
+## ⭐ First prompt on a new machine (copy-paste this)
+
+Open Claude Code **inside the cloned `dispatch-scheduler` folder**, then
+paste:
+
+```
+Bago tayo magsimula, i-catch up ka muna sa project na ito:
+
+1. Basahin ang docs/HANDOFF.md — buong project context, features,
+   gotchas, at mga naka-pending.
+2. Basahin ang docs/EMERGENCY_RUNBOOK.md — deploy, restart, at
+   restore procedures.
+3. Patakbuhin: git log --oneline -25 — para makita ang huling ginawa.
+
+Pagkatapos, i-summarize sa akin: (a) ano ang estado ng app ngayon,
+(b) ano ang naka-pending, at (c) ano ang dapat kong gawin sa
+PythonAnywhere kung may hindi pa na-deploy. Taglish sagot.
+```
+
+That single prompt rebuilds the working picture from git alone — no
+chat history needed. (Copying `~/.claude/projects/<hash>/` from the old
+machine additionally restores the literal transcript, but it is not
+required.)
+
 ## What this is
 Flask + SQLite dispatch scheduler for a trucking fleet (Big Ben
 Logistics). Runs on **PythonAnywhere** (account `JDVBBBDARC`), repo
