@@ -16,9 +16,10 @@ Bago tayo magsimula, i-catch up ka muna sa project na ito:
 
 1. Basahin ang docs/HANDOFF.md — buong project context, features,
    gotchas, at mga naka-pending.
-2. Basahin ang docs/EMERGENCY_RUNBOOK.md — deploy, restart, at
+2. Basahin ang docs/WORKLOG.md — kasaysayan ng ginawa namin at bakit.
+3. Basahin ang docs/EMERGENCY_RUNBOOK.md — deploy, restart, at
    restore procedures.
-3. Patakbuhin: git log --oneline -25 — para makita ang huling ginawa.
+4. Patakbuhin: git log --oneline -25 — para makita ang huling ginawa.
 
 Pagkatapos, i-summarize sa akin: (a) ano ang estado ng app ngayon,
 (b) ano ang naka-pending, at (c) ano ang dapat kong gawin sa
