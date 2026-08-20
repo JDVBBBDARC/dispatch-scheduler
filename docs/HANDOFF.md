@@ -115,6 +115,51 @@ experiment, make it short-lived, merge it to `main`, then delete it.
   PHT = UTC+8. Mixing them up has bitten diagnostics twice.
 
 ## Open / pending
+
+- 🔴 **BLOCKER — PA is checked out on a branch that no longer exists.**
+  The PA console prompt reads
+  `~/dispatch-scheduler (feature/cartrack-integration)`, but that remote
+  branch was deleted in the August 2026 cleanup (`e875b08`). So
+  `git pull` on PA now **fails** ("no such ref was fetched") and
+  **nothing since the cleanup is deployed** — including the offline-mode
+  fixes (root-scoped service worker, lapsed-session queue loss,
+  broken-server-vs-cached-page, stale-cache banner, clipboard expiry).
+  Fix, in a PA Bash console — check first, don't blindly switch:
+
+  ```bash
+  cd ~/dispatch-scheduler
+  python scripts/backup_db.py     # snapshot first
+  git status                      # any uncommitted work ON PA?
+  git branch -a                   # does a local `main` exist?
+  ```
+
+  If `git status` is clean:
+
+  ```bash
+  git fetch origin --prune
+  git checkout main               # creates it tracking origin/main
+  git branch -u origin/main main
+  git pull
+  git branch -D feature/cartrack-integration   # drop the dead local branch
+  touch /var/www/jdvbbbdarc_pythonanywhere_com_wsgi.py
+  ```
+
+  Then restart the always-on worker (worker code changed too), and
+  hard-refresh the browser (`Ctrl+Shift+R`) so the new service worker
+  takes over. If `git status` is NOT clean, inspect and preserve those
+  changes before switching — PA is production.
+
+- 🟠 **The production DB has never been copied off PythonAnywhere.**
+  `dispatch.db` and its nightly `backups/*.db.gz` both live inside the PA
+  account, so losing the account loses the data and every backup with it.
+  The nightly task is healthy (14 unbroken nights as of 2026-08-20, ~1.1 MB
+  gzipped). Fix is manual, ~5 minutes, from any machine with a browser:
+  PA → Files → `dispatch-scheduler/backups/` → download the newest
+  `.db.gz` → keep a copy off-host (external drive + the Google Drive
+  folder "Dispatch Scheduler — OFFSITE BACKUP"). Verify the copy after
+  downloading (`gzip -t`, then `PRAGMA integrity_check`) — an unverified
+  backup is not a backup. Worth repeating monthly.
+
 - **TH02 (NGU7958, cartrack_id 31524271) logged Bocaue instead of
   Balagtas** as entry (2026-07-20 ~22:57 PHT). Balagtas geofence is
   small (94m) vs Bocaue's large (227m). Diagnosing whether Balagtas was
